@@ -1,8 +1,4 @@
 import {
-  Grape,
-  Home,
-  Sun,
-  Heart,
   ShieldCheck,
   CalendarCheck,
   MapPin,
@@ -18,12 +14,13 @@ import Eyebrow from "@/components/Eyebrow";
 import BookingForm from "@/components/BookingForm";
 import Photo from "@/components/Photo";
 import Reveal from "@/components/Reveal";
+import BrandIcon, { type BrandIconName } from "@/components/BrandIcon";
 
-const FEATURES = [
-  { icon: Grape, title: "Traumhafte Lage", text: "Direkt an der Mosel – umgeben von Weinbergen & Natur." },
-  { icon: Home, title: "Komfortable Wohnung", text: "Modern, gemütlich und mit allem ausgestattet, was Sie brauchen." },
-  { icon: Sun, title: "Erholung pur", text: "Entspannen, abschalten und die schönsten Momente genießen." },
-  { icon: Heart, title: "Persönlicher Service", text: "Wir sind für Sie da – vor, während und nach Ihrem Aufenthalt." },
+const FEATURES: { icon: BrandIconName; title: string; text: string }[] = [
+  { icon: "trauben", title: "Traumhafte Lage", text: "Direkt an der Mosel – umgeben von Weinbergen & Natur." },
+  { icon: "fachwerkhaus", title: "Komfortable Wohnung", text: "Modern, gemütlich und mit allem ausgestattet, was Sie brauchen." },
+  { icon: "sonnenuntergang", title: "Erholung pur", text: "Entspannen, abschalten und die schönsten Momente genießen." },
+  { icon: "herzen", title: "Persönlicher Service", text: "Wir sind für Sie da – vor, während und nach Ihrem Aufenthalt." },
 ];
 
 const TRUST = [
@@ -54,32 +51,34 @@ const STEPS = [
 export default function HomePage() {
   return (
     <>
-      <section className="relative min-h-[68vh] flex items-end">
-        <Photo
-          src="/images/hero-mosel.jpg"
-          alt="Moselblick vom Balkon bei Sonnenuntergang"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-black/10 to-transparent" />
-        <div className="relative z-10 max-w-[1180px] mx-auto w-full px-8 py-[70px]">
-          <h1 className="text-white text-[clamp(3rem,7vw,5.5rem)] leading-[1.02] mb-7">
-            Ihre Auszeit
-            <br />
-            an der Mosel.
-          </h1>
-          <p className="text-white/90 text-[1.1rem] max-w-[460px]">Gemütlich. Stilvoll. Unvergesslich.</p>
-          <p className="text-white/80 max-w-[460px]">
-            Unsere Ferienwohnung bietet Ihnen Erholung pur – mit traumhaftem Moselblick, moderner Ausstattung und
-            viel Liebe zum Detail.
-          </p>
-          <div className="flex gap-3.5 mt-5 flex-wrap">
-            <Button href="/wohnung">Zu den Wohnungen</Button>
-            <Button href="/kontakt#buchen" variant="outline-light">Buchen &amp; Anfragen</Button>
+      <section className="grid grid-cols-[minmax(320px,42%)_1fr] max-[900px]:grid-cols-1 items-stretch">
+        <div className="flex items-center order-1 max-[900px]:order-2">
+          <div className="w-full max-w-[520px] py-16 max-[900px]:py-12 pr-8 pl-[max(2rem,calc((100vw-1180px)/2+2rem))]">
+            <h1 className="text-[clamp(2.8rem,5.2vw,4.4rem)] leading-[1.05] mb-7">
+              Ihre Auszeit
+              <br />
+              an der Mosel.
+            </h1>
+            <p className="text-ink text-[1.1rem]">Gemütlich. Stilvoll. Unvergesslich.</p>
+            <p>
+              Unsere Ferienwohnung bietet Ihnen Erholung pur – mit traumhaftem Moselblick, moderner Ausstattung
+              und viel Liebe zum Detail.
+            </p>
+            <div className="flex gap-3.5 mt-6 flex-wrap">
+              <Button href="/wohnung">Zu den Wohnungen</Button>
+              <Button href="/kontakt#buchen" variant="outline">Buchen &amp; Anfragen</Button>
+            </div>
           </div>
+        </div>
+        <div className="relative min-h-[420px] max-[900px]:min-h-[360px] order-2 max-[900px]:order-1">
+          <Photo
+            src="/images/hero-mosel.jpg"
+            alt="Moselblick vom Balkon bei Sonnenuntergang"
+            fill
+            priority
+            sizes="(max-width: 900px) 100vw, 58vw"
+            className="object-cover"
+          />
         </div>
       </section>
 
@@ -87,9 +86,7 @@ export default function HomePage() {
         <div className="max-w-[1180px] mx-auto px-8 grid grid-cols-4 max-[900px]:grid-cols-2 max-[560px]:grid-cols-1 gap-[30px]">
           {FEATURES.map((f, i) => (
             <Reveal key={f.title} delay={i * 80} className="flex gap-3.5 items-start">
-              <span className="flex-none w-10 h-10 rounded-full border border-forest flex items-center justify-center text-forest">
-                <f.icon className="w-[18px] h-[18px]" strokeWidth={1.5} />
-              </span>
+              <BrandIcon name={f.icon} alt="" size={48} />
               <div>
                 <h3 className="text-[0.95rem] font-sans uppercase tracking-[0.06em] text-forest mb-1">{f.title}</h3>
                 <p className="text-[0.88rem] m-0">{f.text}</p>
