@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kontakt — AUSZEIT Ferienwohnung an der Mosel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">A</span>
+      <span class="brand-text"><span class="name">AUSZEIT</span><br><span class="sub">Ferienwohnung an der Mosel</span></span>
+    </a>
+    <nav class="main-nav" id="main-nav">
+      <a href="index.html">Startseite</a>
+      <a href="wohnung.html">Die Wohnung</a>
+      <a href="region.html">Die Region</a>
+      <a href="galerie.html">Galerie</a>
+      <a href="bewertungen.html">Gästebewertungen</a>
+      <a href="kontakt.html" class="active">Kontakt</a>
+    </nav>
+    <div class="header-actions">
+      <span class="icon-heart" aria-hidden="true">♡</span>
+      <a href="kontakt.html#buchen" class="btn btn-primary">Buchen</a>
+      <button class="nav-toggle" aria-label="Menü öffnen" aria-expanded="false">☰</button>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="wrap">
+    <span class="eyebrow">Kontakt</span>
+    <h1>Wir freuen uns auf Sie</h1>
+    <p>Haben Sie Fragen oder möchten Sie direkt anfragen? Schreiben Sie uns — wir melden uns schnellstmöglich zurück.</p>
+  </div>
+</section>
+
+<section class="section" id="buchen">
+  <div class="wrap contact-grid">
+    <div class="contact-info">
+      <span class="eyebrow">Direkt erreichbar</span>
+      <h2 class="mt-0">Kontaktdaten</h2>
+      <hr class="divider">
+      <dl>
+        <dt>Adresse</dt>
+        <dd>Moselstraße 12, 54470 Bernkastel-Kues</dd>
+        <dt>Telefon</dt>
+        <dd>+49 (0) 6531 123456</dd>
+        <dt>E-Mail</dt>
+        <dd>info@auszeit-mosel.de</dd>
+        <dt>Erreichbarkeit</dt>
+        <dd>Täglich 9:00 – 20:00 Uhr</dd>
+      </dl>
+    </div>
+
+    <form class="booking-form" id="booking-form" data-endpoint="https://formspree.io/f/YOUR_FORM_ID">
+      <span class="eyebrow">Buchungsanfrage</span>
+      <div class="field">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" required>
+      </div>
+      <div class="field">
+        <label for="email">E-Mail</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+      <div class="field">
+        <label for="telefon">Telefon (optional)</label>
+        <input type="tel" id="telefon" name="telefon">
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="checkin">Anreise</label>
+          <input type="date" id="checkin" name="anreise" required>
+        </div>
+        <div class="field">
+          <label for="checkout">Abreise</label>
+          <input type="date" id="checkout" name="abreise" required>
+        </div>
+      </div>
+      <div class="field">
+        <label for="gaeste">Gäste</label>
+        <select id="gaeste" name="gaeste">
+          <option>1 Erwachsener</option>
+          <option selected>2 Erwachsene</option>
+          <option>2 Erwachsene, 1 Kind</option>
+          <option>2 Erwachsene, 2 Kinder</option>
+          <option>Andere (bitte in Nachricht angeben)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="nachricht">Ihre Nachricht</label>
+        <textarea id="nachricht" name="nachricht" rows="4"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Anfrage senden</button>
+      <p class="form-note">Mit dem Absenden stimmen Sie zu, dass wir Sie zu Ihrer Anfrage kontaktieren.</p>
+      <div id="form-status" class="form-status" role="status"></div>
+    </form>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Anfahrt</span>
+      <h2 class="mt-0">So finden Sie uns</h2>
+      <hr class="divider center">
+    </div>
+    <div class="img-slot map-slot">[ Google Maps Embed<br>→ Adresse eintragen ]</div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <span class="name">AUSZEIT</span>
+        <p>Ihre Ferienwohnung an der Mosel — Ankommen. Durchatmen. Genießen.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Navigation</h4>
+        <a href="index.html">Startseite</a>
+        <a href="wohnung.html">Die Wohnung</a>
+        <a href="region.html">Die Region</a>
+        <a href="galerie.html">Galerie</a>
+        <a href="bewertungen.html">Gästebewertungen</a>
+        <a href="kontakt.html">Kontakt</a>
+      </div>
+      <div class="footer-col">
+        <h4>Kontakt</h4>
+        <p>Moselstraße 12, 54470 Bernkastel-Kues</p>
+        <p>+49 (0) 6531 123456</p>
+        <p>info@auszeit-mosel.de</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year"></span> AUSZEIT Ferienwohnung. Alle Rechte vorbehalten.</span>
+      <span><a href="#">Impressum</a> · <a href="#">Datenschutz</a></span>
+    </div>
+  </div>
+</footer>
+<script src="js/main.js"></script>
+</body>
+</html>

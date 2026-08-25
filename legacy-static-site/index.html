@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AUSZEIT — Ferienwohnung an der Mosel</title>
+<meta name="description" content="Ihre Auszeit an der Mosel. Gemütlich, stilvoll, unvergesslich — traumhafter Moselblick, moderne Ausstattung, viel Liebe zum Detail.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">A</span>
+      <span class="brand-text">
+        <span class="name">AUSZEIT</span><br>
+        <span class="sub">Ferienwohnung an der Mosel</span>
+      </span>
+    </a>
+    <nav class="main-nav" id="main-nav">
+      <a href="index.html" class="active">Startseite</a>
+      <a href="wohnung.html">Die Wohnung</a>
+      <a href="region.html">Die Region</a>
+      <a href="galerie.html">Galerie</a>
+      <a href="bewertungen.html">Gästebewertungen</a>
+      <a href="kontakt.html">Kontakt</a>
+    </nav>
+    <div class="header-actions">
+      <span class="icon-heart" aria-hidden="true">♡</span>
+      <a href="kontakt.html#buchen" class="btn btn-primary">Buchen</a>
+      <button class="nav-toggle" aria-label="Menü öffnen" aria-expanded="false">☰</button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-media">
+    <div class="placeholder-label">[ Foto: Moselblick vom Balkon bei Sonnenuntergang<br>→ images/hero-mosel.jpg ]</div>
+    <div class="hero-copy">
+      <h1>Ihre Auszeit<br>an der Mosel.</h1>
+      <p class="lead">Gemütlich. Stilvoll. Unvergesslich.</p>
+      <p class="desc">Unsere Ferienwohnung bietet Ihnen Erholung pur – mit traumhaftem Moselblick, moderner Ausstattung und viel Liebe zum Detail.</p>
+      <div class="hero-cta">
+        <a href="wohnung.html" class="btn btn-primary">Zur Wohnung</a>
+        <a href="kontakt.html#buchen" class="btn btn-outline">Buchen &amp; Anfragen</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features">
+  <div class="wrap feature-grid">
+    <div class="feature-item">
+      <span class="feature-icon">🍇</span>
+      <div>
+        <h3>Traumhafte Lage</h3>
+        <p>Direkt an der Mosel – umgeben von Weinbergen &amp; Natur.</p>
+      </div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">⌂</span>
+      <div>
+        <h3>Komfortable Wohnung</h3>
+        <p>Modern, gemütlich und mit allem ausgestattet, was Sie brauchen.</p>
+      </div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">☀</span>
+      <div>
+        <h3>Erholung pur</h3>
+        <p>Entspannen, abschalten und die schönsten Momente genießen.</p>
+      </div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">♡</span>
+      <div>
+        <h3>Persönlicher Service</h3>
+        <p>Wir sind für Sie da – vor, während und nach Ihrem Aufenthalt.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="booking" id="buchen">
+  <div class="wrap booking-grid">
+    <div class="booking-intro">
+      <span class="eyebrow">Buchen Sie Ihre Auszeit</span>
+      <h2 class="mt-0">Jetzt Urlaub anfragen</h2>
+      <hr class="divider">
+      <p>Wählen Sie Ihren gewünschten Zeitraum und senden Sie uns eine unverbindliche Anfrage. Wir melden uns schnellstmöglich bei Ihnen zurück.</p>
+      <ul>
+        <li>Unverbindlich &amp; schnell</li>
+        <li>Beste Preise direkt bei uns</li>
+        <li>Persönliche Beratung</li>
+        <li>Sichere &amp; einfache Anfrage</li>
+      </ul>
+    </div>
+
+    <form class="booking-form" id="booking-form" data-endpoint="https://formspree.io/f/YOUR_FORM_ID">
+      <span class="eyebrow">Verfügbarkeit prüfen</span>
+      <div class="field">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" required>
+      </div>
+      <div class="field">
+        <label for="email">E-Mail</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="checkin">Anreise</label>
+          <input type="date" id="checkin" name="anreise" required>
+        </div>
+        <div class="field">
+          <label for="checkout">Abreise</label>
+          <input type="date" id="checkout" name="abreise" required>
+        </div>
+      </div>
+      <div class="field">
+        <label for="gaeste">Gäste</label>
+        <select id="gaeste" name="gaeste">
+          <option>1 Erwachsener</option>
+          <option selected>2 Erwachsene</option>
+          <option>2 Erwachsene, 1 Kind</option>
+          <option>2 Erwachsene, 2 Kinder</option>
+          <option>Andere (bitte in Nachricht angeben)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="nachricht">Nachricht (optional)</label>
+        <textarea id="nachricht" name="nachricht" rows="3"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Verfügbarkeit anzeigen</button>
+      <p class="form-note">Mit dem Absenden stimmen Sie zu, dass wir Sie zu Ihrer Anfrage kontaktieren.</p>
+      <div id="form-status" class="form-status" role="status"></div>
+    </form>
+
+    <div class="booking-preview">
+      <div class="img-slot">[ Foto: Wohnzimmer mit Balkon<br>→ images/wohnzimmer.jpg ]</div>
+      <div class="caption">
+        <h3>Ihre Wohlfühloase</h3>
+        <p>Lichtdurchflutete Räume, ein Balkon mit Moselblick und eine Ausstattung zum Ankommen und Wohlfühlen.</p>
+        <p style="margin-top:10px;"><a href="wohnung.html" style="color:var(--gold); font-size:0.85rem; letter-spacing:0.05em; text-transform:uppercase;">Mehr erfahren →</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="trust">
+  <div class="wrap trust-grid">
+    <div class="trust-item">
+      <span class="icon">🛡</span>
+      <div><h3>Sichere Buchung</h3><p>Ihre Daten sind bei uns sicher und geschützt.</p></div>
+    </div>
+    <div class="trust-item">
+      <span class="icon">📅</span>
+      <div><h3>Flexible An- &amp; Abreise</h3><p>Nach Absprache sind individuelle An- und Abreisezeiten möglich.</p></div>
+    </div>
+    <div class="trust-item">
+      <span class="icon">📍</span>
+      <div><h3>Tolle Ausflugsziele</h3><p>Entdecken Sie die Mosel und ihre schönsten Seiten.</p></div>
+    </div>
+    <div class="trust-item">
+      <span class="icon">🍷</span>
+      <div><h3>Wein &amp; Genuss</h3><p>Erleben Sie die Mosel mit ihren Weinen und kulinarischen Highlights.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <span class="name">AUSZEIT</span>
+        <p>Ihre Ferienwohnung an der Mosel — Ankommen. Durchatmen. Genießen.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Navigation</h4>
+        <a href="index.html">Startseite</a>
+        <a href="wohnung.html">Die Wohnung</a>
+        <a href="region.html">Die Region</a>
+        <a href="galerie.html">Galerie</a>
+        <a href="bewertungen.html">Gästebewertungen</a>
+        <a href="kontakt.html">Kontakt</a>
+      </div>
+      <div class="footer-col">
+        <h4>Kontakt</h4>
+        <p>Moselstraße 12, 54470 Bernkastel-Kues</p>
+        <p>+49 (0) 6531 123456</p>
+        <p>info@auszeit-mosel.de</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year"></span> AUSZEIT Ferienwohnung. Alle Rechte vorbehalten.</span>
+      <span><a href="#">Impressum</a> · <a href="#">Datenschutz</a></span>
+    </div>
+  </div>
+</footer>
+<script src="js/main.js"></script>
+</body>
+</html>

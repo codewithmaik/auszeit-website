@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+:root {
+  --color-forest: #3c4632;
+  --color-forest-dark: #2c3423;
+  --color-sage: #8a9a7e;
+  --color-mist: #d6d8d1;
+  --color-gold: #c99a3f;
+  --color-cream: #f3e4c4;
+  --color-bg: #faf8f3;
+  --color-bg-soft: #f3f1ea;
+  --color-ink: #2c3226;
+  --color-ink-soft: #5c6355;
+  --color-line: rgba(60, 70, 50, 0.14);
+
+  --font-serif: var(--font-playfair), Georgia, serif;
+  --font-sans: var(--font-jost), "Helvetica Neue", Arial, sans-serif;
+}
+
+@theme inline {
+  --color-forest: var(--color-forest);
+  --color-forest-dark: var(--color-forest-dark);
+  --color-sage: var(--color-sage);
+  --color-mist: var(--color-mist);
+  --color-gold: var(--color-gold);
+  --color-cream: var(--color-cream);
+  --color-bg: var(--color-bg);
+  --color-bg-soft: var(--color-bg-soft);
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-line: var(--color-line);
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@layer base {
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-serif);
+    color: var(--color-forest);
+    letter-spacing: 0.01em;
+    font-weight: 600;
+  }
+
+  p {
+    color: var(--color-ink-soft);
+  }
+}
