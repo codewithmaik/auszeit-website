@@ -85,7 +85,7 @@ function Button({ href }: { href: string }) {
       href={href}
       className="inline-flex items-center gap-2 px-[22px] py-[11px] bg-forest text-white font-sans text-[0.78rem] tracking-[0.14em] uppercase rounded-[2px] hover:bg-forest-dark transition-colors"
     >
-      Buchen
+      Anfragen
     </Link>
   );
 }

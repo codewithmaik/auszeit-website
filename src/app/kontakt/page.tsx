@@ -71,7 +71,7 @@ export default function KontaktPage() {
           </Reveal>
 
           <Reveal delay={100}>
-            <BookingForm submitLabel="Anfrage senden" showPhone />
+            <BookingForm submitLabel="Anfrage senden" showPhone twoStep />
           </Reveal>
         </div>
       </section>

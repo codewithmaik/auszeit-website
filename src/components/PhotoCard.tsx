@@ -27,11 +27,15 @@ export default function PhotoCard({
   return (
     <Reveal delay={delay} className="rounded-[2px] overflow-hidden border border-line bg-white flex flex-col">
       <div className="p-6 pb-4">
-        {brandIcon ? (
-          <BrandIcon name={brandIcon} alt="" size={40} className="mb-3" />
-        ) : Icon ? (
-          <Icon className="w-6 h-6 text-gold mb-3" strokeWidth={1.5} />
-        ) : null}
+        {(brandIcon || Icon) && (
+          <div className="h-10 flex items-center mb-3">
+            {brandIcon ? (
+              <BrandIcon name={brandIcon} alt="" size={40} />
+            ) : Icon ? (
+              <Icon className="w-6 h-6 text-gold" strokeWidth={1.5} />
+            ) : null}
+          </div>
+        )}
         <h3 className="text-[1rem] mb-1">{title}</h3>
         {meta && <span className="block text-[0.68rem] tracking-[0.08em] uppercase text-ink-soft/70">{meta}</span>}
       </div>

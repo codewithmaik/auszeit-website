@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 
 const NAV_LINKS = [
   { href: "/", label: "Startseite" },
@@ -50,6 +51,26 @@ export default function Footer() {
             <a href="#" className="hover:text-gold">Impressum</a> ·{" "}
             <a href="#" className="hover:text-gold">Datenschutz</a>
           </span>
+        </div>
+        <div className="pt-5 mt-2 border-t border-white/10 text-center">
+          <a
+            href="https://codewithmaik.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group inline-flex items-center gap-1 text-[0.72rem] tracking-[0.03em] text-white/40 hover:text-white/90 transition-colors duration-300"
+          >
+            <span>
+              Technische Umsetzung:{" "}
+              <span className="relative text-white/55 group-hover:text-gold transition-colors duration-300">
+                codewithmaik
+                <span className="absolute left-0 -bottom-0.5 h-px w-full origin-left scale-x-0 bg-gold transition-transform duration-300 ease-out group-hover:scale-x-100" />
+              </span>
+            </span>
+            <ArrowUpRight
+              className="w-3 h-3 text-gold opacity-0 -translate-x-1 transition-all duration-300 ease-out group-hover:opacity-100 group-hover:translate-x-0"
+              strokeWidth={2}
+            />
+          </a>
         </div>
       </div>
     </footer>
