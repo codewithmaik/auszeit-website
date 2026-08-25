@@ -15,12 +15,13 @@ import Eyebrow from "@/components/Eyebrow";
 import Divider from "@/components/Divider";
 import PageHero from "@/components/PageHero";
 import Photo from "@/components/Photo";
+import BrandIcon, { type BrandIconName } from "@/components/BrandIcon";
 import Reveal from "@/components/Reveal";
 
 export const metadata: Metadata = { title: "Die Region" };
 
-const SIGHTS = [
-  { icon: Landmark, title: "Bernkastel-Kues", text: "Historischer Marktplatz mit Fachwerkhäusern, ca. 10 Min. entfernt." },
+const SIGHTS: { icon: typeof Landmark; brandIcon?: BrandIconName; title: string; text: string }[] = [
+  { icon: Landmark, brandIcon: "dorfplatz", title: "Bernkastel-Kues", text: "Historischer Marktplatz mit Fachwerkhäusern, ca. 10 Min. entfernt." },
   { icon: Castle, title: "Burg Landshut", text: "Ruine oberhalb von Bernkastel mit Panoramablick über das Moseltal." },
   { icon: Waves, title: "Moselschleife bei Bremm", text: "Eine der spektakulärsten Flussschleifen Europas, ca. 30 Min. entfernt." },
   { icon: Footprints, title: "Moseltal-Wanderweg", text: "Ausgeschilderte Wander- und Radwege direkt entlang des Flusses." },
@@ -87,6 +88,7 @@ export default function RegionPage() {
             />
           </Reveal>
           <Reveal delay={100}>
+            <BrandIcon name="moselschleife" alt="" size={64} className="mb-4" />
             <Eyebrow>Wein &amp; Genuss</Eyebrow>
             <h2 className="mt-0">Zuhause bei den Winzern</h2>
             <Divider />
@@ -142,7 +144,11 @@ export default function RegionPage() {
           <div className="grid grid-cols-3 max-[860px]:grid-cols-2 max-[560px]:grid-cols-1 gap-6 mt-2.5">
             {SIGHTS.map((s, i) => (
               <Reveal key={s.title} delay={(i % 3) * 80} className="border border-line bg-white p-[26px] rounded-[2px]">
-                <s.icon className="w-6 h-6 text-gold mb-3" strokeWidth={1.5} />
+                {s.brandIcon ? (
+                  <BrandIcon name={s.brandIcon} alt="" size={40} className="mb-3" />
+                ) : (
+                  <s.icon className="w-6 h-6 text-gold mb-3" strokeWidth={1.5} />
+                )}
                 <h3 className="text-[1rem]">{s.title}</h3>
                 <p className="text-[0.88rem] m-0">{s.text}</p>
               </Reveal>
