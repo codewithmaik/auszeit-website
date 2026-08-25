@@ -137,7 +137,7 @@ export default function HomePage() {
           </Reveal>
 
           <Reveal delay={100}>
-            <BookingForm />
+            <BookingForm twoStep />
           </Reveal>
 
           <Reveal delay={200} className="rounded-[2px] overflow-hidden shadow-[0_18px_40px_-20px_rgba(44,50,38,0.35)]">
