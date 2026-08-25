@@ -51,34 +51,32 @@ const STEPS = [
 export default function HomePage() {
   return (
     <>
-      <section className="grid grid-cols-[minmax(320px,42%)_1fr] max-[900px]:grid-cols-1 items-stretch">
-        <div className="flex items-center order-1 max-[900px]:order-2">
-          <div className="w-full max-w-[520px] py-16 max-[900px]:py-12 pr-8 pl-[max(2rem,calc((100vw-1180px)/2+2rem))]">
-            <h1 className="text-[clamp(2.8rem,5.2vw,4.4rem)] leading-[1.05] mb-7">
-              Ihre Auszeit
-              <br />
-              an der Mosel.
-            </h1>
-            <p className="text-ink text-[1.1rem]">Gemütlich. Stilvoll. Unvergesslich.</p>
-            <p>
-              Unsere Ferienwohnung bietet Ihnen Erholung pur – mit traumhaftem Moselblick, moderner Ausstattung
-              und viel Liebe zum Detail.
-            </p>
-            <div className="flex gap-3.5 mt-6 flex-wrap">
-              <Button href="/wohnung">Zu den Wohnungen</Button>
-              <Button href="/kontakt#buchen" variant="outline">Buchen &amp; Anfragen</Button>
-            </div>
+      <section className="relative min-h-[68vh] flex items-end overflow-hidden">
+        <Photo
+          src="/images/hero-mosel.jpg"
+          alt="Moselblick vom Balkon bei Sonnenuntergang"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-black/10 to-transparent" />
+        <div className="relative z-10 max-w-[1180px] mx-auto w-full px-8 py-[70px]">
+          <h1 className="text-white text-[clamp(2.8rem,5.2vw,4.4rem)] leading-[1.05] mb-7">
+            Ihre Auszeit
+            <br />
+            an der Mosel.
+          </h1>
+          <p className="text-white/90 text-[1.1rem] max-w-[460px]">Gemütlich. Stilvoll. Unvergesslich.</p>
+          <p className="text-white/80 max-w-[460px]">
+            Unsere Ferienwohnung bietet Ihnen Erholung pur – mit traumhaftem Moselblick, moderner Ausstattung und
+            viel Liebe zum Detail.
+          </p>
+          <div className="flex gap-3.5 mt-6 flex-wrap">
+            <Button href="/wohnung">Zu den Wohnungen</Button>
+            <Button href="/kontakt#buchen" variant="outline-light">Buchen &amp; Anfragen</Button>
           </div>
-        </div>
-        <div className="relative min-h-[420px] max-[900px]:min-h-[360px] order-2 max-[900px]:order-1">
-          <Photo
-            src="/images/hero-mosel.jpg"
-            alt="Moselblick vom Balkon bei Sonnenuntergang"
-            fill
-            priority
-            sizes="(max-width: 900px) 100vw, 58vw"
-            className="object-cover"
-          />
         </div>
       </section>
 
@@ -118,7 +116,7 @@ export default function HomePage() {
       </section>
 
       <section className="py-20 bg-bg-soft" id="buchen">
-        <div className="max-w-[1180px] mx-auto px-8 grid grid-cols-3 max-[980px]:grid-cols-1 gap-10 items-start">
+        <div className="max-w-[1180px] mx-auto px-8 grid grid-cols-3 max-[980px]:grid-cols-1 gap-10 items-center">
           <Reveal>
             <Eyebrow>Buchen Sie Ihre Auszeit</Eyebrow>
             <h2 className="mt-0">Jetzt Urlaub anfragen</h2>

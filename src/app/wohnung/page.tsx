@@ -9,75 +9,105 @@ import {
   WashingMachine,
   Snowflake,
   PawPrint,
-  Ruler,
-  Users,
-  LogIn,
-  LogOut,
-  Moon,
 } from "lucide-react";
 import Button from "@/components/Button";
 import Eyebrow from "@/components/Eyebrow";
 import Divider from "@/components/Divider";
 import PageHero from "@/components/PageHero";
-import Photo from "@/components/Photo";
 import Reveal from "@/components/Reveal";
+import WohnungenSlider, { type WohnungUnit } from "@/components/WohnungenSlider";
 
-export const metadata: Metadata = { title: "Die Wohnung", alternates: { canonical: "/wohnung" } };
+export const metadata: Metadata = { title: "Die Wohnungen", alternates: { canonical: "/wohnung" } };
+
+const UNITS: WohnungUnit[] = [
+  {
+    slug: "rieslinghaus",
+    name: "Rieslinghaus",
+    image: "/images/wohnbereich.jpg",
+    size: "60 m²",
+    guests: "4 Gäste",
+    bedrooms: "2 Schlafzimmer",
+    text: "Unsere Flaggschiff-Wohnung mit privatem Balkon und freiem Blick auf Weinberge und Fluss — lichtdurchflutet, modern eingerichtet und mit viel Liebe zum Detail.",
+  },
+  {
+    slug: "weinberg-loft",
+    name: "Weinberg-Loft",
+    image: "/images/wohnung-loft.jpg",
+    size: "45 m²",
+    guests: "2 Gäste",
+    bedrooms: "1 Schlafzimmer",
+    text: "Ein puristisches Loft für alle, die es modern mögen — offener Wohnbereich, klare Linien und ruhige Farben. Perfekt für Paare, die einfach mal abschalten wollen.",
+  },
+  {
+    slug: "flussblick",
+    name: "Flussblick",
+    image: "/images/wohnung-flussblick.jpg",
+    size: "55 m²",
+    guests: "3 Gäste",
+    bedrooms: "1 Schlafzimmer",
+    text: "Helle, freundliche Räume mit skandinavischem Einrichtungsstil. Große Fenster lassen den Tag lange in die Wohnung — ideal für einen entspannten Kurzurlaub.",
+  },
+  {
+    slug: "winzerstube",
+    name: "Winzerstube",
+    image: "/images/wohnung-winzerstube.jpg",
+    size: "50 m²",
+    guests: "3 Gäste",
+    bedrooms: "1 Schlafzimmer",
+    text: "Warme Farben und gemütliche Details erinnern an eine klassische Winzerstube — hier lässt es sich nach einem Tag in den Weinbergen wunderbar zur Ruhe kommen.",
+  },
+  {
+    slug: "sonnenterrasse",
+    name: "Sonnenterrasse",
+    image: "/images/wohnung-sonnenterrasse.jpg",
+    size: "65 m²",
+    guests: "4 Gäste",
+    bedrooms: "2 Schlafzimmer",
+    text: "Lichtdurchflutet und großzügig geschnitten, mit einer besonders großen Terrasse — der perfekte Ort für gemeinsame Frühstücke und laue Sommerabende.",
+  },
+  {
+    slug: "turmzimmer",
+    name: "Turmzimmer",
+    image: "/images/wohnung-turmzimmer.jpg",
+    size: "70 m²",
+    guests: "5 Gäste",
+    bedrooms: "3 Schlafzimmer",
+    text: "Unsere außergewöhnlichste Wohnung über zwei Ebenen mit offener Treppe — viel Platz für Familien oder kleine Gruppen, die zusammen die Mosel entdecken möchten.",
+  },
+  {
+    slug: "fachwerk-idylle",
+    name: "Fachwerk-Idylle",
+    image: "/images/wohnung-fachwerk-idylle.jpg",
+    size: "48 m²",
+    guests: "2 Gäste",
+    bedrooms: "1 Schlafzimmer",
+    text: "Historischer Charme trifft modernen Komfort: sichtbare Holzbalken und warme Materialien machen diese Wohnung zu einem besonders stimmungsvollen Rückzugsort.",
+  },
+];
 
 const AMENITIES = [
-  { icon: BedDouble, title: "2 Schlafzimmer", text: "Ein Doppelbett und ein Zimmer mit zwei Einzelbetten — Platz für bis zu 4 Gäste." },
+  { icon: BedDouble, title: "Komfortable Betten", text: "Hochwertige Matratzen und Bettwäsche in allen Wohnungen." },
   { icon: ChefHat, title: "Vollausgestattete Küche", text: "Geschirrspüler, Kaffeemaschine, Backofen und alles fürs Kochen im Urlaub." },
   { icon: ShowerHead, title: "Modernes Bad", text: "Regendusche, Fußbodenheizung und hochwertige Ausstattung." },
-  { icon: Sunrise, title: "Balkon mit Moselblick", text: "Sitzgruppe im Freien mit freier Sicht auf Fluss und Weinberge." },
+  { icon: Sunrise, title: "Balkon oder Terrasse", text: "Ein eigener Außenbereich mit Sicht auf Fluss und Weinberge." },
   { icon: Wifi, title: "WLAN & Smart-TV", text: "Schnelles Internet und Streaming-Möglichkeiten inklusive." },
-  { icon: Car, title: "Privatparkplatz", text: "Ein kostenloser Stellplatz direkt am Haus." },
+  { icon: Car, title: "Privatparkplatz", text: "Kostenlose Stellplätze direkt am Haus." },
   { icon: WashingMachine, title: "Waschmaschine", text: "Für längere Aufenthalte praktisch mit an Bord." },
   { icon: Snowflake, title: "Klimaanlage", text: "Angenehme Temperaturen auch an warmen Sommertagen." },
   { icon: PawPrint, title: "Haustiere auf Anfrage", text: "Ihr Vierbeiner ist nach Absprache herzlich willkommen." },
 ];
 
-const DETAILS = [
-  { icon: Ruler, label: "Wohnfläche", value: "60 m²" },
-  { icon: BedDouble, label: "Schlafzimmer", value: "2" },
-  { icon: Users, label: "Max. Gäste", value: "4" },
-  { icon: LogIn, label: "Check-in", value: "ab 15:00 Uhr" },
-  { icon: LogOut, label: "Check-out", value: "bis 11:00 Uhr" },
-  { icon: Moon, label: "Mindestaufenthalt", value: "3 Nächte" },
-];
-
 export default function WohnungPage() {
   return (
     <>
-      <PageHero eyebrow="Die Wohnung" title="Ihre Wohlfühloase über der Mosel">
-        60 m², 2 Schlafzimmer, Platz für bis zu 4 Gäste — lichtdurchflutet, modern eingerichtet und mit einem
-        Balkon, den Sie nicht mehr verlassen wollen.
+      <PageHero eyebrow="Die Wohnungen" title="7 Wohnungen, ein Zuhause an der Mosel">
+        Von der lichtdurchfluteten Sonnenterrasse bis zum außergewöhnlichen Turmzimmer — jede unserer sieben
+        Wohnungen hat ihren eigenen Charakter. Blättern Sie durch und finden Sie Ihre Auszeit.
       </PageHero>
 
       <section className="py-20">
-        <div className="max-w-[1180px] mx-auto px-8 grid grid-cols-2 max-[860px]:grid-cols-1 gap-[50px] items-center">
-          <Reveal className="relative min-h-[380px] rounded-[2px] overflow-hidden">
-            <Photo
-              src="/images/wohnbereich.jpg"
-              alt="Wohn-/Essbereich"
-              fill
-              sizes="(max-width: 860px) 100vw, 550px"
-              className="object-cover"
-            />
-          </Reveal>
-          <Reveal delay={100}>
-            <Eyebrow>Ankommen &amp; Wohlfühlen</Eyebrow>
-            <h2 className="mt-0">Ein Zuhause auf Zeit</h2>
-            <Divider />
-            <p>
-              Unsere Ferienwohnung verbindet modernen Komfort mit dem gemütlichen Charme der Moselregion. Helle
-              Räume, hochwertige Materialien und durchdachte Details sorgen dafür, dass Sie sich vom ersten Moment
-              an wie zuhause fühlen.
-            </p>
-            <p>
-              Der Höhepunkt: der private Balkon mit freiem Blick auf die Weinberge und den Fluss — der perfekte
-              Platz für Ihren Morgenkaffee oder ein Glas Moselwein am Abend.
-            </p>
-          </Reveal>
+        <div className="max-w-[1180px] mx-auto px-8">
+          <WohnungenSlider units={UNITS} />
         </div>
       </section>
 
@@ -85,7 +115,7 @@ export default function WohnungPage() {
         <div className="max-w-[1180px] mx-auto px-8">
           <Reveal className="max-w-[640px] mx-auto mb-[46px] text-center">
             <Eyebrow>Ausstattung</Eyebrow>
-            <h2 className="mt-0">Alles, was Sie brauchen</h2>
+            <h2 className="mt-0">Das bieten alle unsere Wohnungen</h2>
             <Divider center />
           </Reveal>
           <div className="grid grid-cols-3 max-[860px]:grid-cols-2 max-[560px]:grid-cols-1 gap-6 mt-2.5">
@@ -100,34 +130,12 @@ export default function WohnungPage() {
         </div>
       </section>
 
-      <section className="py-20">
-        <div className="max-w-[1180px] mx-auto px-8 grid grid-cols-2 max-[860px]:grid-cols-1 gap-[50px] items-center">
-          <Reveal>
-            <Eyebrow>Details</Eyebrow>
-            <h2 className="mt-0">Auf einen Blick</h2>
-            <Divider />
-            <dl className="grid grid-cols-2 gap-x-5 gap-y-3 mt-6">
-              {DETAILS.map((d) => (
-                <div key={d.label} className="flex items-start gap-2.5">
-                  <d.icon className="w-[18px] h-[18px] text-gold flex-none mt-0.5" strokeWidth={1.5} />
-                  <div>
-                    <dt className="text-[0.72rem] tracking-[0.1em] uppercase text-gold">{d.label}</dt>
-                    <dd className="mt-0.5 ml-0 text-ink-soft">{d.value}</dd>
-                  </div>
-                </div>
-              ))}
-            </dl>
-            <Button href="/kontakt#buchen" className="mt-[26px]">Jetzt anfragen</Button>
-          </Reveal>
-          <Reveal delay={100} className="relative min-h-[340px] rounded-[2px] overflow-hidden">
-            <Photo
-              src="/images/schlafzimmer-1.jpg"
-              alt="Schlafzimmer"
-              fill
-              sizes="(max-width: 860px) 100vw, 550px"
-              className="object-cover"
-            />
-          </Reveal>
+      <section className="py-20 text-center">
+        <div className="max-w-[1180px] mx-auto px-8">
+          <Eyebrow>Noch unentschlossen?</Eyebrow>
+          <h2 className="mt-0">Wir beraten Sie gern bei der Wahl</h2>
+          <Divider center />
+          <Button href="/kontakt#buchen">Jetzt anfragen</Button>
         </div>
       </section>
     </>
