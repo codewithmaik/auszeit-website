@@ -18,7 +18,7 @@ import Photo from "@/components/Photo";
 import BrandIcon, { type BrandIconName } from "@/components/BrandIcon";
 import Reveal from "@/components/Reveal";
 
-export const metadata: Metadata = { title: "Die Region" };
+export const metadata: Metadata = { title: "Die Region", alternates: { canonical: "/region" } };
 
 const SIGHTS: { icon: typeof Landmark; brandIcon?: BrandIconName; title: string; text: string }[] = [
   { icon: Landmark, brandIcon: "dorfplatz", title: "Bernkastel-Kues", text: "Historischer Marktplatz mit Fachwerkhäusern, ca. 10 Min. entfernt." },

@@ -22,7 +22,7 @@ import PageHero from "@/components/PageHero";
 import Photo from "@/components/Photo";
 import Reveal from "@/components/Reveal";
 
-export const metadata: Metadata = { title: "Die Wohnung" };
+export const metadata: Metadata = { title: "Die Wohnung", alternates: { canonical: "/wohnung" } };
 
 const AMENITIES = [
   { icon: BedDouble, title: "2 Schlafzimmer", text: "Ein Doppelbett und ein Zimmer mit zwei Einzelbetten — Platz für bis zu 4 Gäste." },
