@@ -6,7 +6,7 @@ import Divider from "@/components/Divider";
 import PageHero from "@/components/PageHero";
 import Reveal from "@/components/Reveal";
 
-export const metadata: Metadata = { title: "Gästebewertungen" };
+export const metadata: Metadata = { title: "Gästebewertungen", alternates: { canonical: "/bewertungen" } };
 
 const REVIEWS = [
   {

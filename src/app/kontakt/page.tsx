@@ -7,7 +7,7 @@ import BookingForm from "@/components/BookingForm";
 import Reveal from "@/components/Reveal";
 import Faq, { type FaqItem } from "@/components/Faq";
 
-export const metadata: Metadata = { title: "Kontakt" };
+export const metadata: Metadata = { title: "Kontakt", alternates: { canonical: "/kontakt" } };
 
 const CONTACT_INFO = [
   { icon: MapPinned, label: "Adresse", value: "Moselstraße 12, 54470 Bernkastel-Kues" },

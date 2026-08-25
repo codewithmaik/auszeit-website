@@ -5,7 +5,7 @@ import Divider from "@/components/Divider";
 import PageHero from "@/components/PageHero";
 import GalleryGrid from "@/components/GalleryGrid";
 
-export const metadata: Metadata = { title: "Galerie" };
+export const metadata: Metadata = { title: "Galerie", alternates: { canonical: "/galerie" } };
 
 const PHOTOS = [
   { src: "/images/wohnbereich.jpg", alt: "Wohnzimmer", tall: true },
