@@ -16,6 +16,7 @@ import Divider from "@/components/Divider";
 import PageHero from "@/components/PageHero";
 import Reveal from "@/components/Reveal";
 import WohnungenSlider, { type WohnungUnit } from "@/components/WohnungenSlider";
+import GalleryGrid from "@/components/GalleryGrid";
 
 export const metadata: Metadata = { title: "Die Wohnungen", alternates: { canonical: "/wohnung" } };
 
@@ -85,6 +86,18 @@ const UNITS: WohnungUnit[] = [
   },
 ];
 
+const GALLERY_PHOTOS = [
+  { src: "/images/wohnbereich.jpg", alt: "Wohnzimmer", tall: true },
+  { src: "/images/hero-mosel.jpg", alt: "Balkon & Moselblick" },
+  { src: "/images/kueche.jpg", alt: "Küche" },
+  { src: "/images/schlafzimmer-1.jpg", alt: "Schlafzimmer 1" },
+  { src: "/images/schlafzimmer-2.jpg", alt: "Schlafzimmer 2" },
+  { src: "/images/badezimmer.jpg", alt: "Badezimmer", tall: true },
+  { src: "/images/aussenansicht.jpg", alt: "Außenansicht" },
+  { src: "/images/weinberge-sonnenuntergang.jpg", alt: "Weinberge bei Sonnenuntergang" },
+  { src: "/images/dorfblick.jpg", alt: "Dorfblick" },
+];
+
 const AMENITIES = [
   { icon: BedDouble, title: "Komfortable Betten", text: "Hochwertige Matratzen und Bettwäsche in allen Wohnungen." },
   { icon: ChefHat, title: "Vollausgestattete Küche", text: "Geschirrspüler, Kaffeemaschine, Backofen und alles fürs Kochen im Urlaub." },
@@ -114,6 +127,21 @@ export default function WohnungPage() {
       <section className="py-20 bg-bg-soft">
         <div className="max-w-[1180px] mx-auto px-8">
           <Reveal className="max-w-[640px] mx-auto mb-[46px] text-center">
+            <Eyebrow>Galerie</Eyebrow>
+            <h2 className="mt-0">Ein Blick in unsere Wohnungen</h2>
+            <Divider center />
+            <p>
+              Eindrücke aus der Ferienwohnung und der Moselregion. Klicken Sie auf ein Foto, um es vergrößert zu
+              betrachten.
+            </p>
+          </Reveal>
+          <GalleryGrid photos={GALLERY_PHOTOS} />
+        </div>
+      </section>
+
+      <section className="py-20">
+        <div className="max-w-[1180px] mx-auto px-8">
+          <Reveal className="max-w-[640px] mx-auto mb-[46px] text-center">
             <Eyebrow>Ausstattung</Eyebrow>
             <h2 className="mt-0">Das bieten alle unsere Wohnungen</h2>
             <Divider center />
@@ -130,7 +158,7 @@ export default function WohnungPage() {
         </div>
       </section>
 
-      <section className="py-20 text-center">
+      <section className="py-20 bg-bg-soft text-center">
         <div className="max-w-[1180px] mx-auto px-8">
           <Eyebrow>Noch unentschlossen?</Eyebrow>
           <h2 className="mt-0">Wir beraten Sie gern bei der Wahl</h2>

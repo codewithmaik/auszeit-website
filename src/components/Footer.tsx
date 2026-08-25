@@ -4,7 +4,6 @@ const NAV_LINKS = [
   { href: "/", label: "Startseite" },
   { href: "/wohnung", label: "Die Wohnungen" },
   { href: "/region", label: "Die Region" },
-  { href: "/galerie", label: "Galerie" },
   { href: "/bewertungen", label: "Gästebewertungen" },
   { href: "/kontakt", label: "Kontakt" },
 ];
@@ -24,15 +23,17 @@ export default function Footer() {
             <h4 className="text-white font-sans text-[0.78rem] tracking-[0.12em] uppercase mb-3.5">
               Navigation
             </h4>
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="block text-white/68 text-[0.88rem] mb-2 hover:text-gold transition-colors"
-              >
-                {link.label}
-              </Link>
-            ))}
+            <div className="grid grid-cols-2 gap-x-4">
+              {NAV_LINKS.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="block text-white/68 text-[0.88rem] mb-2 hover:text-gold transition-colors"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
           </div>
           <div>
             <h4 className="text-white font-sans text-[0.78rem] tracking-[0.12em] uppercase mb-3.5">

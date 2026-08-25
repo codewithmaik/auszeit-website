@@ -10,7 +10,6 @@ const NAV_LINKS = [
   { href: "/", label: "Startseite" },
   { href: "/wohnung", label: "Die Wohnungen" },
   { href: "/region", label: "Die Region" },
-  { href: "/galerie", label: "Galerie" },
   { href: "/bewertungen", label: "Gästebewertungen" },
   { href: "/kontakt", label: "Kontakt" },
 ];
