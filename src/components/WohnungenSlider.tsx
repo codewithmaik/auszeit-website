@@ -44,19 +44,20 @@ export default function WohnungenSlider({
 
   return (
     <div>
-      <div
-        role="region"
-        aria-roledescription="carousel"
-        aria-label={dict.ariaLabel}
-        tabIndex={0}
-        onKeyDown={handleKeyDown}
-        className="relative overflow-hidden rounded-[2px] border border-line shadow-[0_18px_40px_-20px_rgba(44,50,38,0.35)] focus:outline-2 focus:outline-gold focus:outline-offset-2"
-      >
+      <div className="relative">
         <div
-          className="flex transition-transform duration-500 ease-out"
-          style={{ transform: `translateX(-${index * 100}%)` }}
+          role="region"
+          aria-roledescription="carousel"
+          aria-label={dict.ariaLabel}
+          tabIndex={0}
+          onKeyDown={handleKeyDown}
+          className="relative overflow-hidden rounded-[2px] border border-line shadow-[0_18px_40px_-20px_rgba(44,50,38,0.35)] focus:outline-2 focus:outline-gold focus:outline-offset-2"
         >
-          {units.map((u, i) => {
+          <div
+            className="flex transition-transform duration-500 ease-out"
+            style={{ transform: `translateX(-${index * 100}%)` }}
+          >
+            {units.map((u, i) => {
             const active = i === index;
             const coverPhoto = u.images[0] ?? { url: "/images/wohnbereich.jpg", alt: u.name };
             return (
@@ -102,14 +103,16 @@ export default function WohnungenSlider({
                 </div>
               </div>
             );
-          })}
+            })}
+          </div>
         </div>
 
+        {/* Desktop: outside the box, level with its vertical center. Mobile: overlaid on the Titelbild, centered on just the image (260px tall). */}
         <button
           type="button"
           onClick={() => goTo(index - 1)}
           aria-label={dict.prev}
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-md flex items-center justify-center text-forest cursor-pointer"
+          className="absolute -left-7 top-1/2 -translate-y-1/2 max-[860px]:left-3 max-[860px]:top-[130px] w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-md flex items-center justify-center text-forest cursor-pointer"
         >
           <ChevronLeft className="w-5 h-5" strokeWidth={1.5} />
         </button>
@@ -117,7 +120,7 @@ export default function WohnungenSlider({
           type="button"
           onClick={() => goTo(index + 1)}
           aria-label={dict.next}
-          className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-md flex items-center justify-center text-forest cursor-pointer"
+          className="absolute -right-7 top-1/2 -translate-y-1/2 max-[860px]:right-3 max-[860px]:top-[130px] w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-md flex items-center justify-center text-forest cursor-pointer"
         >
           <ChevronRight className="w-5 h-5" strokeWidth={1.5} />
         </button>
