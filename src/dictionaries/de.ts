@@ -95,9 +95,9 @@ export const dictionary = {
   wohnung: {
     metaTitle: "Die Wohnungen",
     heroEyebrow: "Die Wohnungen",
-    heroTitle: "3 Wohnungstypen, ein Zuhause an der Mosel",
+    heroTitle: "Unsere Wohnungstypen, ein Zuhause an der Mosel",
     heroText:
-      "Vom lichtdurchfluteten Rieslinghaus bis zum puristischen Weinberg-Loft — jeder unserer drei Wohnungstypen hat seinen eigenen Charakter. Blättern Sie durch und finden Sie Ihre Auszeit.",
+      "Vom lichtdurchfluteten Rieslinghaus bis zum puristischen Weinberg-Loft — jeder unserer Wohnungstypen hat seinen eigenen Charakter. Blättern Sie durch und finden Sie Ihre Auszeit.",
     emptyEyebrow: "Einen Moment",
     emptyTitle: "Unsere Wohnungen werden gerade aktualisiert",
     emptyText:

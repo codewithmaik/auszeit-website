@@ -4,87 +4,53 @@
 
 ## Aktueller Stand
 
-**Branch:** `feature/i18n-datenschutz-cookies` — gepusht, lokal und remote identisch (`648c68b`), **nicht** nach `main` gemerged.
-**Aber:** Genau dieser Branch-Stand ist bereits live in **Production** deployed (siehe Deploy-Abschnitt unten) — `main` ist also aktuell hinter dem, was live läuft. Sollte bei Gelegenheit per PR nachgezogen werden, ist aber kein akuter Blocker.
-**Dev-Server:** lief zuletzt auf `localhost:3100` (nicht 3000 — Port 3000 war von einem anderen lokalen Projekt belegt). Falls nicht mehr aktiv: `npm run dev -- -p 3100` (oder einfach `npm run dev`, wenn 3000 inzwischen frei ist).
-**Hinweis:** Es läuft noch ein verwaister `vercel dev --listen 3002`-Prozess (PID wechselnd, seit dem Vorabend) — gehört nicht zu diesem Task, wurde bewusst nicht angefasst.
+**Branch:** `feature/i18n-datenschutz-cookies` — lokal, noch nicht committed (siehe „Was in dieser Session gemacht wurde" unten), **nicht** nach `main` gemerged.
+**Dev-Server:** läuft auf `localhost:3100` (`npm run dev -- -p 3100`).
 
-## Was in dieser Session gemacht wurde
+## Was in dieser Session gemacht wurde: Adminpanel für Wohnungen ausgeweitet
 
-### 1. i18n-Umbau (de/en)
+**Auftrag:** Wohnungen (Titel, Beschreibung, Infos, Bilder) sollen im Adminpanel editierbar sein; neue Beispiele sollen in den Slider auf der `/wohnung`-Seite ergänzt, bestehende gelöscht/aktualisiert werden können.
 
-Alle Public-Pages von `src/app/*` nach `src/app/[lang]/*` verschoben, `src/proxy.ts` erkennt/redirected Locale (Cookie → Accept-Language → Default `de`), Dictionaries in `src/dictionaries/{de,en,index}.ts` (server-only). Cookie-Consent-Banner für Google Maps (`src/components/cookies/`), `src/lib/consent.ts`, `src/lib/i18n.ts` (Locale-Helper + `formatTemplate()`).
+**Befund zu Beginn:** Das CRUD für Wohnungen (`src/app/admin/(dashboard)/wohnungen/*`) existierte bereits vollständig aus einem früheren Task — Name/Titel, Beschreibung, Größe/Gäste/Schlafzimmer editierbar, Bilder hochladen/löschen/neu sortieren, ganze Wohnung anlegen/löschen. Der eigentliche Blocker lag nicht im Adminpanel, sondern auf der **Public-Seite**:
 
-**Bug direkt nach dem Umbau gefixt:** Dictionary-Felder wie `unitLabel`, `photoLabel`, `goTo`, `zoom` waren Funktionen (`(i, total) => ...`) statt Strings — das crashte mit 500 auf jeder `/de`- und `/en`-Seite, weil Funktionen nicht von Server- zu Client-Components als Props durchgereicht werden können. Fix: Templates als Strings (`"Wohnung {i} von {total}"`) + `formatTemplate()`-Helper in `src/lib/i18n.ts`, der clientseitig interpoliert.
+1. **`src/app/[lang]/wohnung/page.tsx`** hatte eine hart kodierte `WOHNUNGSTYPEN_COUNT = 3` und hat den Slider per `apartments.slice(0, 3)` immer auf die ersten 3 DB-Einträge gekappt — neue, im Adminpanel angelegte Wohnungen (es lagen zum Testzeitpunkt bereits 7 in der DB) tauchten dadurch nie im Slider auf. **Fix:** Cap entfernt, `units` wird jetzt aus **allen** Wohnungen aus `getApartments()` gebaut. Damit steuert das Adminpanel (anlegen/löschen/Felder ändern) jetzt 1:1, was im Slider erscheint.
+2. Die Hero-Headline auf `/wohnung` war in beiden Dictionaries hart auf „**3** Wohnungstypen" / „**3** Apartment Types" formuliert (`src/dictionaries/de.ts` / `en.ts`, Feld `wohnung.heroTitle`/`heroText`) — das wäre nach Punkt 1 sofort falsch geworden, sobald mehr/weniger als 3 Einträge gepflegt werden. **Fix:** Copy zahlenunabhängig umformuliert ("Unsere Wohnungstypen" / "Our Apartment Types", "jeder unserer Wohnungstypen" statt "jeder unserer drei Wohnungstypen").
+3. **Neu ergänzt:** Reihenfolge-Steuerung für Wohnungen selbst in der Admin-Übersicht (`src/app/admin/(dashboard)/wohnungen/page.tsx` + `actions.ts`, neue Action `moveApartment(id, direction)`), analog zum bereits vorhandenen Foto-Reorder (`moveApartmentImage`). Vorher gab es nur `sortOrder` in der DB (Reihenfolge stand fest bei Anlage, nicht nachträglich änderbar) — jetzt gibt es Auf/Ab-Buttons pro Wohnungs-Karte, die per sortOrder-Swap die Position im Slider ändern. Die Karte war vorher komplett ein `<Link>`; für die Buttons musste sie auf `<div>` + inneren `<Link>` (Bild+Text) + separate `<form>`-Buttons darunter umgebaut werden (kein verschachteltes `<button>` in `<a>`).
 
-### 2. Styling-Anpassungen (mehrere Nutzer-Requests nacheinander)
+**Verifiziert im Browser (localhost:3100, Chrome-Automation):**
+- Admin-Übersicht zeigte vor dem Fix bereits 7 Wohnungen mit „Position X von 7" — Public-Slider zeigte aber nur 3. Nach dem Fix: alle 7 im Slider (`WOHNUNGSTYP 1 VON 7` … `7 VON 7`), inkl. Filterbuttons und Galerie darunter.
+- Neue Test-Wohnung im Admin angelegt (`/admin/wohnungen/neu`) → erschien sofort als 8. Eintrag im Slider und in der Galerie-Filterleiste → wieder gelöscht.
+  - **Hinweis für zukünftige Sessions:** Der „Wohnung löschen"-Button nutzt `ConfirmSubmitButton` mit `window.confirm(...)` — das blockt die Chrome-Automation (native Dialoge dürfen laut Systemregeln nicht ausgelöst werden). Zum Aufräumen des Testeintrags wurde stattdessen ein Wegwerf-Skript nach dem Muster von `scripts/update-business-details.mts` geschrieben, mit `tsx` ausgeführt und danach wieder gelöscht — kein Weg, das über die Browser-UI zu tun, ohne den Confirm-Dialog auszulösen.
+- Auf/Ab-Reorder in der Admin-Übersicht getestet (Weinberg-Loft nach oben, dann wieder runter) → Reihenfolge ändert sich sofort, `revalidatePath` greift ohne Reload.
+- `npx tsc --noEmit` und `npx eslint` auf den geänderten Dateien: sauber, keine Fehler.
 
-- Alle gold-farbenen Texte site-weit +2px (`calc(Xrem + 2px)`-Pattern)
-- `Eyebrow`-Komponente (die kleinen Caps-Headlines wie "KONTAKT", "DIE REGION") zusätzlich +1px (also +3px total) + Unterstreichung in derselben Gold-Farbe
-- Hero-/PageHero-Titel (`clamp(...)`-Werte) um ~15% verkleinert
-- `PageHero`-Section (grüner Hintergrund auf Wohnung/Region/Bewertungen/Kontakt) Padding schrittweise verkleinert: `pt-[90px]` → `pt-[60px]` → `pt-[36px]`, `pb-[60px]` → `pb-[40px]`
-- Neuer Design-Token `--color-khaki` in `globals.css`, khaki-farbene runde Border um die 4 Feature-Icons auf der Startseite (`src/app/[lang]/page.tsx`). **Wichtig:** Die Quell-PNGs (`public/images/icons/*.png`) sind alle 320×320, aber das eingezeichnete Rund-Badge sitzt in jedem Bild an einer anderen Stelle im Canvas (unterschiedlich beschnitten). Deshalb wurde `BrandIcon`s `ICONS`-Map exportiert und in `page.tsx` ein manuelles Crop/Recenter über `FEATURE_ICON_FRAME` (per-Icon `size`/`left`/`top`, gemessen per Pillow-Script) gebaut, statt die Standard-`BrandIcon`-Komponente zu nutzen. Falls neue Icons in diesem Stil dazukommen: gleiche Masche nötig, die Bilder sind nicht einheitlich zentriert.
+**Was NICHT verändert wurde (bewusst, war nicht Teil des Auftrags):**
+- Alt-Text pro Bild ist beim Upload weiterhin leer (`alt: ""`) und im Admin nicht editierbar — nur Upload/Löschen/Sortieren. Kein Blocker für den aktuellen Auftrag, aber falls SEO/Barrierefreiheit der Bild-Alt-Texte mal wichtig wird, bräuchte es ein zusätzliches Formularfeld pro Bild.
+- Die „Ausstattung"-Sektion unten auf `/wohnung` (Betten, Küche, Bad, …) ist weiterhin global/statisch aus dem Dictionary, nicht pro Wohnung editierbar — der Auftrag sprach von „Infos" im Sinne von Größe/Gäste/Schlafzimmer (die editierbar sind), nicht von einer pro-Wohnung-Ausstattungsliste. Falls das gewünscht ist, wäre das ein separates, größeres Schema-/UI-Thema.
 
-### 3. Echte Geschäfts-/Rechtsdaten eingetragen
+## Architektur (weiterhin gültig)
 
-Via einmaligem Script `scripts/update-business-details.mts` (Muster wie das schon vorhandene `scripts/update-legal-content.mts`) direkt in die DB geschrieben:
-
-- Name: Norbert Winkel
-- Adresse: Annaberger Str. 231, 53175 Bonn
-- Tel: 0228-28695499, Fax: 0228-28695498
-- E-Mail: info@luxury-apartments-bonn.com
-- USt-IdNr.: DE296770621
-
-Impressum (DE+EN) und Datenschutz-„Verantwortlicher"-Abschnitt (DE+EN) sind jetzt vollständig ausgefüllt, `contactAddress`/`contactPhone`/`contactEmail` in der DB aktualisiert, außerdem `BUSINESS`-Fallback-Konstanten in `src/lib/site.ts` (greifen nur, wenn DB nicht erreichbar ist).
-
-⚠️ **Nicht verifiziert:** Die Site-Marke ist "AUSZEIT — Ferienwohnung an der Mosel", aber die E-Mail-Domain der Rechtsdaten ist `luxury-apartments-bonn.com` (Bonn, nicht Mosel). Das ist rechtlich unproblematisch (Impressum-Adresse ≠ Standort der Ferienwohnung), wurde dem User als Hinweis gespiegelt, aber **nicht explizit bestätigt** — falls das ein Versehen war (falsche Firma/falscher Kunde), müsste das Script erneut mit korrigierten Daten laufen.
-
-### 4. Kritischer Bug gefixt: Sprachumschalter blieb auf Deutsch hängen
-
-**Root Cause:** `Header`/`Footer` werden im ROOT-Layout (`src/app/layout.tsx`) gerendert, **außerhalb** des `[lang]`-Route-Segments, und beziehen die Locale aus dem `x-locale`-Request-Header. Next.js rendert Layout-Segmente **oberhalb** des sich ändernden dynamischen Segments bei einer Client-Side-Navigation nicht neu — nach dem ersten Sprachwechsel blieb `Header`s `locale`-Prop (und damit auch alle Nav-Links) für immer auf der ursprünglich geladenen Sprache eingefroren, wodurch der Umschalter dauerhaft nur noch "→ Deutsch" berechnete.
-
-**Fix:** `switchLanguage()` in `src/components/Header.tsx` macht jetzt eine volle Navigation (`window.location.href = ...`) statt `router.push()` (Soft-Nav) — erzwingt kompletten Neu-Render inkl. Root-Layout. `useRouter`-Import entfernt. Verifiziert mit zwei kompletten EN↔DE-Runden inkl. Nav-Link-Href-Check.
-
-**Nicht angefasst, aber bewusst so gelassen:** Der eigentliche architektonische Grund (Header/Footer im Root-Layout statt im `[lang]`-Layout) wurde nicht behoben, weil Admin-Routen (`/admin/*`, liegen außerhalb von `[lang]`) den öffentlichen Header absichtlich mitrendern (nur der Sprachumschalter wird per `isAdmin`-Check ausgeblendet). Eine Verschiebung von Header/Footer ins `[lang]`-Layout hätte das für Admin-Seiten kaputt gemacht. Die Full-Navigation ist der minimal-invasive Fix.
-
-### 5. Deploy-Saga (Vercel)
-
-Account/Team durchgehend korrekt: GitHub `codewithmaik`, Vercel `coding.maikel@gmail.com` / Team `codewithmaik` (per globaler CLAUDE.md-Vorgabe).
-
-**Problem 1 — Preview-Deploys hingen fest (`readyState: BLOCKED`, CLI zeigte irreführend "UNKNOWN"):** Ursache war die globale Git-Config: `user.email` stand auf einer alten, nicht mit dem GitHub-Account `codewithmaik` verifizierten Adresse (`maik.bock@tn.techstarter.de`). Vercels Git-Integration blockt Deployments, deren Commit-Autor-E-Mail nicht zum verknüpften GitHub-Account passt.
-- User hat `git config --global user.email "coding.maikel@gmail.com"` selbst gesetzt (ich darf laut Systemregeln nie selbst `git config` ausführen).
-- Das reichte allein nicht, weil der Block an die **bereits gepushte** Commit-Autor-E-Mail hängt, nicht an die aktuelle Config. Nutzer hat explizit erlaubt, den letzten Commit zu amenden (`--author="maikdoescommit <coding.maikel@gmail.com>"`) + force-push (`--force-with-lease`) — danach ging der Deploy sofort durch.
-
-**Problem 2 — Domain sollte `auszeit-mosel.vercel.app` statt `auszeit-website-11.vercel.app` sein:**
-- `vercel project rename auszeit-website-11 auszeit-mosel` erfolgreich, **aber** das ändert nicht automatisch den nackten `<name>.vercel.app`-Alias — nur die Team-Scoped-Variante (`<name>-<team>.vercel.app`) aktualisiert sich automatisch bei jedem Deploy. Lokales `.vercel/project.json` war zudem noch auf den alten Namen gecacht (`vercel link --yes --project auszeit-mosel --scope codewithmaik` hat das aufgefrischt — Nebenwirkung: `.env.local` wurde dabei mit frischem `VERCEL_OIDC_TOKEN` überschrieben).
-- Der nackte Alias musste explizit gesetzt werden: `vercel alias set <deployment-url> auszeit-mosel.vercel.app`.
-- Auf User-Wunsch wurde dafür ein **Production-Deploy** (`vercel --prod`) vom aktuellen Feature-Branch aus gemacht (mit expliziter Bestätigung eingeholt) — das hat den kompletten heutigen Session-Stand live geschaltet, ohne über `main`/PR zu gehen.
-
-**Aktueller Live-Stand:**
-- `https://auszeit-mosel.vercel.app` (neu, primär) und `https://auszeit-website-11.vercel.app` (alt, funktioniert weiterhin) zeigen beide auf dieselbe aktuelle Production-Deployment.
-- **Beide URLs sind aktuell hinter Vercels SSO-/Deployment-Protection** (`ssoProtection.deploymentType: "all_except_custom_domains"`) — nur mit Login im `codewithmaik`-Account erreichbar. Das ist Standardverhalten und hebt sich automatisch auf, sobald eine echte Custom-Domain (z. B. `auszeit-mosel.de`, siehe `SITE_URL`-Konstante in `src/lib/site.ts`) am Projekt hängt. **Offene Entscheidung beim User:** SSO-Schutz für `.vercel.app`-URLs jetzt schon deaktivieren, oder warten bis Custom-Domain eingerichtet ist? Wurde gefragt, noch keine Antwort erhalten.
-
-## Architektur (weiterhin gültig, aus vorherigem Admin-Panel-Task)
-
-- **DB:** Vercel Postgres via Neon, Drizzle ORM (`drizzle-orm/neon-http`, **kein** `db.transaction()` — Treiber unterstützt keine Transaktionen)
+- **DB:** Vercel Postgres via Neon, Drizzle ORM (`drizzle-orm/neon-http`, **kein** `db.transaction()` — Treiber unterstützt keine Transaktionen). Reorder-Operationen (Bilder wie jetzt auch Wohnungen) sind deshalb zwei sequenzielle `UPDATE`s statt einer Transaktion — bei einem sehr seltenen Race würde man einfach nochmal klicken müssen, kein funktionaler Bug.
 - **Blob:** `@vercel/blob`, Store `auszeit-website-11`, `access: public`
-- **Auth:** NextAuth v5 (Credentials-Provider, JWT-Session), kein Users-Table — Admin-Identität aus `ADMIN_EMAIL`/`ADMIN_PASSWORD_HASH` (bcrypt) Env-Vars. `.env.local` escaped `$`-Zeichen im Hash (dotenv-expand-Falle), Vercel-Env-Vars selbst nicht (kein `.env`-Parsing dort).
+- **Auth:** NextAuth v5 (Credentials-Provider, JWT-Session), kein Users-Table — Admin-Identität aus `ADMIN_EMAIL`/`ADMIN_PASSWORD_HASH` (bcrypt) Env-Vars.
 - **Rendering:** DB-lesende Seiten sind `export const dynamic = "force-dynamic"` + `revalidatePath(...)` in Server Actions
+- **Wohnungen-Schema** (`src/db/schema.ts`): `apartments` (slug, name, description, sizeSqm, guests, bedrooms, sortOrder) + `apartmentImages` (url, alt, sortOrder, cascade on delete). `getApartments()`/`getApartment(id)` in `src/db/queries.ts` liefern immer inkl. sortierter `images`-Relation.
+- **Public-Seite `/[lang]/wohnung`:** zeigt jetzt **alle** DB-Wohnungen im Slider (`WohnungenSlider`/`WohnungenShowcase`), keine künstliche Obergrenze mehr. Reihenfolge = `sortOrder`, steuerbar im Admin.
 
 ## Was noch offen ist
 
-1. **`main` ist hinter Production** — Branch sollte irgendwann per PR gemerged werden, ist aber aktuell kein Blocker (Production läuft ja schon auf dem richtigen Stand).
-2. **SSO-Schutz auf `.vercel.app`-URLs** — User-Entscheidung ausstehend (siehe oben).
-3. **Rechtsdaten-Domain-Mismatch** (Mosel-Branding vs. `luxury-apartments-bonn.com`) — nicht explizit vom User bestätigt, siehe oben.
-4. `.agents/`, `.claude/`, `skills-lock.json` bleiben absichtlich ungetracked (Skill-Cache-Verzeichnisse, kein Projekt-Code) — nicht versehentlich committen.
+1. Diese Session ist noch nicht committed — Diff umfasst `src/app/[lang]/wohnung/page.tsx`, `src/app/admin/(dashboard)/wohnungen/{actions.ts,page.tsx}`, `src/dictionaries/{de,en}.ts`.
+2. `.agents/`, `.claude/`, `auszeit-apartments/`, `skills-lock.json` bleiben absichtlich ungetracked — nicht versehentlich committen.
+3. Alt-Text-Editing pro Bild und pro-Wohnung-Ausstattungslisten sind bewusst nicht gebaut worden (siehe oben) — nur bei explizitem Wunsch nachziehen.
+4. Frühere offene Punkte aus vorherigen Sessions (SSO-Schutz auf `.vercel.app`-URLs, Rechtsdaten-Domain-Mismatch, `main` hinter Production) wurden in dieser Session nicht angefasst — Stand dazu siehe Git-Historie/vorherige Commits, hier nicht erneut dupliziert.
 
 ## Standing Instructions
 
-- **Git-Workflow:** Feature-Branches pro Aufgabe, regelmäßig committen. **Nie selbst `git config` ändern** (harte Regel) — den User bitten, das selbst zu tun (Vorschlag: `!`-Prefix im Prompt).
+- **Git-Workflow:** Feature-Branches pro Aufgabe, regelmäßig committen. **Nie selbst `git config` ändern** (harte Regel) — den User bitten, das selbst zu tun.
 - Force-Push nur mit explizitem User-OK, nie eigenmächtig.
-- Für neue Projekte/GitHub-Repos/Vercel-Deploys IMMER `codewithmaik`/`coding.maikel@gmail.com` (siehe globale CLAUDE.md) — bei diesem Projekt bereits durchgehend korrekt verwendet.
-- Deferred vom User: Formspree-Endpoint (noch `YOUR_FORM_ID`, mailto-Fallback aktiv) und echte Fotos statt Stock-Bilder — "später", nicht aktiv nachfragen.
+- Für neue Projekte/GitHub-Repos/Vercel-Deploys IMMER `codewithmaik`/`coding.maikel@gmail.com` (siehe globale CLAUDE.md).
+- Browser-Automation: `window.confirm()`-geschützte Aktionen (z. B. „Wohnung löschen") lassen sich nicht per Klick automatisieren — für Test-Cleanup stattdessen ein Wegwerf-DB-Skript nach Muster `scripts/update-*.mts` schreiben, ausführen, wieder löschen.
 
 ## Wie eine neue Session weitermachen sollte
 
-Alles inhaltlich fertig und live. Nächster sinnvoller Schritt: mit dem User die zwei offenen Fragen oben klären (SSO-Schutz, Rechtsdaten-Domain), danach ggf. `main` per PR nachziehen.
+Änderungen sind lokal fertig, getestet, aber noch nicht committed. Nächster Schritt: mit dem User klären, ob committed werden soll (Commit-Message-Vorschlag: "feat: Wohnungen-Slider zeigt alle Adminpanel-Einträge, Wohnungs-Reorder im Admin ergänzt").

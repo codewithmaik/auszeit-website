@@ -97,9 +97,9 @@ export const dictionary: Dictionary = {
   wohnung: {
     metaTitle: "The Apartments",
     heroEyebrow: "The Apartments",
-    heroTitle: "3 Apartment Types, One Home on the Moselle",
+    heroTitle: "Our Apartment Types, One Home on the Moselle",
     heroText:
-      "From the light-filled Rieslinghaus to the minimalist Weinberg-Loft — each of our three apartment types has its own character. Browse through and find your perfect getaway.",
+      "From the light-filled Rieslinghaus to the minimalist Weinberg-Loft — each of our apartment types has its own character. Browse through and find your perfect getaway.",
     emptyEyebrow: "One Moment",
     emptyTitle: "Our apartments are currently being updated",
     emptyText:

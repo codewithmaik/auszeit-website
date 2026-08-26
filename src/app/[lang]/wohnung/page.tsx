@@ -21,8 +21,6 @@ import { getApartments } from "@/db/queries";
 import { isLocale, localeHref } from "@/lib/i18n";
 import { getDictionary } from "@/dictionaries";
 
-const WOHNUNGSTYPEN_COUNT = 3;
-
 const AMENITY_ICONS: Record<string, typeof BedDouble> = {
   betten: BedDouble,
   kueche: ChefHat,
@@ -51,7 +49,7 @@ export default async function WohnungPage({ params }: PageProps<"/[lang]/wohnung
   const t = dict.wohnung;
 
   const apartments = await getApartments();
-  const units = apartments.slice(0, WOHNUNGSTYPEN_COUNT).map((a) => ({
+  const units = apartments.map((a) => ({
     slug: a.slug,
     name: a.name,
     images: a.images.map((img) => ({ url: img.url, alt: img.alt || a.name })),

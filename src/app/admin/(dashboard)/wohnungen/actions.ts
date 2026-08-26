@@ -100,6 +100,24 @@ export async function deleteApartment(id: number) {
   redirect("/admin/wohnungen");
 }
 
+export async function moveApartment(id: number, direction: "up" | "down") {
+  const rows = await db.query.apartments.findMany({
+    orderBy: (a, { asc }) => [asc(a.sortOrder)],
+  });
+  const index = rows.findIndex((a) => a.id === id);
+  const swapIndex = direction === "up" ? index - 1 : index + 1;
+  if (index === -1 || swapIndex < 0 || swapIndex >= rows.length) return;
+
+  const current = rows[index];
+  const swapWith = rows[swapIndex];
+
+  await db.update(apartments).set({ sortOrder: swapWith.sortOrder }).where(eq(apartments.id, current.id));
+  await db.update(apartments).set({ sortOrder: current.sortOrder }).where(eq(apartments.id, swapWith.id));
+
+  revalidatePath("/wohnung");
+  revalidatePath("/admin/wohnungen");
+}
+
 export async function uploadApartmentImage(apartmentId: number, formData: FormData) {
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return;
