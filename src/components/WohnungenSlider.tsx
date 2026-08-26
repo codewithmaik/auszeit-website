@@ -23,12 +23,15 @@ export default function WohnungenSlider({
   units,
   locale,
   dict,
+  index,
+  onChange,
 }: {
   units: WohnungUnit[];
   locale: Locale;
   dict: Dictionary["wohnung"]["slider"];
+  index: number;
+  onChange: (index: number) => void;
 }) {
-  const [index, setIndex] = useState(0);
   const [photoIndex, setPhotoIndex] = useState(0);
   const total = units.length;
 
@@ -41,7 +44,7 @@ export default function WohnungenSlider({
   }
 
   function goTo(i: number) {
-    setIndex(((i % total) + total) % total);
+    onChange(((i % total) + total) % total);
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {

@@ -16,24 +16,12 @@ import Eyebrow from "@/components/Eyebrow";
 import Divider from "@/components/Divider";
 import PageHero from "@/components/PageHero";
 import Reveal from "@/components/Reveal";
-import WohnungenSlider from "@/components/WohnungenSlider";
-import GalleryGrid from "@/components/GalleryGrid";
+import WohnungenShowcase from "@/components/WohnungenShowcase";
 import { getApartments } from "@/db/queries";
 import { isLocale, localeHref } from "@/lib/i18n";
 import { getDictionary } from "@/dictionaries";
 
-const GALLERY_SRC: Record<string, string> = {
-  wohnzimmer: "/images/wohnbereich.jpg",
-  balkon: "/images/hero-mosel.jpg",
-  kueche: "/images/kueche.jpg",
-  schlaf1: "/images/schlafzimmer-1.jpg",
-  schlaf2: "/images/schlafzimmer-2.jpg",
-  bad: "/images/badezimmer.jpg",
-  aussen: "/images/aussenansicht.jpg",
-  weinberge: "/images/weinberge-sonnenuntergang.jpg",
-  dorf: "/images/dorfblick.jpg",
-};
-const GALLERY_TALL = new Set(["wohnzimmer", "bad"]);
+const WOHNUNGSTYPEN_COUNT = 3;
 
 const AMENITY_ICONS: Record<string, typeof BedDouble> = {
   betten: BedDouble,
@@ -63,7 +51,7 @@ export default async function WohnungPage({ params }: PageProps<"/[lang]/wohnung
   const t = dict.wohnung;
 
   const apartments = await getApartments();
-  const units = apartments.map((a) => ({
+  const units = apartments.slice(0, WOHNUNGSTYPEN_COUNT).map((a) => ({
     slug: a.slug,
     name: a.name,
     images: a.images.map((img) => ({ url: img.url, alt: img.alt || a.name })),
@@ -73,23 +61,17 @@ export default async function WohnungPage({ params }: PageProps<"/[lang]/wohnung
     text: a.description,
   }));
 
-  const galleryPhotos = t.galleryPhotos.map((p) => ({
-    src: GALLERY_SRC[p.key],
-    alt: p.alt,
-    tall: GALLERY_TALL.has(p.key),
-  }));
-
   return (
     <>
       <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle}>
         {t.heroText}
       </PageHero>
 
-      <section className="py-20">
-        <div className="max-w-[1180px] mx-auto px-8">
-          {units.length > 0 ? (
-            <WohnungenSlider units={units} locale={lang} dict={t.slider} />
-          ) : (
+      {units.length > 0 ? (
+        <WohnungenShowcase units={units} locale={lang} dict={t} galleryDict={dict.gallery} />
+      ) : (
+        <section className="py-20">
+          <div className="max-w-[1180px] mx-auto px-8">
             <div className="text-center max-w-[480px] mx-auto py-10">
               <Eyebrow>{t.emptyEyebrow}</Eyebrow>
               <h2 className="mt-0">{t.emptyTitle}</h2>
@@ -97,21 +79,9 @@ export default async function WohnungPage({ params }: PageProps<"/[lang]/wohnung
               <p>{t.emptyText}</p>
               <Button href={`${localeHref(lang, "/kontakt")}#buchen`}>{t.emptyCta}</Button>
             </div>
-          )}
-        </div>
-      </section>
-
-      <section className="py-20 bg-bg-soft">
-        <div className="max-w-[1180px] mx-auto px-8">
-          <Reveal className="max-w-[640px] mx-auto mb-[46px] text-center">
-            <Eyebrow>{t.galleryEyebrow}</Eyebrow>
-            <h2 className="mt-0">{t.galleryTitle}</h2>
-            <Divider center />
-            <p>{t.galleryText}</p>
-          </Reveal>
-          <GalleryGrid photos={galleryPhotos} dict={dict.gallery} />
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
 
       <section className="py-20">
         <div className="max-w-[1180px] mx-auto px-8">

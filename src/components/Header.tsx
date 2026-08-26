@@ -38,16 +38,20 @@ export default function Header({ locale, dict }: { locale: Locale; dict: Diction
           create a new containing block for position:fixed descendants (the mobile
           nav panel), breaking its viewport-relative positioning. */}
       <div className="absolute inset-0 -z-10 bg-bg/92 backdrop-blur-sm" />
-      <div className="max-w-[1180px] mx-auto flex items-center justify-between px-8 py-3.5">
-        <Link href={localeHref(locale, "/")} className="flex items-center gap-3.5" onClick={() => setOpen(false)}>
-          <span className="relative w-[46px] h-[46px] rounded-full overflow-hidden flex-none">
+      <div className="max-w-[1180px] mx-auto flex items-center justify-between px-8 max-[560px]:px-3 py-3.5 max-[560px]:py-2.5">
+        <Link
+          href={localeHref(locale, "/")}
+          className="flex items-center gap-3.5 max-[560px]:gap-2 min-w-0"
+          onClick={() => setOpen(false)}
+        >
+          <span className="relative w-[46px] h-[46px] max-[560px]:w-8 max-[560px]:h-8 rounded-full overflow-hidden flex-none">
             <Image src="/images/logo.png" alt="AUSZEIT Logo" fill sizes="46px" className="object-cover" />
           </span>
-          <span>
-            <span className="block font-serif text-[1.25rem] tracking-[0.12em] text-forest leading-none">
+          <span className="min-w-0">
+            <span className="block font-serif text-[1.25rem] max-[560px]:text-[0.85rem] tracking-[0.12em] max-[560px]:tracking-[0.06em] text-forest leading-none whitespace-nowrap">
               AUSZEIT
             </span>
-            <span className="block text-[calc(0.62rem+2px)] tracking-[0.16em] uppercase text-gold">
+            <span className="block text-[calc(0.62rem+2px)] max-[560px]:text-[0.5rem] tracking-[0.16em] max-[560px]:tracking-[0.05em] uppercase text-gold whitespace-nowrap max-[560px]:truncate">
               Ferienwohnung an der Mosel
             </span>
           </span>
@@ -76,13 +80,13 @@ export default function Header({ locale, dict }: { locale: Locale; dict: Diction
           })}
         </nav>
 
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-5 max-[560px]:gap-2 flex-none">
           {!isAdmin && (
             <button
               type="button"
               onClick={switchLanguage}
               aria-label={dict.nav.switchLabel}
-              className="text-[0.76rem] tracking-[0.1em] uppercase text-ink-soft hover:text-forest transition-colors cursor-pointer border border-line rounded-[2px] px-2.5 py-1"
+              className="text-[0.76rem] max-[560px]:text-[0.66rem] tracking-[0.1em] uppercase text-ink-soft hover:text-forest transition-colors cursor-pointer border border-line rounded-[2px] px-2.5 max-[560px]:px-1.5 py-1"
             >
               {dict.nav.switchTo}
             </button>
@@ -90,7 +94,7 @@ export default function Header({ locale, dict }: { locale: Locale; dict: Diction
           <Heart className="w-[19px] h-[19px] text-forest max-[560px]:hidden" strokeWidth={1.5} aria-hidden="true" />
           <Button href={`${localeHref(locale, "/kontakt")}#buchen`} label={dict.nav.anfragen} />
           <button
-            className="hidden max-[900px]:flex bg-transparent border-none text-forest cursor-pointer"
+            className="hidden max-[900px]:flex bg-transparent border-none text-forest cursor-pointer flex-none"
             aria-label={open ? dict.nav.menuClose : dict.nav.menuOpen}
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
@@ -107,7 +111,7 @@ function Button({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-2 px-[22px] py-[11px] bg-forest text-white font-sans text-[0.78rem] tracking-[0.14em] uppercase rounded-[2px] hover:bg-forest-dark transition-colors"
+      className="inline-flex items-center gap-2 px-[22px] max-[560px]:px-3 py-[11px] max-[560px]:py-2 bg-forest text-white font-sans text-[0.78rem] max-[560px]:text-[0.66rem] tracking-[0.14em] max-[560px]:tracking-[0.06em] uppercase rounded-[2px] hover:bg-forest-dark transition-colors whitespace-nowrap"
     >
       {label}
     </Link>
