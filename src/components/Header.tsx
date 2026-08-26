@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Heart, Menu, X } from "lucide-react";
 import { localeHref, swapLocale, type Locale } from "@/lib/i18n";
@@ -10,7 +10,6 @@ import type { Dictionary } from "@/dictionaries";
 
 export default function Header({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const isAdmin = pathname.startsWith("/admin");
 
@@ -23,9 +22,14 @@ export default function Header({ locale, dict }: { locale: Locale; dict: Diction
   ];
 
   function switchLanguage() {
+    // Header lives in the root layout, above the [lang] route segment, so its
+    // locale/dict props don't refresh on a client-side (soft) navigation —
+    // that's what caused the switch to get stuck after the first use. A full
+    // navigation forces the whole tree, including the root layout, to
+    // re-render with the new locale.
     const target: Locale = locale === "de" ? "en" : "de";
     document.cookie = `NEXT_LOCALE=${target}; path=/; max-age=31536000; samesite=lax`;
-    router.push(swapLocale(pathname, target));
+    window.location.href = swapLocale(pathname, target);
   }
 
   return (
