@@ -129,7 +129,6 @@ export const dictionary = {
     slider: {
       ariaLabel: "Unsere Wohnungstypen",
       unitLabel: "Wohnungstyp {i} von {total}",
-      photoLabel: "Foto {i} von {total}",
       prev: "Vorheriger Wohnungstyp",
       next: "Nächster Wohnungstyp",
       goTo: "Zu {name} springen",

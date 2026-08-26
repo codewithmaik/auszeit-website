@@ -22,7 +22,9 @@ export default function WohnungenShowcase({
 }) {
   const [index, setIndex] = useState(0);
   const activeUnit = units[index];
-  const photos = activeUnit.images.map((img) => ({ src: img.url, alt: img.alt }));
+  // images[0] is the Titelbild, already shown as the cover photo in the
+  // slider above — the gallery below shows only the remaining photos.
+  const photos = activeUnit.images.slice(1).map((img) => ({ src: img.url, alt: img.alt }));
 
   return (
     <>

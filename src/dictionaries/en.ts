@@ -131,7 +131,6 @@ export const dictionary: Dictionary = {
     slider: {
       ariaLabel: "Our apartment types",
       unitLabel: "Apartment type {i} of {total}",
-      photoLabel: "Photo {i} of {total}",
       prev: "Previous apartment type",
       next: "Next apartment type",
       goTo: "Jump to {name}",

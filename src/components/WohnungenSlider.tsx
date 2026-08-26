@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { ChevronLeft, ChevronRight, Ruler, Users, BedDouble } from "lucide-react";
 import Photo from "@/components/Photo";
 import Button from "@/components/Button";
@@ -32,16 +31,7 @@ export default function WohnungenSlider({
   index: number;
   onChange: (index: number) => void;
 }) {
-  const [photoIndex, setPhotoIndex] = useState(0);
   const total = units.length;
-
-  // Reset the active photo whenever the slide changes. Adjusting state
-  // during render (rather than in an effect) avoids an extra render pass.
-  const [lastIndex, setLastIndex] = useState(index);
-  if (index !== lastIndex) {
-    setLastIndex(index);
-    setPhotoIndex(0);
-  }
 
   function goTo(i: number) {
     onChange(((i % total) + total) % total);
@@ -68,8 +58,7 @@ export default function WohnungenSlider({
         >
           {units.map((u, i) => {
             const active = i === index;
-            const photos = u.images.length > 0 ? u.images : [{ url: "/images/wohnbereich.jpg", alt: u.name }];
-            const currentPhoto = photos[Math.min(photoIndex, photos.length - 1)];
+            const coverPhoto = u.images[0] ?? { url: "/images/wohnbereich.jpg", alt: u.name };
             return (
               <div
                 key={u.slug}
@@ -79,29 +68,13 @@ export default function WohnungenSlider({
               >
                 <div className="relative min-h-[380px] max-[860px]:min-h-[260px]">
                   <Photo
-                    src={currentPhoto.url}
-                    alt={currentPhoto.alt || u.name}
+                    src={coverPhoto.url}
+                    alt={coverPhoto.alt || u.name}
                     fill
                     sizes="(max-width: 860px) 100vw, 590px"
                     priority={i === 0}
                     className="object-cover"
                   />
-                  {active && photos.length > 1 && (
-                    <div className="absolute bottom-3 left-3 flex gap-1.5">
-                      {photos.map((photo, pi) => (
-                        <button
-                          key={photo.url + pi}
-                          type="button"
-                          onClick={() => setPhotoIndex(pi)}
-                          aria-label={formatTemplate(dict.photoLabel, { i: pi + 1, total: photos.length })}
-                          aria-current={pi === photoIndex}
-                          className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
-                            pi === photoIndex ? "w-5 bg-white" : "bg-white/60 hover:bg-white/90"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  )}
                 </div>
                 <div className="bg-white flex flex-col justify-center p-10 max-[860px]:p-6">
                   <span className="block text-[calc(0.72rem+2px)] tracking-[0.22em] uppercase text-gold mb-2">
