@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowRight, ArrowLeft } from "lucide-react";
+import type { Dictionary } from "@/dictionaries";
 
 const FORM_ENDPOINT = "https://formspree.io/f/YOUR_FORM_ID";
 
@@ -19,14 +20,17 @@ const submitBtnClass =
   "w-full flex justify-center items-center gap-2 px-[30px] py-[14px] bg-forest text-white font-sans text-[0.78rem] tracking-[0.14em] uppercase rounded-[2px] hover:bg-forest-dark transition-colors disabled:opacity-60";
 
 export default function BookingForm({
-  submitLabel = "Verfügbarkeit anzeigen",
+  dict,
+  submitLabel,
   showPhone = false,
   twoStep = false,
 }: {
+  dict: Dictionary["bookingForm"];
   submitLabel?: string;
   showPhone?: boolean;
   twoStep?: boolean;
 }) {
+  const submitText = submitLabel ?? dict.submitDefault;
   const formRef = useRef<HTMLFormElement>(null);
   const checkinRef = useRef<HTMLInputElement>(null);
   const checkoutRef = useRef<HTMLInputElement>(null);
@@ -83,7 +87,7 @@ export default function BookingForm({
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
     if (!name || !emailOk) {
-      setStatus({ type: "error", message: "Bitte Name und eine gültige E-Mail-Adresse angeben." });
+      setStatus({ type: "error", message: dict.errorValidation });
       return;
     }
 
@@ -93,7 +97,7 @@ export default function BookingForm({
         .map(([k, v]) => `${k}: ${v}`)
         .join("%0D%0A");
       window.location.href = `mailto:info@auszeit-mosel.de?subject=Buchungsanfrage%20AUSZEIT&body=${body}`;
-      setStatus({ type: "success", message: "Ihr E-Mail-Programm öffnet sich mit der ausgefüllten Anfrage." });
+      setStatus({ type: "success", message: dict.successMailto });
       return;
     }
 
@@ -107,14 +111,14 @@ export default function BookingForm({
       if (!res.ok) throw new Error("Request failed");
       setStatus({
         type: "success",
-        message: "Vielen Dank! Ihre Anfrage wurde versendet — wir melden uns schnellstmöglich.",
+        message: dict.successSent,
       });
       form.reset();
       setStep(1);
     } catch {
       setStatus({
         type: "error",
-        message: "Da ist leider etwas schiefgelaufen. Bitte versuchen Sie es erneut oder schreiben Sie uns direkt eine E-Mail.",
+        message: dict.errorSend,
       });
     } finally {
       setSubmitting(false);
@@ -125,7 +129,7 @@ export default function BookingForm({
     <>
       <div className="grid grid-cols-2 gap-3.5 mb-4">
         <div>
-          <label htmlFor="checkin" className={labelClass}>Anreise</label>
+          <label htmlFor="checkin" className={labelClass}>{dict.labelAnreise}</label>
           <input
             type="date"
             id="checkin"
@@ -137,18 +141,16 @@ export default function BookingForm({
           />
         </div>
         <div>
-          <label htmlFor="checkout" className={labelClass}>Abreise</label>
+          <label htmlFor="checkout" className={labelClass}>{dict.labelAbreise}</label>
           <input type="date" id="checkout" name="abreise" required ref={checkoutRef} className={inputClass} />
         </div>
       </div>
       <div className="mb-4">
-        <label htmlFor="gaeste" className={labelClass}>Gäste</label>
-        <select id="gaeste" name="gaeste" defaultValue="2 Erwachsene" className={inputClass}>
-          <option>1 Erwachsener</option>
-          <option>2 Erwachsene</option>
-          <option>2 Erwachsene, 1 Kind</option>
-          <option>2 Erwachsene, 2 Kinder</option>
-          <option>Andere (bitte in Nachricht angeben)</option>
+        <label htmlFor="gaeste" className={labelClass}>{dict.labelGaeste}</label>
+        <select id="gaeste" name="gaeste" defaultValue={dict.guestOptions[1]} className={inputClass}>
+          {dict.guestOptions.map((option) => (
+            <option key={option}>{option}</option>
+          ))}
         </select>
       </div>
     </>
@@ -157,21 +159,21 @@ export default function BookingForm({
   const contactFields = (
     <>
       <div className="mb-4">
-        <label htmlFor="name" className={labelClass}>Name</label>
+        <label htmlFor="name" className={labelClass}>{dict.labelName}</label>
         <input type="text" id="name" name="name" required className={inputClass} />
       </div>
       <div className="mb-4">
-        <label htmlFor="email" className={labelClass}>E-Mail</label>
+        <label htmlFor="email" className={labelClass}>{dict.labelEmail}</label>
         <input type="email" id="email" name="email" required className={inputClass} />
       </div>
       {showPhone && (
         <div className="mb-4">
-          <label htmlFor="telefon" className={labelClass}>Telefon (optional)</label>
+          <label htmlFor="telefon" className={labelClass}>{dict.labelTelefon}</label>
           <input type="tel" id="telefon" name="telefon" className={inputClass} />
         </div>
       )}
       <div className="mb-4">
-        <label htmlFor="nachricht" className={labelClass}>Nachricht (optional)</label>
+        <label htmlFor="nachricht" className={labelClass}>{dict.labelNachricht}</label>
         <textarea id="nachricht" name="nachricht" rows={3} className={inputClass} />
       </div>
     </>
@@ -193,14 +195,14 @@ export default function BookingForm({
         onSubmit={handleSubmit}
         className="bg-white border border-line rounded-[2px] p-[30px] shadow-[0_18px_40px_-20px_rgba(44,50,38,0.35)]"
       >
-        <span className={eyebrowClass}>Verfügbarkeit prüfen</span>
+        <span className={eyebrowClass}>{dict.eyebrow}</span>
         {contactFields}
         {tripFields}
         <button type="submit" disabled={submitting} className={`${submitBtnClass} mt-1.5`}>
-          {submitting ? "Wird gesendet …" : submitLabel}
+          {submitting ? dict.submitting : submitText}
         </button>
         <p className="text-[0.78rem] text-ink-soft mt-3">
-          Mit dem Absenden stimmen Sie zu, dass wir Sie zu Ihrer Anfrage kontaktieren.
+          {dict.consentNote}
         </p>
         {statusMessage}
       </form>
@@ -231,13 +233,13 @@ export default function BookingForm({
             aria-hidden={step !== 1}
             inert={step !== 1 ? true : undefined}
           >
-            <span className={eyebrowClass}>Verfügbarkeit prüfen</span>
+            <span className={eyebrowClass}>{dict.eyebrow}</span>
             {tripFields}
             <p className="text-[0.78rem] text-ink-soft mb-4">
-              Im nächsten Schritt fragen wir kurz nach Ihren Kontaktdaten.
+              {dict.stepNote}
             </p>
             <button type="button" onClick={() => setStep(2)} className={submitBtnClass}>
-              Weiter
+              {dict.weiter}
               <ArrowRight className="w-4 h-4" strokeWidth={2} />
             </button>
           </div>
@@ -255,14 +257,14 @@ export default function BookingForm({
               className="inline-flex items-center gap-1.5 text-ink-soft text-[0.75rem] tracking-[0.05em] uppercase mb-4 hover:text-forest transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" strokeWidth={2} />
-              Zurück
+              {dict.zurueck}
             </button>
             {contactFields}
             <button type="submit" disabled={submitting} className={submitBtnClass}>
-              {submitting ? "Wird gesendet …" : submitLabel}
+              {submitting ? dict.submitting : submitText}
             </button>
             <p className="text-[0.78rem] text-ink-soft mt-3">
-              Mit dem Absenden stimmen Sie zu, dass wir Sie zu Ihrer Anfrage kontaktieren.
+              {dict.consentNote}
             </p>
             {statusMessage}
           </div>

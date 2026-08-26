@@ -7,7 +7,9 @@ export const siteSettings = pgTable("site_settings", {
   contactPhone: text("contact_phone").notNull(),
   contactEmail: text("contact_email").notNull(),
   impressumContent: text("impressum_content").notNull().default(""),
+  impressumContentEn: text("impressum_content_en").notNull().default(""),
   datenschutzContent: text("datenschutz_content").notNull().default(""),
+  datenschutzContentEn: text("datenschutz_content_en").notNull().default(""),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

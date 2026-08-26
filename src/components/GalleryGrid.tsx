@@ -4,10 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Expand, X } from "lucide-react";
 import Photo from "@/components/Photo";
 import Reveal from "@/components/Reveal";
+import type { Dictionary } from "@/dictionaries";
+import { formatTemplate } from "@/lib/i18n";
 
 type GalleryPhoto = { src: string; alt: string; tall?: boolean };
 
-export default function GalleryGrid({ photos }: { photos: GalleryPhoto[] }) {
+export default function GalleryGrid({ photos, dict }: { photos: GalleryPhoto[]; dict: Dictionary["gallery"] }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const close = useCallback(() => setActiveIndex(null), []);
@@ -52,7 +54,7 @@ export default function GalleryGrid({ photos }: { photos: GalleryPhoto[] }) {
               type="button"
               onClick={() => setActiveIndex(i)}
               className="group absolute inset-0 w-full h-full cursor-zoom-in"
-              aria-label={`${p.alt} vergrößern`}
+              aria-label={formatTemplate(dict.zoom, { alt: p.alt })}
             >
               <Photo
                 src={p.src}
@@ -84,7 +86,7 @@ export default function GalleryGrid({ photos }: { photos: GalleryPhoto[] }) {
             type="button"
             onClick={close}
             className="absolute top-4 right-4 sm:top-6 sm:right-6 text-white/80 hover:text-white cursor-pointer"
-            aria-label="Schließen"
+            aria-label={dict.close}
           >
             <X className="w-7 h-7" strokeWidth={1.5} />
           </button>
@@ -96,7 +98,7 @@ export default function GalleryGrid({ photos }: { photos: GalleryPhoto[] }) {
               showPrev();
             }}
             className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white cursor-pointer p-2"
-            aria-label="Vorheriges Bild"
+            aria-label={dict.prev}
           >
             <ChevronLeft className="w-8 h-8" strokeWidth={1.5} />
           </button>
@@ -107,7 +109,7 @@ export default function GalleryGrid({ photos }: { photos: GalleryPhoto[] }) {
               showNext();
             }}
             className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white cursor-pointer p-2"
-            aria-label="Nächstes Bild"
+            aria-label={dict.next}
           >
             <ChevronRight className="w-8 h-8" strokeWidth={1.5} />
           </button>

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, Ruler, Users, BedDouble } from "lucide-react";
 import Photo from "@/components/Photo";
 import Button from "@/components/Button";
+import { localeHref, formatTemplate, type Locale } from "@/lib/i18n";
+import type { Dictionary } from "@/dictionaries";
 
 export type WohnungImage = { url: string; alt: string };
 
@@ -17,7 +19,15 @@ export type WohnungUnit = {
   text: string;
 };
 
-export default function WohnungenSlider({ units }: { units: WohnungUnit[] }) {
+export default function WohnungenSlider({
+  units,
+  locale,
+  dict,
+}: {
+  units: WohnungUnit[];
+  locale: Locale;
+  dict: Dictionary["wohnung"]["slider"];
+}) {
   const [index, setIndex] = useState(0);
   const [photoIndex, setPhotoIndex] = useState(0);
   const total = units.length;
@@ -44,7 +54,7 @@ export default function WohnungenSlider({ units }: { units: WohnungUnit[] }) {
       <div
         role="region"
         aria-roledescription="carousel"
-        aria-label="Unsere Wohnungen"
+        aria-label={dict.ariaLabel}
         tabIndex={0}
         onKeyDown={handleKeyDown}
         className="relative overflow-hidden rounded-[2px] border border-line shadow-[0_18px_40px_-20px_rgba(44,50,38,0.35)] focus:outline-2 focus:outline-gold focus:outline-offset-2"
@@ -80,7 +90,7 @@ export default function WohnungenSlider({ units }: { units: WohnungUnit[] }) {
                           key={photo.url + pi}
                           type="button"
                           onClick={() => setPhotoIndex(pi)}
-                          aria-label={`Foto ${pi + 1} von ${photos.length}`}
+                          aria-label={formatTemplate(dict.photoLabel, { i: pi + 1, total: photos.length })}
                           aria-current={pi === photoIndex}
                           className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
                             pi === photoIndex ? "w-5 bg-white" : "bg-white/60 hover:bg-white/90"
@@ -92,7 +102,7 @@ export default function WohnungenSlider({ units }: { units: WohnungUnit[] }) {
                 </div>
                 <div className="bg-white flex flex-col justify-center p-10 max-[860px]:p-6">
                   <span className="block text-[0.72rem] tracking-[0.22em] uppercase text-gold mb-2">
-                    Wohnung {i + 1} von {total}
+                    {formatTemplate(dict.unitLabel, { i: i + 1, total })}
                   </span>
                   <h2 className="mt-0 mb-3">{u.name}</h2>
                   <div className="flex gap-5 mb-4 flex-wrap text-ink-soft text-[0.85rem]">
@@ -110,8 +120,8 @@ export default function WohnungenSlider({ units }: { units: WohnungUnit[] }) {
                     </span>
                   </div>
                   <p>{u.text}</p>
-                  <Button href="/kontakt#buchen" className="mt-2 self-start">
-                    Jetzt anfragen
+                  <Button href={`${localeHref(locale, "/kontakt")}#buchen`} className="mt-2 self-start">
+                    {dict.cta}
                   </Button>
                 </div>
               </div>
@@ -122,7 +132,7 @@ export default function WohnungenSlider({ units }: { units: WohnungUnit[] }) {
         <button
           type="button"
           onClick={() => goTo(index - 1)}
-          aria-label="Vorherige Wohnung"
+          aria-label={dict.prev}
           className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-md flex items-center justify-center text-forest cursor-pointer"
         >
           <ChevronLeft className="w-5 h-5" strokeWidth={1.5} />
@@ -130,7 +140,7 @@ export default function WohnungenSlider({ units }: { units: WohnungUnit[] }) {
         <button
           type="button"
           onClick={() => goTo(index + 1)}
-          aria-label="Nächste Wohnung"
+          aria-label={dict.next}
           className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-md flex items-center justify-center text-forest cursor-pointer"
         >
           <ChevronRight className="w-5 h-5" strokeWidth={1.5} />
@@ -143,7 +153,7 @@ export default function WohnungenSlider({ units }: { units: WohnungUnit[] }) {
             key={u.slug}
             type="button"
             onClick={() => goTo(i)}
-            aria-label={`Zu ${u.name} springen`}
+            aria-label={formatTemplate(dict.goTo, { name: u.name })}
             aria-current={i === index}
             className={`h-2.5 rounded-full transition-all cursor-pointer ${
               i === index ? "w-6 bg-forest" : "w-2.5 bg-line hover:bg-sage"

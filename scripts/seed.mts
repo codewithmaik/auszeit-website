@@ -78,33 +78,12 @@ const UNITS = [
   },
 ];
 
-const IMPRESSUM_PLACEHOLDER = `Angaben gemäß § 5 TMG
+const { impressumDe, impressumEn, datenschutzDe, datenschutzEn } = await import("./legal-content.mjs");
 
-[Firmierung / Name]
-[Straße und Hausnummer]
-[PLZ und Ort]
-
-Vertreten durch:
-[Name der vertretungsberechtigten Person]
-
-Kontakt:
-Telefon: ${BUSINESS.telephone}
-E-Mail: ${BUSINESS.email}
-
-Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz:
-[USt-IdNr. eintragen, falls vorhanden]
-
-Bitte ergänzen oder lassen Sie diese Pflichtangaben durch eine fachkundige Stelle prüfen.`;
-
-const DATENSCHUTZ_PLACEHOLDER = `Diese Datenschutzerklärung ist ein Platzhalter und muss durch einen rechtssicheren Text ersetzt werden, der insbesondere folgende Punkte abdeckt:
-
-1. Verantwortlicher für die Datenverarbeitung
-2. Erhebung und Verarbeitung von Daten über das Buchungs-/Kontaktformular
-3. Verwendete Cookies und eingebundene Drittanbieter (z. B. Google Maps)
-4. Rechte der betroffenen Personen (Auskunft, Löschung, Widerspruch)
-5. Kontaktdaten für Datenschutzanfragen
-
-Bitte lassen Sie diesen Text von einer fachkundigen Stelle erstellen oder prüfen.`;
+const IMPRESSUM_PLACEHOLDER = impressumDe(BUSINESS.telephone, BUSINESS.email);
+const IMPRESSUM_PLACEHOLDER_EN = impressumEn(BUSINESS.telephone, BUSINESS.email);
+const DATENSCHUTZ_PLACEHOLDER = datenschutzDe();
+const DATENSCHUTZ_PLACEHOLDER_EN = datenschutzEn();
 
 async function seed() {
   console.log("Seeding site_settings…");
@@ -115,7 +94,9 @@ async function seed() {
       contactPhone: BUSINESS.telephone,
       contactEmail: BUSINESS.email,
       impressumContent: IMPRESSUM_PLACEHOLDER,
+      impressumContentEn: IMPRESSUM_PLACEHOLDER_EN,
       datenschutzContent: DATENSCHUTZ_PLACEHOLDER,
+      datenschutzContentEn: DATENSCHUTZ_PLACEHOLDER_EN,
     });
     console.log("  -> inserted default settings row");
   } else {

@@ -1,27 +1,20 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { Star, Quote } from "lucide-react";
 import Button from "@/components/Button";
 import Eyebrow from "@/components/Eyebrow";
 import Divider from "@/components/Divider";
 import PageHero from "@/components/PageHero";
 import Reveal from "@/components/Reveal";
+import { isLocale, localeHref } from "@/lib/i18n";
+import { getDictionary } from "@/dictionaries";
 
-export const metadata: Metadata = { title: "Gästebewertungen", alternates: { canonical: "/bewertungen" } };
-
-const REVIEWS = [
-  {
-    text: "Ein wunderschöner Rückzugsort mit traumhaftem Blick auf die Mosel. Die Wohnung war liebevoll eingerichtet und sehr sauber.",
-    name: "Platzhalter-Name, Mai 2026",
-  },
-  {
-    text: "Perfekte Lage für Weinliebhaber, herzlicher Kontakt zur Gastgeberin und ein Balkon, den man kaum verlassen möchte.",
-    name: "Platzhalter-Name, April 2026",
-  },
-  {
-    text: "Wir kommen definitiv wieder! Ruhige Umgebung, top Ausstattung und tolle Ausflugstipps von den Gastgebern.",
-    name: "Platzhalter-Name, März 2026",
-  },
-];
+export async function generateMetadata({ params }: PageProps<"/[lang]/bewertungen">): Promise<Metadata> {
+  const { lang } = await params;
+  if (!isLocale(lang)) return {};
+  const dict = getDictionary(lang);
+  return { title: dict.bewertungen.metaTitle, alternates: { canonical: localeHref(lang, "/bewertungen") } };
+}
 
 function Stars() {
   return (
@@ -33,12 +26,16 @@ function Stars() {
   );
 }
 
-export default function BewertungenPage() {
+export default async function BewertungenPage({ params }: PageProps<"/[lang]/bewertungen">) {
+  const { lang } = await params;
+  if (!isLocale(lang)) notFound();
+  const dict = getDictionary(lang);
+  const t = dict.bewertungen;
+
   return (
     <>
-      <PageHero eyebrow="Gästebewertungen" title="Was unsere Gäste sagen">
-        Diese Bewertungen sind Platzhalter-Beispiele. Ersetzen Sie sie mit echten Rückmeldungen Ihrer Gäste, sobald
-        diese vorliegen.
+      <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle}>
+        {t.heroText}
       </PageHero>
 
       <section className="py-20">
@@ -46,11 +43,13 @@ export default function BewertungenPage() {
           <Reveal className="flex items-center justify-center gap-3 mb-14 text-center">
             <Stars />
             <span className="text-forest font-serif text-[1.1rem]">5,0</span>
-            <span className="text-ink-soft text-[0.9rem]">· {REVIEWS.length} Bewertungen</span>
+            <span className="text-ink-soft text-[0.9rem]">
+              · {t.reviews.length} {t.ratingLabel}
+            </span>
           </Reveal>
 
           <div className="grid grid-cols-3 max-[860px]:grid-cols-1 gap-6">
-            {REVIEWS.map((r, i) => (
+            {t.reviews.map((r, i) => (
               <Reveal
                 key={r.name}
                 delay={i * 100}
@@ -68,10 +67,10 @@ export default function BewertungenPage() {
 
       <section className="py-20 bg-bg-soft text-center">
         <div className="max-w-[1180px] mx-auto px-8">
-          <Eyebrow>Selbst erleben</Eyebrow>
-          <h2 className="mt-0">Schreiben Sie das nächste Kapitel</h2>
+          <Eyebrow>{t.ctaEyebrow}</Eyebrow>
+          <h2 className="mt-0">{t.ctaTitle}</h2>
           <Divider center />
-          <Button href="/kontakt#buchen">Jetzt anfragen</Button>
+          <Button href={`${localeHref(lang, "/kontakt")}#buchen`}>{t.ctaButton}</Button>
         </div>
       </section>
     </>

@@ -11,7 +11,9 @@ export async function updateSiteSettings(formData: FormData) {
     contactPhone: String(formData.get("contactPhone") ?? "").trim(),
     contactEmail: String(formData.get("contactEmail") ?? "").trim(),
     impressumContent: String(formData.get("impressumContent") ?? "").trim(),
+    impressumContentEn: String(formData.get("impressumContentEn") ?? "").trim(),
     datenschutzContent: String(formData.get("datenschutzContent") ?? "").trim(),
+    datenschutzContentEn: String(formData.get("datenschutzContentEn") ?? "").trim(),
   };
 
   const existing = await db.select({ id: siteSettings.id }).from(siteSettings).limit(1);
@@ -26,8 +28,10 @@ export async function updateSiteSettings(formData: FormData) {
   }
 
   revalidatePath("/", "layout");
-  revalidatePath("/kontakt");
-  revalidatePath("/impressum");
-  revalidatePath("/datenschutz");
+  for (const locale of ["de", "en"]) {
+    revalidatePath(`/${locale}/kontakt`);
+    revalidatePath(`/${locale}/impressum`);
+    revalidatePath(`/${locale}/datenschutz`);
+  }
   revalidatePath("/admin/einstellungen");
 }

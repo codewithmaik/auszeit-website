@@ -10,7 +10,9 @@ const DEFAULT_SETTINGS = {
   contactPhone: BUSINESS.telephone,
   contactEmail: BUSINESS.email,
   impressumContent: "",
+  impressumContentEn: "",
   datenschutzContent: "",
+  datenschutzContentEn: "",
 };
 
 export async function getApartments(): Promise<ApartmentWithImages[]> {

@@ -61,7 +61,7 @@ export default async function AdminSettingsPage() {
 
         <h2 className="text-[1.15rem] mb-4">Impressum</h2>
         <div className="mb-6">
-          <label htmlFor="impressumContent" className={labelClass}>Inhalt (§ 5 TMG)</label>
+          <label htmlFor="impressumContent" className={labelClass}>Inhalt Deutsch (§ 5 TMG)</label>
           <textarea
             id="impressumContent"
             name="impressumContent"
@@ -70,13 +70,26 @@ export default async function AdminSettingsPage() {
             className={`${inputClass} font-mono text-[0.82rem] leading-relaxed`}
           />
           <p className="text-[0.78rem] text-ink-soft mt-1.5">
-            Wird auf <code>/impressum</code> angezeigt. Zeilenumbrüche werden übernommen.
+            Wird auf <code>/de/impressum</code> angezeigt. Zeilenumbrüche werden übernommen.
+          </p>
+        </div>
+        <div className="mb-6">
+          <label htmlFor="impressumContentEn" className={labelClass}>Inhalt Englisch</label>
+          <textarea
+            id="impressumContentEn"
+            name="impressumContentEn"
+            rows={12}
+            defaultValue={settings.impressumContentEn}
+            className={`${inputClass} font-mono text-[0.82rem] leading-relaxed`}
+          />
+          <p className="text-[0.78rem] text-ink-soft mt-1.5">
+            Wird auf <code>/en/impressum</code> angezeigt. Leer lassen, um die deutsche Fassung anzuzeigen.
           </p>
         </div>
 
         <h2 className="text-[1.15rem] mb-4">Datenschutzerklärung</h2>
         <div className="mb-6">
-          <label htmlFor="datenschutzContent" className={labelClass}>Inhalt</label>
+          <label htmlFor="datenschutzContent" className={labelClass}>Inhalt Deutsch</label>
           <textarea
             id="datenschutzContent"
             name="datenschutzContent"
@@ -85,7 +98,20 @@ export default async function AdminSettingsPage() {
             className={`${inputClass} font-mono text-[0.82rem] leading-relaxed`}
           />
           <p className="text-[0.78rem] text-ink-soft mt-1.5">
-            Wird auf <code>/datenschutz</code> angezeigt. Zeilenumbrüche werden übernommen.
+            Wird auf <code>/de/datenschutz</code> angezeigt. Zeilenumbrüche werden übernommen.
+          </p>
+        </div>
+        <div className="mb-6">
+          <label htmlFor="datenschutzContentEn" className={labelClass}>Inhalt Englisch</label>
+          <textarea
+            id="datenschutzContentEn"
+            name="datenschutzContentEn"
+            rows={12}
+            defaultValue={settings.datenschutzContentEn}
+            className={`${inputClass} font-mono text-[0.82rem] leading-relaxed`}
+          />
+          <p className="text-[0.78rem] text-ink-soft mt-1.5">
+            Wird auf <code>/en/datenschutz</code> angezeigt. Leer lassen, um die deutsche Fassung anzuzeigen.
           </p>
         </div>
 
