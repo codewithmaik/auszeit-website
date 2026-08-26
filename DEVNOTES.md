@@ -4,65 +4,87 @@
 
 ## Aktueller Stand
 
-**Branch:** `feature/admin-panel` (noch nicht gemerged nach `main`, noch nicht gepusht)
-**Task:** Adminpanel für Kunde — **fertig, DB verbunden, kompletter Klick-Test erfolgreich durchlaufen.**
-**Dev-Server:** lief zuletzt auf `localhost:3000` — falls nicht mehr aktiv: `npm run dev`.
+**Branch:** `feature/i18n-datenschutz-cookies` — gepusht, lokal und remote identisch (`648c68b`), **nicht** nach `main` gemerged.
+**Aber:** Genau dieser Branch-Stand ist bereits live in **Production** deployed (siehe Deploy-Abschnitt unten) — `main` ist also aktuell hinter dem, was live läuft. Sollte bei Gelegenheit per PR nachgezogen werden, ist aber kein akuter Blocker.
+**Dev-Server:** lief zuletzt auf `localhost:3100` (nicht 3000 — Port 3000 war von einem anderen lokalen Projekt belegt). Falls nicht mehr aktiv: `npm run dev -- -p 3100` (oder einfach `npm run dev`, wenn 3000 inzwischen frei ist).
+**Hinweis:** Es läuft noch ein verwaister `vercel dev --listen 3002`-Prozess (PID wechselnd, seit dem Vorabend) — gehört nicht zu diesem Task, wurde bewusst nicht angefasst.
 
-## ✅ Blocker aufgelöst
+## Was in dieser Session gemacht wurde
 
-Neon-Terms wurden vom Kontoinhaber im Browser bestätigt. `vercel integration add neon --name auszeit-website-11-db --non-interactive` lief danach durch, DB ist provisioniert und mit dem Projekt verknüpft (`.env.local` wurde von `vercel integration add` automatisch mit allen DB-Env-Vars überschrieben/ergänzt). `npm run db:push` + `npm run db:seed` liefen erfolgreich — die 7 Platzhalter-Wohnungen und Default-Settings sind in der DB.
+### 1. i18n-Umbau (de/en)
 
-## 🐛 Drei echte Bugs gefunden + gefixt (nicht nur der DB-Blocker)
+Alle Public-Pages von `src/app/*` nach `src/app/[lang]/*` verschoben, `src/proxy.ts` erkennt/redirected Locale (Cookie → Accept-Language → Default `de`), Dictionaries in `src/dictionaries/{de,en,index}.ts` (server-only). Cookie-Consent-Banner für Google Maps (`src/components/cookies/`), `src/lib/consent.ts`, `src/lib/i18n.ts` (Locale-Helper + `formatTemplate()`).
 
-Diese drei Dinge waren unabhängig vom Neon-Blocker echte Bugs im bereits geschriebenen Code, die erst beim tatsächlichen End-to-End-Test mit echter DB/echtem Login/echten Uploads sichtbar wurden:
+**Bug direkt nach dem Umbau gefixt:** Dictionary-Felder wie `unitLabel`, `photoLabel`, `goTo`, `zoom` waren Funktionen (`(i, total) => ...`) statt Strings — das crashte mit 500 auf jeder `/de`- und `/en`-Seite, weil Funktionen nicht von Server- zu Client-Components als Props durchgereicht werden können. Fix: Templates als Strings (`"Wohnung {i} von {total}"`) + `formatTemplate()`-Helper in `src/lib/i18n.ts`, der clientseitig interpoliert.
 
-1. **`scripts/seed.ts` → `scripts/seed.mts`**: Datei nutzte Top-Level-`await`, aber `package.json` hat kein `"type": "module"`, also kompilierte `tsx` es als CJS und crashte. Umbenannt auf `.mts` (tsx behandelt das immer als ESM), `db:seed`-Script in `package.json` angepasst.
+### 2. Styling-Anpassungen (mehrere Nutzer-Requests nacheinander)
 
-2. **`ADMIN_PASSWORD_HASH` in `.env.local` durch `dotenv-expand` korrumpiert**: bcrypt-Hashes enthalten `$`-Zeichen (`$2b$10$rG1jQb...`), und Next.js' `@next/env`-Loader (nutzt intern `dotenv-expand`) interpretiert `$rG1jQb46t8t1dc9mvBw7i` als Variablenreferenz und ersetzt es durch einen leeren String, wenn keine gleichnamige Env-Var existiert → Login schlug lokal fehl, obwohl Hash + Passwort korrekt waren. **Fix:** `$` in `.env.local` mit `\$` escapen (`ADMIN_PASSWORD_HASH="\$2b\$10\$rG1jQb46..."`). Betrifft nur lokales `.env.local`-Parsing — auf Vercel selbst werden Env-Vars direkt injiziert (kein `.env`-Parsing), Production ist also nicht betroffen. **Falls der Hash je neu erzeugt wird: die `$`-Zeichen in `.env.local` wieder escapen, sonst bricht der Login lokal erneut.**
+- Alle gold-farbenen Texte site-weit +2px (`calc(Xrem + 2px)`-Pattern)
+- `Eyebrow`-Komponente (die kleinen Caps-Headlines wie "KONTAKT", "DIE REGION") zusätzlich +1px (also +3px total) + Unterstreichung in derselben Gold-Farbe
+- Hero-/PageHero-Titel (`clamp(...)`-Werte) um ~15% verkleinert
+- `PageHero`-Section (grüner Hintergrund auf Wohnung/Region/Bewertungen/Kontakt) Padding schrittweise verkleinert: `pt-[90px]` → `pt-[60px]` → `pt-[36px]`, `pb-[60px]` → `pb-[40px]`
+- Neuer Design-Token `--color-khaki` in `globals.css`, khaki-farbene runde Border um die 4 Feature-Icons auf der Startseite (`src/app/[lang]/page.tsx`). **Wichtig:** Die Quell-PNGs (`public/images/icons/*.png`) sind alle 320×320, aber das eingezeichnete Rund-Badge sitzt in jedem Bild an einer anderen Stelle im Canvas (unterschiedlich beschnitten). Deshalb wurde `BrandIcon`s `ICONS`-Map exportiert und in `page.tsx` ein manuelles Crop/Recenter über `FEATURE_ICON_FRAME` (per-Icon `size`/`left`/`top`, gemessen per Pillow-Script) gebaut, statt die Standard-`BrandIcon`-Komponente zu nutzen. Falls neue Icons in diesem Stil dazukommen: gleiche Masche nötig, die Bilder sind nicht einheitlich zentriert.
 
-3. **Zwei next.config.ts-Fixes, ohne die das Fotoupload-Feature in der Praxis nicht nutzbar gewesen wäre:**
-   - `experimental.serverActions.bodySizeLimit` war nicht gesetzt → Default 1 MB. Echte Handyfotos sind oft 2–8 MB, jeder Upload eines normalen Fotos wäre mit `Error: Body exceeded 1 MB limit` gescheitert. Jetzt auf `"10mb"` gesetzt.
-   - `images.remotePatterns` hatte den Vercel-Blob-Host nicht erlaubt → jede Seite, die ein hochgeladenes Foto per `next/image` rendert (Admin-Editor **und** die öffentliche `/wohnung`-Seite), wäre mit 500 „Invalid src prop … hostname not configured" gecrasht, sobald ein echtes Foto hochgeladen wurde (mit den alten lokalen `/images/...`-Pfaden aus den Seed-Daten fiel das vorher nicht auf). Jetzt `*.public.blob.vercel-storage.com` erlaubt.
+### 3. Echte Geschäfts-/Rechtsdaten eingetragen
 
-   Beide Fixes sind in `next.config.ts`, committed, noch nicht gepusht.
+Via einmaligem Script `scripts/update-business-details.mts` (Muster wie das schon vorhandene `scripts/update-legal-content.mts`) direkt in die DB geschrieben:
 
-## ✅ Kompletter Klick-Test durchgeführt (im Browser, per Chrome-Automation)
+- Name: Norbert Winkel
+- Adresse: Annaberger Str. 231, 53175 Bonn
+- Tel: 0228-28695499, Fax: 0228-28695498
+- E-Mail: info@luxury-apartments-bonn.com
+- USt-IdNr.: DE296770621
 
-Alles erfolgreich getestet und wieder aufgeräumt (Testdaten gelöscht, Telefonnummer zurückgesetzt):
+Impressum (DE+EN) und Datenschutz-„Verantwortlicher"-Abschnitt (DE+EN) sind jetzt vollständig ausgefüllt, `contactAddress`/`contactPhone`/`contactEmail` in der DB aktualisiert, außerdem `BUSINESS`-Fallback-Konstanten in `src/lib/site.ts` (greifen nur, wenn DB nicht erreichbar ist).
 
-- `/admin/login` → Login funktioniert
-- Wohnung anlegen ("Testwohnung") → funktioniert
-- Mehrere Fotos hochladen → funktioniert (nach den obigen Fixes)
-- Reihenfolge ändern (Pfeil-Buttons) → funktioniert, Titelbild-Badge wandert korrekt mit
-- Einzelnes Foto löschen → funktioniert
-- `/wohnung`: Slider zeigt neue Wohnung, Thumbnail-Dots bei mehreren Fotos → funktioniert
-- Wohnung löschen (inkl. Blob-Cleanup) → funktioniert, verschwindet aus Slider, Zähler wieder korrekt
-- Einstellungen ändern (Telefonnummer testweise geändert) → sofort sichtbar auf `/kontakt`, im Footer und im JSON-LD (`LodgingBusiness`), ohne Redeploy dank `revalidatePath` — dann zurückgesetzt auf Originalwert
-- Impressum/Datenschutz sind bewusst freier Text (nicht an `contactPhone` gekoppelt) — Verhalten wie designt, kein Bug
+⚠️ **Nicht verifiziert:** Die Site-Marke ist "AUSZEIT — Ferienwohnung an der Mosel", aber die E-Mail-Domain der Rechtsdaten ist `luxury-apartments-bonn.com` (Bonn, nicht Mosel). Das ist rechtlich unproblematisch (Impressum-Adresse ≠ Standort der Ferienwohnung), wurde dem User als Hinweis gespiegelt, aber **nicht explizit bestätigt** — falls das ein Versehen war (falsche Firma/falscher Kunde), müsste das Script erneut mit korrigierten Daten laufen.
 
-**Automatisierungs-Hinweis für künftige Sessions:** Klicks per Bildschirmkoordinaten aus einem Screenshot trafen wiederholt daneben (Koordinatenraum von Screenshot ≠ CSS-Pixel-Viewport in dieser Chrome-Automation-Umgebung). Zuverlässiger: Element per `find`/`read_page` referenzieren und per `javascript_tool` direkt `element.click()` bzw. `form.requestSubmit()` aufrufen. **Vorsicht bei `document.querySelector('form')`**, wenn mehrere Forms auf der Seite sind (z. B. Abmelden-Form im Header) — führte einmal zu ungewolltem Logout statt Settings-Speichern. Immer über ein eindeutiges Kind-Element (`closest('form')`) gehen.
+### 4. Kritischer Bug gefixt: Sprachumschalter blieb auf Deutsch hängen
 
-## Architektur
+**Root Cause:** `Header`/`Footer` werden im ROOT-Layout (`src/app/layout.tsx`) gerendert, **außerhalb** des `[lang]`-Route-Segments, und beziehen die Locale aus dem `x-locale`-Request-Header. Next.js rendert Layout-Segmente **oberhalb** des sich ändernden dynamischen Segments bei einer Client-Side-Navigation nicht neu — nach dem ersten Sprachwechsel blieb `Header`s `locale`-Prop (und damit auch alle Nav-Links) für immer auf der ursprünglich geladenen Sprache eingefroren, wodurch der Umschalter dauerhaft nur noch "→ Deutsch" berechnete.
 
-- **DB:** Vercel Postgres via Neon, Drizzle ORM (`drizzle-orm/neon-http`, **kein** `db.transaction()` — der Treiber unterstützt keine Transaktionen; bei `moveApartmentImage` deshalb bewusst zwei sequenzielle Updates statt Transaktion)
+**Fix:** `switchLanguage()` in `src/components/Header.tsx` macht jetzt eine volle Navigation (`window.location.href = ...`) statt `router.push()` (Soft-Nav) — erzwingt kompletten Neu-Render inkl. Root-Layout. `useRouter`-Import entfernt. Verifiziert mit zwei kompletten EN↔DE-Runden inkl. Nav-Link-Href-Check.
+
+**Nicht angefasst, aber bewusst so gelassen:** Der eigentliche architektonische Grund (Header/Footer im Root-Layout statt im `[lang]`-Layout) wurde nicht behoben, weil Admin-Routen (`/admin/*`, liegen außerhalb von `[lang]`) den öffentlichen Header absichtlich mitrendern (nur der Sprachumschalter wird per `isAdmin`-Check ausgeblendet). Eine Verschiebung von Header/Footer ins `[lang]`-Layout hätte das für Admin-Seiten kaputt gemacht. Die Full-Navigation ist der minimal-invasive Fix.
+
+### 5. Deploy-Saga (Vercel)
+
+Account/Team durchgehend korrekt: GitHub `codewithmaik`, Vercel `coding.maikel@gmail.com` / Team `codewithmaik` (per globaler CLAUDE.md-Vorgabe).
+
+**Problem 1 — Preview-Deploys hingen fest (`readyState: BLOCKED`, CLI zeigte irreführend "UNKNOWN"):** Ursache war die globale Git-Config: `user.email` stand auf einer alten, nicht mit dem GitHub-Account `codewithmaik` verifizierten Adresse (`maik.bock@tn.techstarter.de`). Vercels Git-Integration blockt Deployments, deren Commit-Autor-E-Mail nicht zum verknüpften GitHub-Account passt.
+- User hat `git config --global user.email "coding.maikel@gmail.com"` selbst gesetzt (ich darf laut Systemregeln nie selbst `git config` ausführen).
+- Das reichte allein nicht, weil der Block an die **bereits gepushte** Commit-Autor-E-Mail hängt, nicht an die aktuelle Config. Nutzer hat explizit erlaubt, den letzten Commit zu amenden (`--author="maikdoescommit <coding.maikel@gmail.com>"`) + force-push (`--force-with-lease`) — danach ging der Deploy sofort durch.
+
+**Problem 2 — Domain sollte `auszeit-mosel.vercel.app` statt `auszeit-website-11.vercel.app` sein:**
+- `vercel project rename auszeit-website-11 auszeit-mosel` erfolgreich, **aber** das ändert nicht automatisch den nackten `<name>.vercel.app`-Alias — nur die Team-Scoped-Variante (`<name>-<team>.vercel.app`) aktualisiert sich automatisch bei jedem Deploy. Lokales `.vercel/project.json` war zudem noch auf den alten Namen gecacht (`vercel link --yes --project auszeit-mosel --scope codewithmaik` hat das aufgefrischt — Nebenwirkung: `.env.local` wurde dabei mit frischem `VERCEL_OIDC_TOKEN` überschrieben).
+- Der nackte Alias musste explizit gesetzt werden: `vercel alias set <deployment-url> auszeit-mosel.vercel.app`.
+- Auf User-Wunsch wurde dafür ein **Production-Deploy** (`vercel --prod`) vom aktuellen Feature-Branch aus gemacht (mit expliziter Bestätigung eingeholt) — das hat den kompletten heutigen Session-Stand live geschaltet, ohne über `main`/PR zu gehen.
+
+**Aktueller Live-Stand:**
+- `https://auszeit-mosel.vercel.app` (neu, primär) und `https://auszeit-website-11.vercel.app` (alt, funktioniert weiterhin) zeigen beide auf dieselbe aktuelle Production-Deployment.
+- **Beide URLs sind aktuell hinter Vercels SSO-/Deployment-Protection** (`ssoProtection.deploymentType: "all_except_custom_domains"`) — nur mit Login im `codewithmaik`-Account erreichbar. Das ist Standardverhalten und hebt sich automatisch auf, sobald eine echte Custom-Domain (z. B. `auszeit-mosel.de`, siehe `SITE_URL`-Konstante in `src/lib/site.ts`) am Projekt hängt. **Offene Entscheidung beim User:** SSO-Schutz für `.vercel.app`-URLs jetzt schon deaktivieren, oder warten bis Custom-Domain eingerichtet ist? Wurde gefragt, noch keine Antwort erhalten.
+
+## Architektur (weiterhin gültig, aus vorherigem Admin-Panel-Task)
+
+- **DB:** Vercel Postgres via Neon, Drizzle ORM (`drizzle-orm/neon-http`, **kein** `db.transaction()` — Treiber unterstützt keine Transaktionen)
 - **Blob:** `@vercel/blob`, Store `auszeit-website-11`, `access: public`
-- **Auth:** NextAuth v5 (`next-auth@beta`), Credentials-Provider, JWT-Session, **kein** Users-Table — Admin-Identität kommt aus Env-Vars `ADMIN_EMAIL` + `ADMIN_PASSWORD_HASH` (bcrypt-Hash). ✅ Gesetzt in `.env.local` (mit escapten `$`, s. o.) **und** allen drei Vercel-Umgebungen (dort unescaped, da kein `.env`-Parsing).
-  - Admin-Login: `maik.bock48@gmail.com`
-  - Generiertes Passwort (Klartext nur hier + einmalig im Chat genannt): `jSQqmvTXqVpvboLH` — im Repo/Code steht nur der bcrypt-Hash. Falls geändert werden soll: neuen Hash erzeugen (`node -e "console.log(require('bcryptjs').hashSync('NEUES-PW', 10))"`), dann `vercel env rm ADMIN_PASSWORD_HASH <env>` + neu `add` für production/preview/development, plus `.env.local` anpassen (dort `$` escapen!).
-- **Rendering:** Seiten, die aus der DB lesen, sind `export const dynamic = "force-dynamic"` (kein ISR bisher) + zusätzlich `revalidatePath(...)` in den Server Actions
+- **Auth:** NextAuth v5 (Credentials-Provider, JWT-Session), kein Users-Table — Admin-Identität aus `ADMIN_EMAIL`/`ADMIN_PASSWORD_HASH` (bcrypt) Env-Vars. `.env.local` escaped `$`-Zeichen im Hash (dotenv-expand-Falle), Vercel-Env-Vars selbst nicht (kein `.env`-Parsing dort).
+- **Rendering:** DB-lesende Seiten sind `export const dynamic = "force-dynamic"` + `revalidatePath(...)` in Server Actions
 
-## Was noch fehlt
+## Was noch offen ist
 
-1. **Commit + Merge nach `main` + Push** (erst wenn User bereit zum Testen ist, siehe Standing Instruction unten) — Branch enthält jetzt sowohl den ursprünglichen Admin-Panel-Code als auch die drei Bugfixes oben
-2. Seed-Daten sind reine Platzhalter (alte 7 Fantasie-Wohnungen, generischer Impressum/Datenschutz-Hinweistext) — Kunde muss diese über das Adminpanel selbst durch echte Inhalte ersetzen, keine weitere Aktion meinerseits nötig
-3. GitHub-Verknüpfung des Vercel-Projekts ist fehlgeschlagen ("Login Connection" fehlt) — für Auto-Deploy-on-Push müsste der User das einmal im Vercel-Dashboard unter Account-Settings nachholen; kein Blocker für die Admin-Panel-Fertigstellung selbst, nur für automatisches Deployment
+1. **`main` ist hinter Production** — Branch sollte irgendwann per PR gemerged werden, ist aber aktuell kein Blocker (Production läuft ja schon auf dem richtigen Stand).
+2. **SSO-Schutz auf `.vercel.app`-URLs** — User-Entscheidung ausstehend (siehe oben).
+3. **Rechtsdaten-Domain-Mismatch** (Mosel-Branding vs. `luxury-apartments-bonn.com`) — nicht explizit vom User bestätigt, siehe oben.
+4. `.agents/`, `.claude/`, `skills-lock.json` bleiben absichtlich ungetracked (Skill-Cache-Verzeichnisse, kein Projekt-Code) — nicht versehentlich committen.
 
-## Standing Instructions (gelten weiterhin, unabhängig vom Adminpanel-Task)
+## Standing Instructions
 
-- **Git-Workflow:** Feature-Branches pro Aufgabe, regelmäßig committen, aber **erst pushen kurz bevor der User testen will** — nicht nach jedem Commit
-- Bei Bugs, die sich mit den Chrome-Automation-Tools nicht reproduzieren lassen (z. B. Screenshot-Staleness in Hintergrund-Tabs, Klick-Koordinaten treffen daneben): lieber auf DOM-/Netzwerk-Ebene bzw. per direktem `element.click()`/`form.requestSubmit()` verifizieren statt blind Screenshot-Koordinaten zu vertrauen
-- Deferred vom User: Formspree-Endpoint (noch `YOUR_FORM_ID`, mailto-Fallback aktiv) und echte Fotos statt Stock-Bilder — beides "später", nicht vergessen, aber nicht aktiv nachfragen
+- **Git-Workflow:** Feature-Branches pro Aufgabe, regelmäßig committen. **Nie selbst `git config` ändern** (harte Regel) — den User bitten, das selbst zu tun (Vorschlag: `!`-Prefix im Prompt).
+- Force-Push nur mit explizitem User-OK, nie eigenmächtig.
+- Für neue Projekte/GitHub-Repos/Vercel-Deploys IMMER `codewithmaik`/`coding.maikel@gmail.com` (siehe globale CLAUDE.md) — bei diesem Projekt bereits durchgehend korrekt verwendet.
+- Deferred vom User: Formspree-Endpoint (noch `YOUR_FORM_ID`, mailto-Fallback aktiv) und echte Fotos statt Stock-Bilder — "später", nicht aktiv nachfragen.
 
 ## Wie eine neue Session weitermachen sollte
 
-Adminpanel-Task ist inhaltlich fertig. Nächster sinnvoller Schritt: mit dem User klären, ob jetzt gemerged/gepusht werden soll, oder ob noch weiteres Feedback zur Admin-UI gewünscht ist.
+Alles inhaltlich fertig und live. Nächster sinnvoller Schritt: mit dem User die zwei offenen Fragen oben klären (SSO-Schutz, Rechtsdaten-Domain), danach ggf. `main` per PR nachziehen.
