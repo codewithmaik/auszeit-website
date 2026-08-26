@@ -5,10 +5,12 @@ import { ChevronLeft, ChevronRight, Ruler, Users, BedDouble } from "lucide-react
 import Photo from "@/components/Photo";
 import Button from "@/components/Button";
 
+export type WohnungImage = { url: string; alt: string };
+
 export type WohnungUnit = {
   slug: string;
   name: string;
-  image: string;
+  images: WohnungImage[];
   size: string;
   guests: string;
   bedrooms: string;
@@ -17,7 +19,16 @@ export type WohnungUnit = {
 
 export default function WohnungenSlider({ units }: { units: WohnungUnit[] }) {
   const [index, setIndex] = useState(0);
+  const [photoIndex, setPhotoIndex] = useState(0);
   const total = units.length;
+
+  // Reset the active photo whenever the slide changes. Adjusting state
+  // during render (rather than in an effect) avoids an extra render pass.
+  const [lastIndex, setLastIndex] = useState(index);
+  if (index !== lastIndex) {
+    setLastIndex(index);
+    setPhotoIndex(0);
+  }
 
   function goTo(i: number) {
     setIndex(((i % total) + total) % total);
@@ -42,49 +53,70 @@ export default function WohnungenSlider({ units }: { units: WohnungUnit[] }) {
           className="flex transition-transform duration-500 ease-out"
           style={{ transform: `translateX(-${index * 100}%)` }}
         >
-          {units.map((u, i) => (
-            <div
-              key={u.slug}
-              className="w-full flex-none grid grid-cols-2 max-[860px]:grid-cols-1"
-              aria-hidden={i !== index}
-              inert={i !== index ? true : undefined}
-            >
-              <div className="relative min-h-[380px] max-[860px]:min-h-[260px]">
-                <Photo
-                  src={u.image}
-                  alt={u.name}
-                  fill
-                  sizes="(max-width: 860px) 100vw, 590px"
-                  priority={i === 0}
-                  className="object-cover"
-                />
-              </div>
-              <div className="bg-white flex flex-col justify-center p-10 max-[860px]:p-6">
-                <span className="block text-[0.72rem] tracking-[0.22em] uppercase text-gold mb-2">
-                  Wohnung {i + 1} von {total}
-                </span>
-                <h2 className="mt-0 mb-3">{u.name}</h2>
-                <div className="flex gap-5 mb-4 flex-wrap text-ink-soft text-[0.85rem]">
-                  <span className="flex items-center gap-1.5">
-                    <Ruler className="w-4 h-4 text-gold" strokeWidth={1.5} />
-                    {u.size}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-gold" strokeWidth={1.5} />
-                    {u.guests}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <BedDouble className="w-4 h-4 text-gold" strokeWidth={1.5} />
-                    {u.bedrooms}
-                  </span>
+          {units.map((u, i) => {
+            const active = i === index;
+            const photos = u.images.length > 0 ? u.images : [{ url: "/images/wohnbereich.jpg", alt: u.name }];
+            const currentPhoto = photos[Math.min(photoIndex, photos.length - 1)];
+            return (
+              <div
+                key={u.slug}
+                className="w-full flex-none grid grid-cols-2 max-[860px]:grid-cols-1"
+                aria-hidden={!active}
+                inert={!active ? true : undefined}
+              >
+                <div className="relative min-h-[380px] max-[860px]:min-h-[260px]">
+                  <Photo
+                    src={currentPhoto.url}
+                    alt={currentPhoto.alt || u.name}
+                    fill
+                    sizes="(max-width: 860px) 100vw, 590px"
+                    priority={i === 0}
+                    className="object-cover"
+                  />
+                  {active && photos.length > 1 && (
+                    <div className="absolute bottom-3 left-3 flex gap-1.5">
+                      {photos.map((photo, pi) => (
+                        <button
+                          key={photo.url + pi}
+                          type="button"
+                          onClick={() => setPhotoIndex(pi)}
+                          aria-label={`Foto ${pi + 1} von ${photos.length}`}
+                          aria-current={pi === photoIndex}
+                          className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
+                            pi === photoIndex ? "w-5 bg-white" : "bg-white/60 hover:bg-white/90"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <p>{u.text}</p>
-                <Button href="/kontakt#buchen" className="mt-2 self-start">
-                  Jetzt anfragen
-                </Button>
+                <div className="bg-white flex flex-col justify-center p-10 max-[860px]:p-6">
+                  <span className="block text-[0.72rem] tracking-[0.22em] uppercase text-gold mb-2">
+                    Wohnung {i + 1} von {total}
+                  </span>
+                  <h2 className="mt-0 mb-3">{u.name}</h2>
+                  <div className="flex gap-5 mb-4 flex-wrap text-ink-soft text-[0.85rem]">
+                    <span className="flex items-center gap-1.5">
+                      <Ruler className="w-4 h-4 text-gold" strokeWidth={1.5} />
+                      {u.size}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Users className="w-4 h-4 text-gold" strokeWidth={1.5} />
+                      {u.guests}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <BedDouble className="w-4 h-4 text-gold" strokeWidth={1.5} />
+                      {u.bedrooms}
+                    </span>
+                  </div>
+                  <p>{u.text}</p>
+                  <Button href="/kontakt#buchen" className="mt-2 self-start">
+                    Jetzt anfragen
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <button

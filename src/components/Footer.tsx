@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
+import { getSiteSettings } from "@/db/queries";
 
 const NAV_LINKS = [
   { href: "/", label: "Startseite" },
@@ -9,7 +10,9 @@ const NAV_LINKS = [
   { href: "/kontakt", label: "Kontakt" },
 ];
 
-export default function Footer() {
+export default async function Footer() {
+  const settings = await getSiteSettings();
+
   return (
     <footer className="bg-forest text-white/75 pt-[60px] pb-[26px]">
       <div className="max-w-[1180px] mx-auto px-8">
@@ -40,16 +43,16 @@ export default function Footer() {
             <h4 className="text-white font-sans text-[0.78rem] tracking-[0.12em] uppercase mb-3.5">
               Kontakt
             </h4>
-            <p className="text-white/68 text-[0.88rem] mb-2">Moselstraße 12, 54470 Bernkastel-Kues</p>
-            <p className="text-white/68 text-[0.88rem] mb-2">+49 (0) 6531 123456</p>
-            <p className="text-white/68 text-[0.88rem] mb-2">info@auszeit-mosel.de</p>
+            <p className="text-white/68 text-[0.88rem] mb-2">{settings.contactAddress}</p>
+            <p className="text-white/68 text-[0.88rem] mb-2">{settings.contactPhone}</p>
+            <p className="text-white/68 text-[0.88rem] mb-2">{settings.contactEmail}</p>
           </div>
         </div>
         <div className="flex justify-between flex-wrap gap-2.5 pt-5 text-[0.78rem] text-white/50">
           <span>© {new Date().getFullYear()} AUSZEIT Ferienwohnung. Alle Rechte vorbehalten.</span>
           <span>
-            <a href="#" className="hover:text-gold">Impressum</a> ·{" "}
-            <a href="#" className="hover:text-gold">Datenschutz</a>
+            <Link href="/impressum" className="hover:text-gold">Impressum</Link> ·{" "}
+            <Link href="/datenschutz" className="hover:text-gold">Datenschutz</Link>
           </span>
         </div>
         <div className="pt-5 mt-2 border-t border-white/10 text-center">

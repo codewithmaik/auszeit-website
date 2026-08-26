@@ -3,6 +3,7 @@ import { Jost, Playfair_Display } from "next/font/google";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { SITE_URL, BUSINESS } from "@/lib/site";
+import { getSiteSettings } from "@/db/queries";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -43,25 +44,25 @@ export const metadata: Metadata = {
   },
 };
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "LodgingBusiness",
-  name: BUSINESS.name,
-  description,
-  url: SITE_URL,
-  telephone: BUSINESS.telephone,
-  email: BUSINESS.email,
-  address: {
-    "@type": "PostalAddress",
-    streetAddress: BUSINESS.streetAddress,
-    postalCode: BUSINESS.postalCode,
-    addressLocality: BUSINESS.addressLocality,
-    addressCountry: BUSINESS.addressCountry,
-  },
-  image: `${SITE_URL}/images/hero-mosel.jpg`,
-};
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const settings = await getSiteSettings();
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "LodgingBusiness",
+    name: BUSINESS.name,
+    description,
+    url: SITE_URL,
+    telephone: settings.contactPhone,
+    email: settings.contactEmail,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: settings.contactAddress,
+      addressCountry: BUSINESS.addressCountry,
+    },
+    image: `${SITE_URL}/images/hero-mosel.jpg`,
+  };
+
   return (
     <html lang="de" className={`${playfair.variable} ${jost.variable}`}>
       <body className="flex flex-col min-h-screen">
