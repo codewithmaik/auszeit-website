@@ -6,6 +6,7 @@
   --color-sage: #8a9a7e;
   --color-mist: #d6d8d1;
   --color-gold: #c99a3f;
+  --color-khaki: #c3b091;
   --color-cream: #f3e4c4;
   --color-bg: #faf8f3;
   --color-bg-soft: #f3f1ea;
@@ -23,6 +24,7 @@
   --color-sage: var(--color-sage);
   --color-mist: var(--color-mist);
   --color-gold: var(--color-gold);
+  --color-khaki: var(--color-khaki);
   --color-cream: var(--color-cream);
   --color-bg: var(--color-bg);
   --color-bg-soft: var(--color-bg-soft);

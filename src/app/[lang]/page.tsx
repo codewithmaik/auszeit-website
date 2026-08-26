@@ -15,7 +15,8 @@ import Eyebrow from "@/components/Eyebrow";
 import BookingForm from "@/components/BookingForm";
 import Photo from "@/components/Photo";
 import Reveal from "@/components/Reveal";
-import BrandIcon, { type BrandIconName } from "@/components/BrandIcon";
+import Image from "next/image";
+import { ICONS as BRAND_ICON_SRC, type BrandIconName } from "@/components/BrandIcon";
 import { isLocale, localeHref } from "@/lib/i18n";
 import { getDictionary } from "@/dictionaries";
 
@@ -24,6 +25,16 @@ const FEATURE_ICONS: Record<string, BrandIconName> = {
   wohnung: "fachwerkhaus",
   erholung: "sonnenuntergang",
   service: "herzen",
+};
+
+// The source PNGs crop their circular badge artwork at different offsets within
+// their 320x320 canvas, so a plain border around the image looks off-center.
+// These values (measured per icon) recenter each badge inside a shared frame.
+const FEATURE_ICON_FRAME: Record<string, { size: number; left: number; top: number }> = {
+  lage: { size: 64, left: -13, top: -11 },
+  wohnung: { size: 64, left: -3, top: -11 },
+  erholung: { size: 64, left: -13, top: -1 },
+  service: { size: 64, left: -8, top: -1 },
 };
 
 const TRUST_ICONS = [ShieldCheck, CalendarCheck, MapPin, Wine];
@@ -69,7 +80,16 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
         <div className="max-w-[1180px] mx-auto px-8 grid grid-cols-4 max-[900px]:grid-cols-2 max-[560px]:grid-cols-1 gap-[30px]">
           {t.features.map((f, i) => (
             <Reveal key={f.key} delay={i * 80} className="flex gap-3.5 items-start">
-              <BrandIcon name={FEATURE_ICONS[f.key]} alt="" size={48} />
+              <span className="relative block w-12 h-12 rounded-full overflow-hidden border-2 border-khaki flex-none">
+                <Image
+                  src={BRAND_ICON_SRC[FEATURE_ICONS[f.key]]}
+                  alt=""
+                  width={FEATURE_ICON_FRAME[f.key].size}
+                  height={FEATURE_ICON_FRAME[f.key].size}
+                  className="absolute max-w-none"
+                  style={{ left: FEATURE_ICON_FRAME[f.key].left, top: FEATURE_ICON_FRAME[f.key].top }}
+                />
+              </span>
               <div>
                 <h3 className="text-[0.95rem] font-sans uppercase tracking-[0.06em] text-forest mb-1">{f.title}</h3>
                 <p className="text-[0.88rem] m-0">{f.text}</p>

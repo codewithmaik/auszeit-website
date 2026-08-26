@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-const ICONS = {
+export const ICONS = {
   trauben: "/images/icons/trauben.png",
   moselschleife: "/images/icons/moselschleife.png",
   fachwerkhaus: "/images/icons/fachwerkhaus.png",
