@@ -6,15 +6,10 @@ import PageHero from "@/components/PageHero";
 import BookingForm from "@/components/BookingForm";
 import Reveal from "@/components/Reveal";
 import Faq, { type FaqItem } from "@/components/Faq";
+import { getSiteSettings } from "@/db/queries";
 
 export const metadata: Metadata = { title: "Kontakt", alternates: { canonical: "/kontakt" } };
-
-const CONTACT_INFO = [
-  { icon: MapPinned, label: "Adresse", value: "Moselstraße 12, 54470 Bernkastel-Kues" },
-  { icon: Phone, label: "Telefon", value: "+49 (0) 6531 123456" },
-  { icon: Mail, label: "E-Mail", value: "info@auszeit-mosel.de" },
-  { icon: Clock, label: "Erreichbarkeit", value: "Täglich 9:00 – 20:00 Uhr" },
-];
+export const dynamic = "force-dynamic";
 
 const FAQ_ITEMS: FaqItem[] = [
   {
@@ -43,7 +38,15 @@ const FAQ_ITEMS: FaqItem[] = [
   },
 ];
 
-export default function KontaktPage() {
+export default async function KontaktPage() {
+  const settings = await getSiteSettings();
+  const CONTACT_INFO = [
+    { icon: MapPinned, label: "Adresse", value: settings.contactAddress },
+    { icon: Phone, label: "Telefon", value: settings.contactPhone },
+    { icon: Mail, label: "E-Mail", value: settings.contactEmail },
+    { icon: Clock, label: "Erreichbarkeit", value: "Täglich 9:00 – 20:00 Uhr" },
+  ];
+
   return (
     <>
       <PageHero eyebrow="Kontakt" title="Wir freuen uns auf Sie">
