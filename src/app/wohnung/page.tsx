@@ -65,13 +65,24 @@ export default async function WohnungPage() {
         Wohnungen hat ihren eigenen Charakter. Blättern Sie durch und finden Sie Ihre Auszeit.
       </PageHero>
 
-      {units.length > 0 && (
-        <section className="py-20">
-          <div className="max-w-[1180px] mx-auto px-8">
+      <section className="py-20">
+        <div className="max-w-[1180px] mx-auto px-8">
+          {units.length > 0 ? (
             <WohnungenSlider units={units} />
-          </div>
-        </section>
-      )}
+          ) : (
+            <div className="text-center max-w-[480px] mx-auto py-10">
+              <Eyebrow>Einen Moment</Eyebrow>
+              <h2 className="mt-0">Unsere Wohnungen werden gerade aktualisiert</h2>
+              <Divider center />
+              <p>
+                Bitte schauen Sie in Kürze wieder vorbei, oder kontaktieren Sie uns direkt — wir beraten Sie gern
+                persönlich zu unseren Wohnungen.
+              </p>
+              <Button href="/kontakt#buchen">Jetzt anfragen</Button>
+            </div>
+          )}
+        </div>
+      </section>
 
       <section className="py-20 bg-bg-soft">
         <div className="max-w-[1180px] mx-auto px-8">
