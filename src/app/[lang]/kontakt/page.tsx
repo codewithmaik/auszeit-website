@@ -55,7 +55,7 @@ export default async function KontaktPage({ params }: PageProps<"/[lang]/kontakt
                 <div key={c.label} className="flex items-start gap-3">
                   <c.icon className="w-5 h-5 text-gold flex-none mt-0.5" strokeWidth={1.5} />
                   <div>
-                    <dt className="text-[0.72rem] tracking-[0.1em] uppercase text-gold">{c.label}</dt>
+                    <dt className="text-[calc(0.72rem+2px)] tracking-[0.1em] uppercase text-gold">{c.label}</dt>
                     <dd className="mt-0.5 ml-0 text-ink-soft">{c.value}</dd>
                   </div>
                 </div>

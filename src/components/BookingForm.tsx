@@ -15,7 +15,7 @@ function fmt(d: Date) {
 const inputClass =
   "w-full px-3 py-[11px] border border-line rounded-[2px] font-sans text-[0.92rem] bg-bg text-ink focus:outline-2 focus:outline-gold focus:outline-offset-1";
 const labelClass = "block text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft mb-1.5";
-const eyebrowClass = "block font-sans text-[0.72rem] tracking-[0.22em] uppercase text-gold mb-[0.9em]";
+const eyebrowClass = "block font-sans text-[calc(0.72rem+2px)] tracking-[0.22em] uppercase text-gold mb-[0.9em]";
 const submitBtnClass =
   "w-full flex justify-center items-center gap-2 px-[30px] py-[14px] bg-forest text-white font-sans text-[0.78rem] tracking-[0.14em] uppercase rounded-[2px] hover:bg-forest-dark transition-colors disabled:opacity-60";
 

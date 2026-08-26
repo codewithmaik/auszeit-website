@@ -43,7 +43,7 @@ export default function Header({ locale, dict }: { locale: Locale; dict: Diction
             <span className="block font-serif text-[1.25rem] tracking-[0.12em] text-forest leading-none">
               AUSZEIT
             </span>
-            <span className="block text-[0.62rem] tracking-[0.16em] uppercase text-gold">
+            <span className="block text-[calc(0.62rem+2px)] tracking-[0.16em] uppercase text-gold">
               Ferienwohnung an der Mosel
             </span>
           </span>

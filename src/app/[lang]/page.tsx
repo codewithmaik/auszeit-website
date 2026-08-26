@@ -49,7 +49,7 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-black/10 to-transparent" />
         <div className="relative z-10 max-w-[1180px] mx-auto w-full px-8 py-[70px]">
-          <h1 className="text-white text-[clamp(2.8rem,5.2vw,4.4rem)] leading-[1.05] mb-7">
+          <h1 className="text-white text-[clamp(2.4rem,4.4vw,3.8rem)] leading-[1.05] mb-7">
             {t.hero.title1}
             <br />
             {t.hero.title2}
@@ -139,7 +139,7 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
               <p className="mt-2.5">
                 <a
                   href={localeHref(lang, "/wohnung")}
-                  className="inline-flex items-center gap-1.5 text-gold text-[0.85rem] tracking-[0.05em] uppercase"
+                  className="inline-flex items-center gap-1.5 text-gold text-[calc(0.85rem+2px)] tracking-[0.05em] uppercase"
                 >
                   {t.wohlfuehl.more} <ArrowRight className="w-3.5 h-3.5" strokeWidth={2} />
                 </a>

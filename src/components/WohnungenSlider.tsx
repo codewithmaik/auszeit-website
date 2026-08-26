@@ -101,7 +101,7 @@ export default function WohnungenSlider({
                   )}
                 </div>
                 <div className="bg-white flex flex-col justify-center p-10 max-[860px]:p-6">
-                  <span className="block text-[0.72rem] tracking-[0.22em] uppercase text-gold mb-2">
+                  <span className="block text-[calc(0.72rem+2px)] tracking-[0.22em] uppercase text-gold mb-2">
                     {formatTemplate(dict.unitLabel, { i: i + 1, total })}
                   </span>
                   <h2 className="mt-0 mb-3">{u.name}</h2>
