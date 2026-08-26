@@ -5,91 +5,64 @@
 ## Aktueller Stand
 
 **Branch:** `feature/admin-panel` (noch nicht gemerged nach `main`, noch nicht gepusht)
-**Task:** Adminpanel für Kunde — voller Plan ggf. unter `.claude/plans/joyful-twirling-platypus.md` (session-lokal, evtl. nicht mehr vorhanden — diese Datei hier reicht zum Weiterarbeiten).
-**Dev-Server:** lief zuletzt auf `localhost:3000`, Seite ist voll browsbar (siehe "Graceful Fallback" unten) — falls nicht mehr aktiv: `npm run dev`.
+**Task:** Adminpanel für Kunde — **fertig, DB verbunden, kompletter Klick-Test erfolgreich durchlaufen.**
+**Dev-Server:** lief zuletzt auf `localhost:3000` — falls nicht mehr aktiv: `npm run dev`.
 
-## 🔴 Blocker — braucht Nutzeraktion (Stand: zuletzt erneut geprüft, weiterhin offen)
+## ✅ Blocker aufgelöst
 
-Die Neon-Postgres-Provisionierung über `vercel integration add neon` hängt an einer **rechtlichen Zustimmung**, die nur der Kontoinhaber im Browser bestätigen kann (nicht automatisierbar):
+Neon-Terms wurden vom Kontoinhaber im Browser bestätigt. `vercel integration add neon --name auszeit-website-11-db --non-interactive` lief danach durch, DB ist provisioniert und mit dem Projekt verknüpft (`.env.local` wurde von `vercel integration add` automatisch mit allen DB-Env-Vars überschrieben/ergänzt). `npm run db:push` + `npm run db:seed` liefen erfolgreich — die 7 Platzhalter-Wohnungen und Default-Settings sind in der DB.
 
-1. Öffnen: `https://vercel.com/codewithmaik/~/integrations/accept-terms/neon?source=cli`
-2. Neon-Bedingungen bestätigen
-3. Danach erneut ausführen:
-   ```
-   vercel integration add neon --name auszeit-website-11-db --non-interactive
-   ```
-   (beliebig oft retrybar — meldet weiterhin `action_required`, bis die Zustimmung erfolgt ist; in dieser Session mehrfach über die Zeit verteilt geprüft, jedes Mal noch offen)
-4. Danach: `vercel env pull .env.local` um `DATABASE_URL`/`POSTGRES_URL` lokal zu bekommen
-5. Danach: `npm run db:push` (Drizzle-Schema in die DB pushen) und `npm run db:seed` (Startdaten einspielen)
+## 🐛 Drei echte Bugs gefunden + gefixt (nicht nur der DB-Blocker)
 
-Vercel Blob Storage ist bereits fertig eingerichtet und verknüpft (`BLOB_READ_WRITE_TOKEN` steht in `.env.local` + allen drei Vercel-Umgebungen).
+Diese drei Dinge waren unabhängig vom Neon-Blocker echte Bugs im bereits geschriebenen Code, die erst beim tatsächlichen End-to-End-Test mit echter DB/echtem Login/echten Uploads sichtbar wurden:
 
-## ✅ Graceful Fallback ohne DB (neu, wichtig!)
+1. **`scripts/seed.ts` → `scripts/seed.mts`**: Datei nutzte Top-Level-`await`, aber `package.json` hat kein `"type": "module"`, also kompilierte `tsx` es als CJS und crashte. Umbenannt auf `.mts` (tsx behandelt das immer als ESM), `db:seed`-Script in `package.json` angepasst.
 
-`npm run build` schlägt **nicht mehr** fehl, wenn `DATABASE_URL` fehlt — das wurde bewusst behoben:
-- `src/db/client.ts`: wirft nicht mehr beim Modul-Import; baut stattdessen mit einem syntaktisch validen Platzhalter-Connection-String (Neon HTTP-Treiber verbindet erst bei tatsächlicher Query, nicht beim Konstruieren)
-- `src/db/queries.ts`: jede Funktion (`getApartments`, `getApartment`, `getSiteSettings`) hat try/catch + `isDatabaseConfigured`-Fast-Path → liefert leere Liste / `undefined` / Default-Settings statt zu crashen
-- `src/app/wohnung/page.tsx`: zeigt bei 0 Wohnungen jetzt eine freundliche Platzhalter-Sektion ("Unsere Wohnungen werden gerade aktualisiert" + Anfragen-Button) statt die Slider-Sektion komplett zu verstecken
+2. **`ADMIN_PASSWORD_HASH` in `.env.local` durch `dotenv-expand` korrumpiert**: bcrypt-Hashes enthalten `$`-Zeichen (`$2b$10$rG1jQb...`), und Next.js' `@next/env`-Loader (nutzt intern `dotenv-expand`) interpretiert `$rG1jQb46t8t1dc9mvBw7i` als Variablenreferenz und ersetzt es durch einen leeren String, wenn keine gleichnamige Env-Var existiert → Login schlug lokal fehl, obwohl Hash + Passwort korrekt waren. **Fix:** `$` in `.env.local` mit `\$` escapen (`ADMIN_PASSWORD_HASH="\$2b\$10\$rG1jQb46..."`). Betrifft nur lokales `.env.local`-Parsing — auf Vercel selbst werden Env-Vars direkt injiziert (kein `.env`-Parsing), Production ist also nicht betroffen. **Falls der Hash je neu erzeugt wird: die `$`-Zeichen in `.env.local` wieder escapen, sonst bricht der Login lokal erneut.**
 
-**Das heißt:** `npm run build` ist wieder ein verlässlicher Gesamt-Fortschrittsindikator (nicht mehr nur Lint/`tsc --noEmit`). Die komplette öffentliche Seite läuft bereits jetzt lokal, nur eben mit leeren/Default-Inhalten statt echter DB-Daten, bis Neon verbunden ist.
+3. **Zwei next.config.ts-Fixes, ohne die das Fotoupload-Feature in der Praxis nicht nutzbar gewesen wäre:**
+   - `experimental.serverActions.bodySizeLimit` war nicht gesetzt → Default 1 MB. Echte Handyfotos sind oft 2–8 MB, jeder Upload eines normalen Fotos wäre mit `Error: Body exceeded 1 MB limit` gescheitert. Jetzt auf `"10mb"` gesetzt.
+   - `images.remotePatterns` hatte den Vercel-Blob-Host nicht erlaubt → jede Seite, die ein hochgeladenes Foto per `next/image` rendert (Admin-Editor **und** die öffentliche `/wohnung`-Seite), wäre mit 500 „Invalid src prop … hostname not configured" gecrasht, sobald ein echtes Foto hochgeladen wurde (mit den alten lokalen `/images/...`-Pfaden aus den Seed-Daten fiel das vorher nicht auf). Jetzt `*.public.blob.vercel-storage.com` erlaubt.
+
+   Beide Fixes sind in `next.config.ts`, committed, noch nicht gepusht.
+
+## ✅ Kompletter Klick-Test durchgeführt (im Browser, per Chrome-Automation)
+
+Alles erfolgreich getestet und wieder aufgeräumt (Testdaten gelöscht, Telefonnummer zurückgesetzt):
+
+- `/admin/login` → Login funktioniert
+- Wohnung anlegen ("Testwohnung") → funktioniert
+- Mehrere Fotos hochladen → funktioniert (nach den obigen Fixes)
+- Reihenfolge ändern (Pfeil-Buttons) → funktioniert, Titelbild-Badge wandert korrekt mit
+- Einzelnes Foto löschen → funktioniert
+- `/wohnung`: Slider zeigt neue Wohnung, Thumbnail-Dots bei mehreren Fotos → funktioniert
+- Wohnung löschen (inkl. Blob-Cleanup) → funktioniert, verschwindet aus Slider, Zähler wieder korrekt
+- Einstellungen ändern (Telefonnummer testweise geändert) → sofort sichtbar auf `/kontakt`, im Footer und im JSON-LD (`LodgingBusiness`), ohne Redeploy dank `revalidatePath` — dann zurückgesetzt auf Originalwert
+- Impressum/Datenschutz sind bewusst freier Text (nicht an `contactPhone` gekoppelt) — Verhalten wie designt, kein Bug
+
+**Automatisierungs-Hinweis für künftige Sessions:** Klicks per Bildschirmkoordinaten aus einem Screenshot trafen wiederholt daneben (Koordinatenraum von Screenshot ≠ CSS-Pixel-Viewport in dieser Chrome-Automation-Umgebung). Zuverlässiger: Element per `find`/`read_page` referenzieren und per `javascript_tool` direkt `element.click()` bzw. `form.requestSubmit()` aufrufen. **Vorsicht bei `document.querySelector('form')`**, wenn mehrere Forms auf der Seite sind (z. B. Abmelden-Form im Header) — führte einmal zu ungewolltem Logout statt Settings-Speichern. Immer über ein eindeutiges Kind-Element (`closest('form')`) gehen.
 
 ## Architektur
 
 - **DB:** Vercel Postgres via Neon, Drizzle ORM (`drizzle-orm/neon-http`, **kein** `db.transaction()` — der Treiber unterstützt keine Transaktionen; bei `moveApartmentImage` deshalb bewusst zwei sequenzielle Updates statt Transaktion)
 - **Blob:** `@vercel/blob`, Store `auszeit-website-11`, `access: public`
-- **Auth:** NextAuth v5 (`next-auth@beta`), Credentials-Provider, JWT-Session, **kein** Users-Table — Admin-Identität kommt aus Env-Vars `ADMIN_EMAIL` + `ADMIN_PASSWORD_HASH` (bcrypt-Hash). ✅ Gesetzt in `.env.local` **und** allen drei Vercel-Umgebungen.
+- **Auth:** NextAuth v5 (`next-auth@beta`), Credentials-Provider, JWT-Session, **kein** Users-Table — Admin-Identität kommt aus Env-Vars `ADMIN_EMAIL` + `ADMIN_PASSWORD_HASH` (bcrypt-Hash). ✅ Gesetzt in `.env.local` (mit escapten `$`, s. o.) **und** allen drei Vercel-Umgebungen (dort unescaped, da kein `.env`-Parsing).
   - Admin-Login: `maik.bock48@gmail.com`
-  - Generiertes Passwort (Klartext nur hier + einmalig im Chat genannt): `jSQqmvTXqVpvboLH` — im Repo/Code steht nur der bcrypt-Hash. Falls geändert werden soll: neuen Hash erzeugen (`node -e "console.log(require('bcryptjs').hashSync('NEUES-PW', 10))"`), dann `vercel env rm ADMIN_PASSWORD_HASH <env>` + neu `add` für production/preview/development, plus `.env.local` anpassen.
-  - Login selbst funktioniert bereits jetzt (prüft nur Env-Vars, keine DB nötig) — aber jede Admin-Aktion, die speichert (Wohnung anlegen/bearbeiten, Foto hochladen, Einstellungen speichern), schlägt ohne DB fehl (`db.insert`/`update` in den Server Actions haben bewusst **kein** Fallback, da ein "erfolgreiches" Speichern ohne Persistenz irreführend wäre)
+  - Generiertes Passwort (Klartext nur hier + einmalig im Chat genannt): `jSQqmvTXqVpvboLH` — im Repo/Code steht nur der bcrypt-Hash. Falls geändert werden soll: neuen Hash erzeugen (`node -e "console.log(require('bcryptjs').hashSync('NEUES-PW', 10))"`), dann `vercel env rm ADMIN_PASSWORD_HASH <env>` + neu `add` für production/preview/development, plus `.env.local` anpassen (dort `$` escapen!).
 - **Rendering:** Seiten, die aus der DB lesen, sind `export const dynamic = "force-dynamic"` (kein ISR bisher) + zusätzlich `revalidatePath(...)` in den Server Actions
 
-## Was ist fertig
+## Was noch fehlt
 
-- `src/db/schema.ts`, `src/db/client.ts`, `src/db/queries.ts` (inkl. Graceful Fallback, s. o.)
-- `drizzle.config.ts`, `scripts/seed.ts` (übernimmt die alten 7 Platzhalter-Wohnungen + Kontaktdaten aus `src/lib/site.ts` + Impressum/Datenschutz-Platzhaltertexte)
-- `src/auth.ts`, `src/proxy.ts` (umbenannt von `middleware.ts` — Next.js 16 Konvention, Deprecation-Warnung dadurch weg), `src/app/api/auth/[...nextauth]/route.ts`
-- `src/app/admin/login/page.tsx` (außerhalb der geschützten Route-Group, damit kein Redirect-Loop)
-- `src/app/admin/(dashboard)/layout.tsx` + `page.tsx` (Übersicht mit 2 Kacheln)
-- `src/app/admin/(dashboard)/wohnungen/`: `page.tsx` (Liste), `neu/page.tsx`, `[id]/page.tsx` (Bearbeiten + Bilder-Galerie-Manager mit Auf/Ab/Löschen), `actions.ts` (create/update/delete Apartment, upload/delete/move Image), `ApartmentFormFields.tsx` (geteilte Formularfelder)
-- `src/app/admin/(dashboard)/einstellungen/`: `page.tsx`, `actions.ts` (Kontakt + Impressum + Datenschutz in einem Formular)
-- `src/components/admin/ConfirmSubmitButton.tsx` (Client-Wrapper mit `window.confirm()` für destruktive Aktionen — Wohnung löschen, Foto löschen)
-- `src/app/impressum/page.tsx`, `src/app/datenschutz/page.tsx` (neue öffentliche Seiten, lesen `site_settings`)
-- `src/components/Footer.tsx`: liest `getSiteSettings()` (async Server Component), Impressum/Datenschutz-Links zeigen auf echte Routen, Kontaktdaten dynamisch
-- `src/components/WohnungenSlider.tsx`: `images: {url, alt}[]` statt einzelnem `image` — Thumbnail-Dots im aktiven Slide bei mehreren Fotos
-- `src/app/wohnung/page.tsx`: liest `getApartments()`, freundlicher Empty-State (s. o.)
-- `src/app/kontakt/page.tsx`: `CONTACT_INFO` liest `getSiteSettings()` ("Erreichbarkeit"-Zeile bleibt bewusst statisch, war nicht im Scope)
-- `src/app/layout.tsx`: JSON-LD (`LodgingBusiness`) liest `getSiteSettings()` statt der statischen `BUSINESS`-Konstante
-- `src/app/sitemap.ts`: `/impressum` und `/datenschutz` ergänzt (niedrige Priorität)
-- `src/components/PageHero.tsx`: Titelgröße reduziert auf `clamp(2rem,3.6vw,2.9rem)` (war zu groß, User-Feedback)
-- Dependencies installiert: `drizzle-orm`, `drizzle-kit`, `@vercel/blob`, `next-auth@beta`, `bcryptjs`, `@types/bcryptjs`, `tsx`, `@neondatabase/serverless`
-- `package.json` Scripts ergänzt: `db:push`, `db:studio`, `db:seed`
-- `npm run lint`, `npx tsc --noEmit` und `npm run build` laufen alle drei sauber durch
-
-## Was noch fehlt (in dieser Reihenfolge)
-
-1. Neon-Terms bestätigen lassen (User-Aktion, s. o.) — **einziger echter Blocker**
-2. `vercel env pull .env.local`
-3. `npm run db:push` + `npm run db:seed`
-4. `npm run build` erneut laufen lassen — sollte jetzt ohne die `[db] DATABASE_URL is not set …`-Warnungen durchlaufen
-5. Kompletter Klick-Test im Browser:
-   - `/admin/login` → Login mit den Zugangsdaten oben
-   - Wohnung anlegen, mehrere Fotos hochladen, Reihenfolge ändern, Foto löschen
-   - `/wohnung` prüfen: Slider zeigt die Wohnung(en) + Thumbnail-Dots bei Mehrfachfotos (Empty-State-Meldung sollte verschwinden)
-   - Wohnung löschen → verschwindet aus Slider, Empty-State kommt wieder falls es die letzte war
-   - Einstellungen ändern (Adresse/Telefon/E-Mail/Impressum/Datenschutz) → Footer, `/kontakt`, `/impressum`, `/datenschutz`, JSON-LD sofort aktualisiert (ohne Redeploy, dank `revalidatePath`)
-   - **Wichtig beim Testen der Lösch-Buttons per Browser-Automation:** Die Buttons nutzen `window.confirm()` — beim automatisierten Klicken NICHT über die normale Klick-Automation triggern (blockiert die Extension), stattdessen den DB-Zustand nach dem Server-Action-Aufruf direkt prüfen oder die Server Action separat aufrufen statt über den UI-Button
-6. Seed-Daten sind reine Platzhalter (alte 7 Fantasie-Wohnungen, generischer Impressum/Datenschutz-Hinweistext) — Kunde muss diese über das Adminpanel selbst durch echte Inhalte ersetzen, keine weitere Aktion meinerseits nötig
-7. Commit + Merge nach `main` + Push (**erst wenn User bereit zum Testen ist**, siehe Standing Instruction unten)
-8. GitHub-Verknüpfung des Vercel-Projekts ist fehlgeschlagen ("Login Connection" fehlt) — für Auto-Deploy-on-Push müsste der User das einmal im Vercel-Dashboard unter Account-Settings nachholen; kein Blocker für die Admin-Panel-Fertigstellung selbst, nur für automatisches Deployment
+1. **Commit + Merge nach `main` + Push** (erst wenn User bereit zum Testen ist, siehe Standing Instruction unten) — Branch enthält jetzt sowohl den ursprünglichen Admin-Panel-Code als auch die drei Bugfixes oben
+2. Seed-Daten sind reine Platzhalter (alte 7 Fantasie-Wohnungen, generischer Impressum/Datenschutz-Hinweistext) — Kunde muss diese über das Adminpanel selbst durch echte Inhalte ersetzen, keine weitere Aktion meinerseits nötig
+3. GitHub-Verknüpfung des Vercel-Projekts ist fehlgeschlagen ("Login Connection" fehlt) — für Auto-Deploy-on-Push müsste der User das einmal im Vercel-Dashboard unter Account-Settings nachholen; kein Blocker für die Admin-Panel-Fertigstellung selbst, nur für automatisches Deployment
 
 ## Standing Instructions (gelten weiterhin, unabhängig vom Adminpanel-Task)
 
 - **Git-Workflow:** Feature-Branches pro Aufgabe, regelmäßig committen, aber **erst pushen kurz bevor der User testen will** — nicht nach jedem Commit
-- Bei Bugs, die sich mit den Chrome-Automation-Tools nicht reproduzieren lassen (z. B. Screenshot-Staleness in Hintergrund-Tabs): lieber auf DOM-/Netzwerk-Ebene verifizieren statt blind Screenshots zu vertrauen — war in dieser Session mehrfach ein reines Tooling-Artefakt, kein echter Bug
+- Bei Bugs, die sich mit den Chrome-Automation-Tools nicht reproduzieren lassen (z. B. Screenshot-Staleness in Hintergrund-Tabs, Klick-Koordinaten treffen daneben): lieber auf DOM-/Netzwerk-Ebene bzw. per direktem `element.click()`/`form.requestSubmit()` verifizieren statt blind Screenshot-Koordinaten zu vertrauen
 - Deferred vom User: Formspree-Endpoint (noch `YOUR_FORM_ID`, mailto-Fallback aktiv) und echte Fotos statt Stock-Bilder — beides "später", nicht vergessen, aber nicht aktiv nachfragen
 
 ## Wie eine neue Session weitermachen sollte
 
-1. `vercel integration add neon --name auszeit-website-11-db --non-interactive` erneut probieren — evtl. hat der User die Freigabe zwischenzeitlich erteilt
-2. Falls ja: Schritte 2–5 oben ("Was noch fehlt") abarbeiten
-3. Falls nein: User kurz auf den weiterhin offenen Blocker hinweisen (Link s. o.), ansonsten läuft die Seite bereits vollständig lokal browsbar mit Platzhalter-/Default-Inhalten — kann in der Zwischenzeit für weiteres UI-Feedback genutzt werden
+Adminpanel-Task ist inhaltlich fertig. Nächster sinnvoller Schritt: mit dem User klären, ob jetzt gemerged/gepusht werden soll, oder ob noch weiteres Feedback zur Admin-UI gewünscht ist.
