@@ -316,7 +316,7 @@ export const dictionary = {
     labelName: "Name",
     labelEmail: "E-Mail",
     labelTelefon: "Telefon (optional)",
-    labelNachricht: "Nachricht (optional)",
+    labelNachricht: "Nachricht (Zimmertyp und Gästeanzahl angeben)",
     submitDefault: "Verfügbarkeit anzeigen",
     submitting: "Wird gesendet …",
     consentNote: "Mit dem Absenden stimmen Sie zu, dass wir Sie zu Ihrer Anfrage kontaktieren.",

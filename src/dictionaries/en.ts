@@ -318,7 +318,7 @@ export const dictionary: Dictionary = {
     labelName: "Name",
     labelEmail: "Email",
     labelTelefon: "Phone (optional)",
-    labelNachricht: "Message (optional)",
+    labelNachricht: "Message (please specify room type and number of guests)",
     submitDefault: "Show availability",
     submitting: "Sending …",
     consentNote: "By submitting, you agree that we may contact you regarding your enquiry.",

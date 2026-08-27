@@ -52,15 +52,15 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
   const wohlfuehlImageSrc = settings.homeWohlfuehlImageUrl || "/images/wohnzimmer-balkon.jpg";
 
   return (
-    <>
-      <section className="relative min-h-[68vh] flex items-end overflow-hidden">
+    <div className="flex flex-col">
+      <section className="relative min-h-[64vh] flex items-end overflow-hidden">
         <Photo
           src={heroImageSrc}
           alt="Moselblick vom Balkon bei Sonnenuntergang"
           fill
           priority
           sizes="100vw"
-          className="object-cover"
+          className="object-cover scale-[1.18] origin-bottom"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-black/10 to-transparent" />
@@ -104,7 +104,7 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
         </div>
       </section>
 
-      <section className="py-20">
+      <section className="py-20 max-[860px]:order-last">
         <div className="max-w-[1180px] mx-auto px-8">
           <Reveal className="max-w-[640px] mx-auto mb-[46px] text-center">
             <Eyebrow>{t.stepsEyebrow}</Eyebrow>
@@ -190,6 +190,6 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
           })}
         </div>
       </section>
-    </>
+    </div>
   );
 }

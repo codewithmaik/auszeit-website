@@ -72,8 +72,10 @@ export default function Header({
               <span className="block font-serif text-[1.25rem] max-[560px]:text-[0.85rem] tracking-[0.12em] max-[560px]:tracking-[0.06em] text-forest leading-none whitespace-nowrap">
                 AUSZEIT
               </span>
-              <span className="block text-[calc(0.62rem+2px)] max-[560px]:text-[0.5rem] tracking-[0.16em] max-[560px]:tracking-[0.05em] uppercase text-gold whitespace-nowrap max-[560px]:truncate">
-                Ferienwohnung an der Mosel
+              <span className="block text-[0.56rem] max-[560px]:text-[0.4rem] leading-[1.15] tracking-[0.14em] max-[560px]:tracking-[0.04em] uppercase text-gold whitespace-nowrap">
+                Ferienwohnung
+                <br />
+                an der Mosel
               </span>
             </span>
           )}
@@ -108,7 +110,7 @@ export default function Header({
               type="button"
               onClick={switchLanguage}
               aria-label={dict.nav.switchLabel}
-              className="text-[0.76rem] max-[560px]:text-[0.66rem] tracking-[0.1em] uppercase text-ink-soft hover:text-forest transition-colors cursor-pointer border border-line rounded-[2px] px-2.5 max-[560px]:px-1.5 py-1"
+              className="ml-[3px] text-[0.76rem] max-[560px]:text-[0.66rem] tracking-[0.1em] uppercase text-ink-soft hover:text-forest transition-colors cursor-pointer border border-line rounded-[2px] px-2.5 max-[560px]:px-1.5 py-1"
             >
               {dict.nav.switchTo}
             </button>
