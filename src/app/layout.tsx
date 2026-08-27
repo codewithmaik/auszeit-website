@@ -59,6 +59,15 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const dict = getDictionary(locale);
   const settings = await getSiteSettings();
 
+  // Kuratierte Farbpalette aus dem Adminpanel überschreibt die CSS-Variablen aus
+  // globals.css sitewide (Header/Footer/alle Seiten) — null = Standardfarbe bleibt.
+  const themeStyle: React.CSSProperties = {
+    ...(settings.themePrimary && { "--color-forest": settings.themePrimary }),
+    ...(settings.themePrimaryDark && { "--color-forest-dark": settings.themePrimaryDark }),
+    ...(settings.themeAccent && { "--color-gold": settings.themeAccent }),
+    ...(settings.themeBackground && { "--color-bg": settings.themeBackground }),
+  } as React.CSSProperties;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
@@ -76,7 +85,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   };
 
   return (
-    <html lang={locale} className={`${playfair.variable} ${jost.variable}`}>
+    <html lang={locale} className={`${playfair.variable} ${jost.variable}`} style={themeStyle}>
       <body className="flex flex-col min-h-screen">
         <script
           type="application/ld+json"
@@ -85,7 +94,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <noscript>
           <style>{`.reveal{opacity:1!important;transform:none!important}`}</style>
         </noscript>
-        <Header locale={locale} dict={dict} />
+        <Header
+          locale={locale}
+          dict={dict}
+          logoImageUrl={settings.logoImageUrl}
+          logoTextImageUrl={settings.logoTextImageUrl}
+        />
         <main className="flex-1">{children}</main>
         <Footer locale={locale} dict={dict} />
       </body>

@@ -19,6 +19,7 @@ import Image from "next/image";
 import { ICONS as BRAND_ICON_SRC, type BrandIconName } from "@/components/BrandIcon";
 import { isLocale, localeHref } from "@/lib/i18n";
 import { getDictionary } from "@/dictionaries";
+import { getSiteSettings } from "@/db/queries";
 
 const FEATURE_ICONS: Record<string, BrandIconName> = {
   lage: "trauben",
@@ -44,13 +45,17 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
   const dict = getDictionary(lang);
-  const t = dict.home;
+  const settings = await getSiteSettings();
+  const homeOverride = lang === "de" ? settings.homeContentDe : settings.homeContentEn;
+  const t = homeOverride ?? dict.home;
+  const heroImageSrc = settings.homeHeroImageUrl || "/images/hero-mosel.jpg";
+  const wohlfuehlImageSrc = settings.homeWohlfuehlImageUrl || "/images/wohnzimmer-balkon.jpg";
 
   return (
     <>
       <section className="relative min-h-[68vh] flex items-end overflow-hidden">
         <Photo
-          src="/images/hero-mosel.jpg"
+          src={heroImageSrc}
           alt="Moselblick vom Balkon bei Sonnenuntergang"
           fill
           priority
@@ -146,7 +151,7 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
           <Reveal delay={200} className="rounded-[2px] overflow-hidden shadow-[0_18px_40px_-20px_rgba(44,50,38,0.35)]">
             <div className="relative aspect-4/3">
               <Photo
-                src="/images/wohnzimmer-balkon.jpg"
+                src={wohlfuehlImageSrc}
                 alt="Wohnzimmer mit Balkon"
                 fill
                 sizes="(max-width: 980px) 100vw, 360px"

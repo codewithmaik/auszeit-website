@@ -8,7 +8,17 @@ import { Heart, Menu, X } from "lucide-react";
 import { localeHref, swapLocale, type Locale } from "@/lib/i18n";
 import type { Dictionary } from "@/dictionaries";
 
-export default function Header({ locale, dict }: { locale: Locale; dict: Dictionary }) {
+export default function Header({
+  locale,
+  dict,
+  logoImageUrl,
+  logoTextImageUrl,
+}: {
+  locale: Locale;
+  dict: Dictionary;
+  logoImageUrl?: string | null;
+  logoTextImageUrl?: string | null;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const isAdmin = pathname.startsWith("/admin");
@@ -45,16 +55,28 @@ export default function Header({ locale, dict }: { locale: Locale; dict: Diction
           onClick={() => setOpen(false)}
         >
           <span className="relative w-[46px] h-[46px] max-[560px]:w-8 max-[560px]:h-8 rounded-full overflow-hidden flex-none">
-            <Image src="/images/logo.png" alt="AUSZEIT Logo" fill sizes="46px" className="object-cover" />
+            <Image src={logoImageUrl || "/images/logo.png"} alt="AUSZEIT Logo" fill sizes="46px" className="object-cover" />
           </span>
-          <span className="min-w-0">
-            <span className="block font-serif text-[1.25rem] max-[560px]:text-[0.85rem] tracking-[0.12em] max-[560px]:tracking-[0.06em] text-forest leading-none whitespace-nowrap">
-              AUSZEIT
+          {logoTextImageUrl ? (
+            <span className="relative block w-[170px] max-[560px]:w-[104px] h-[34px] max-[560px]:h-[22px] flex-none">
+              <Image
+                src={logoTextImageUrl}
+                alt="AUSZEIT"
+                fill
+                sizes="180px"
+                className="object-contain object-left"
+              />
             </span>
-            <span className="block text-[calc(0.62rem+2px)] max-[560px]:text-[0.5rem] tracking-[0.16em] max-[560px]:tracking-[0.05em] uppercase text-gold whitespace-nowrap max-[560px]:truncate">
-              Ferienwohnung an der Mosel
+          ) : (
+            <span className="min-w-0">
+              <span className="block font-serif text-[1.25rem] max-[560px]:text-[0.85rem] tracking-[0.12em] max-[560px]:tracking-[0.06em] text-forest leading-none whitespace-nowrap">
+                AUSZEIT
+              </span>
+              <span className="block text-[calc(0.62rem+2px)] max-[560px]:text-[0.5rem] tracking-[0.16em] max-[560px]:tracking-[0.05em] uppercase text-gold whitespace-nowrap max-[560px]:truncate">
+                Ferienwohnung an der Mosel
+              </span>
             </span>
-          </span>
+          )}
         </Link>
 
         <nav

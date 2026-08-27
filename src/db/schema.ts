@@ -1,5 +1,6 @@
-import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import type { HomeContent } from "./home-content";
 
 export const siteSettings = pgTable("site_settings", {
   id: serial("id").primaryKey(),
@@ -10,6 +11,27 @@ export const siteSettings = pgTable("site_settings", {
   impressumContentEn: text("impressum_content_en").notNull().default(""),
   datenschutzContent: text("datenschutz_content").notNull().default(""),
   datenschutzContentEn: text("datenschutz_content_en").notNull().default(""),
+
+  // Navbar-Branding (Logo/Logo-Schriftzug als Bild-Upload)
+  logoImageUrl: text("logo_image_url"),
+  logoTextImageUrl: text("logo_text_image_url"),
+
+  // Sitewide Farbpalette — kuratierte Kernfarben, überschreiben die CSS-Variablen
+  // aus globals.css. null = Standardfarbe aus dem Code.
+  themePrimary: text("theme_primary"),
+  themePrimaryDark: text("theme_primary_dark"),
+  themeAccent: text("theme_accent"),
+  themeBackground: text("theme_background"),
+
+  // Startseiten-Bilder
+  homeHeroImageUrl: text("home_hero_image_url"),
+  homeWohlfuehlImageUrl: text("home_wohlfuehl_image_url"),
+
+  // Startseiten-Texte je Sprache, komplettes Objekt (Struktur siehe HomeContent).
+  // null = Dictionary-Default wird verwendet.
+  homeContentDe: jsonb("home_content_de").$type<HomeContent>(),
+  homeContentEn: jsonb("home_content_en").$type<HomeContent>(),
+
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

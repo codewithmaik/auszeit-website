@@ -4,10 +4,64 @@
 
 ## Aktueller Stand
 
-**Branch:** `feature/i18n-datenschutz-cookies` — lokal, noch nicht committed (siehe „Was in dieser Session gemacht wurde" unten), **nicht** nach `main` gemerged.
+**Branch:** `feature/admin-design-editor` — lokal, neu von `feature/i18n-datenschutz-cookies` abgezweigt, noch nicht committed (siehe „Was in dieser Session gemacht wurde" unten), **nicht** nach `main` gemerged.
 **Dev-Server:** läuft auf `localhost:3100` (`npm run dev -- -p 3100`).
 
-## Was in dieser Session gemacht wurde: Adminpanel für Wohnungen ausgeweitet
+## Was in dieser Session gemacht wurde: Admin-Editor „Design" (Farbpalette, Bilder, Texte, Logo/Logotext)
+
+**Auftrag:** Neuer Adminpanel-Menüpunkt, über den die Startseite (Farbpalette, Bilder, Texte) sowie Logo/Logotext in der Navbar eigenständig gepflegt werden können, ohne dass Bilder auf der Website „kaputt" aussehen können — mit Plan vorab, Empfehlungen bei offenen Fragen, kein Commit/Push vor Test.
+
+**Mit dem User abgestimmte Scope-Entscheidungen** (per Nachfrage vor Implementierung):
+- Alle Startseiten-Textabschnitte editierbar (nicht nur Hero) — Hero, 4 Feature-Kacheln, 3 Schritte, Buchen-Block, Wohlfühl-Karte, 4 Vertrauensleisten-Punkte, jeweils DE+EN.
+- Farbpalette kuratiert auf 4 Kernfarben (Primär/Forest, Primär dunkel/Hover, Akzent/Gold, Hintergrund) statt aller 11 CSS-Design-Tokens — schützt vor kaputtem Kontrast an subtileren Stellen (Sage/Mist/Khaki/Cream/Ink/Line bleiben fest).
+
+**Bewusst NICHT Teil dieser Session** (Scope-Grenzen):
+- Feature-Icons (`src/components/BrandIcon.tsx`, 6 statische PNGs) und Lucide-Icons der Vertrauensleiste bleiben fest — shared Icon-System, auch auf `/region` und in `PhotoCard` genutzt, kein Foto-Upload-Slot.
+- Footer-Markenname bleibt der feste „AUSZEIT"-Text (Auftrag sprach explizit nur von der Navbar). `BUSINESS.name`, Impressum/Datenschutz-Metatexte unverändert.
+
+**Neues Datenmodell** (`src/db/schema.ts`, `siteSettings`-Tabelle erweitert, `npm run db:push` bereits gegen die Dev-DB ausgeführt — Projekt nutzt ausschließlich `drizzle-kit push`, keine generierten Migrationsdateien):
+- `logoImageUrl`, `logoTextImageUrl` (nullable, Navbar-Branding)
+- `themePrimary`, `themePrimaryDark`, `themeAccent`, `themeBackground` (nullable Hex-Strings)
+- `homeHeroImageUrl`, `homeWohlfuehlImageUrl` (nullable)
+- `homeContentDe`, `homeContentEn` (nullable `jsonb`, Typ `HomeContent` aus neuem `src/db/home-content.ts` — bewusst nicht aus `src/dictionaries` importiert, um den DB-Layer nicht von der UI-Dictionary-Schicht abhängig zu machen). `null` = Dictionary-Default wird verwendet (Fallback-Pattern wie bei Impressum/Datenschutz).
+
+**Rendering:**
+- `src/app/layout.tsx`: Theme-Farben werden als inline `style`-Objekt auf `<html>` injiziert (`--color-forest` etc. überschreiben `globals.css`), sitewide wirksam — bewusst kein `dangerouslySetInnerHTML`. `settings.logoImageUrl`/`logoTextImageUrl` werden an `Header` durchgereicht.
+- `src/components/Header.tsx`: neue optionale Props `logoImageUrl`/`logoTextImageUrl`. Logo-Slot fällt auf `/images/logo.png` zurück; Logo-Schriftzug-Slot rendert bei gesetztem Wert ein Bild in einer **festen** Box (`w-[170px] h-[34px]`, mobil kleiner) mit `object-contain` statt der beiden Text-`<span>`s — **wichtig:** die Box braucht eine feste Breite (nicht `w-auto`), weil `next/image fill` sonst in einem Flex-Item ohne Breitenvorgabe auf 0px kollabiert (das war ein Bug im ersten Entwurf dieser Session, beim Review vor dem Testen gefunden und korrigiert).
+- `src/app/[lang]/page.tsx`: `t = homeOverride ?? dict.home` (locale-abhängig `homeContentDe`/`homeContentEn`), Hero-/Wohlfühl-Bild-`src` analog mit `||`-Fallback auf die bisherigen statischen Pfade.
+
+**Admin-UI** (`src/app/admin/(dashboard)/design/{page.tsx,actions.ts}`, neuer Nav-Punkt „Design" in `src/app/admin/(dashboard)/layout.tsx`):
+- Branding-Uploads (Logo, Logo-Schriftzug), 4 native `<input type="color">` für die Palette, Startseiten-Bild-Uploads (Hero, Wohlfühl-Karte) — alle nach dem bestehenden Blob-Upload-Muster aus `wohnungen/actions.ts` (`put`/`del`, altes Blob beim Ersetzen aufräumen), jeweils mit „Zurücksetzen"-Button (nullt das Feld, kein Wegwerf-Skript nötig).
+- Startseiten-Texte: langes Formular, DE/EN nebeneinander pro Feld, vorausgefüllt mit dem aktuellen Effektivwert (DB-Override ?? Dictionary-Default). Feldnamen folgen einem Dot-Path-Schema (`de.hero.title1`, `en.features.2.title`, `de.trust.0.text`, `de.bookBullets` als Textarea mit einem Stichpunkt pro Zeile), im Server Action `parseHomeContent()` wieder zu einem vollständigen `HomeContent`-Objekt je Sprache zusammengebaut (kein Deep-Merge nötig, da immer alle Felder im Formular stehen). Zwei Server Actions pro Formular (Speichern + Zurücksetzen) über das `formAction`-Attribut eines zweiten Submit-Buttons im selben `<form>`.
+- Gemeinsamer `updateSettings()`/`ensureSettingsId()`-Helper in `actions.ts` kapselt das Insert-wenn-keine-Row-sonst-Update-Muster (identisch zu `einstellungen/actions.ts`), inkl. Fallback auf `BUSINESS`-Kontaktdaten falls die Settings-Row noch gar nicht existiert.
+
+**Verifiziert (ohne Chrome-Automation, s. u.):**
+- `npx tsc --noEmit` und `npx eslint` auf allen geänderten/neuen Dateien: sauber.
+- DB-Roundtrip per Wegwerf-Skript (`scripts/design-editor-smoketest.mts`, nach Test wieder gelöscht) direkt gegen die Dev-DB: Theme-Farben erscheinen korrekt im `style`-Attribut auf `<html>`; Startseiten-Text-Override auf `/de` sichtbar, `/en` bleibt unverändert beim Dictionary-Default (Locale-Trennung funktioniert); Hero-Bild-Override wird als `<Photo>`-`src` übernommen; Logo- und Logo-Schriftzug-Override werden im Header gerendert, der Fallback-Text verschwindet korrekt (Footer-„AUSZEIT" bleibt separat bestehen, wie geplant); nach Reset sind alle Seiten wieder exakt im ursprünglichen Zustand.
+- **Nicht verifiziert:** der eigentliche Klick-Weg durch das Adminpanel (`/admin/design` einloggen, Formulare ausfüllen, Datei-Upload-Button klicken) — die Chrome-Browser-Erweiterung war in dieser Session nicht verbunden. Die Formular-Feldnamen/Server-Actions wurden stattdessen durch direkte DB-Writes mit identischer Datenform geprüft (deckt Rendering + Datenmodell ab, **nicht** das native `<input type="file">`-Upload-Verhalten oder das Zusammenspiel der beiden Submit-Buttons/`formAction` im Browser).
+
+## Was noch offen ist
+
+1. **Vor jedem Commit:** Adminpanel im Browser durchklicken (`/admin/login` → `/admin/design`) — insbesondere Datei-Upload für Logo/Logo-Schriftzug/Hero/Wohlfühl-Bild, die beiden „Speichern"/„Zurücksetzen"-Buttons pro Formular, und mobile Ansicht der Navbar mit gesetztem Logo-Schriftzug-Bild.
+2. Diese Session ist noch nicht committed — Diff umfasst `src/db/{schema.ts,queries.ts}`, `src/db/home-content.ts` (neu), `src/app/layout.tsx`, `src/components/Header.tsx`, `src/app/[lang]/page.tsx`, `src/app/admin/(dashboard)/layout.tsx`, `src/app/admin/(dashboard)/design/` (neu).
+3. `.agents/`, `.claude/`, `auszeit-apartments/`, `skills-lock.json` bleiben absichtlich ungetracked — nicht versehentlich committen.
+4. Frühere offene Punkte (Alt-Text pro Bild, Ausstattungslisten pro Wohnung, SSO-Schutz auf `.vercel.app`-URLs, Rechtsdaten-Domain-Mismatch) wurden in dieser Session nicht angefasst.
+
+## Standing Instructions
+
+- **Git-Workflow:** Feature-Branches pro Aufgabe, regelmäßig committen. **Nie selbst `git config` ändern** (harte Regel) — den User bitten, das selbst zu tun.
+- Force-Push nur mit explizitem User-OK, nie eigenmächtig.
+- Für neue Projekte/GitHub-Repos/Vercel-Deploys IMMER `codewithmaik`/`coding.maikel@gmail.com` (siehe globale CLAUDE.md).
+- Browser-Automation: `window.confirm()`-geschützte Aktionen (z. B. „Wohnung löschen") lassen sich nicht per Klick automatisieren — für Test-Cleanup stattdessen ein Wegwerf-DB-Skript nach Muster `scripts/update-*.mts` schreiben, ausführen, wieder löschen.
+- `drizzle-kit push` braucht die Env-Vars aus `.env.local` explizit geladen (`set -a && source .env.local && set +a && npm run db:push`), da `drizzle.config.ts` sie nicht automatisch lädt.
+
+## Wie eine neue Session weitermachen sollte
+
+Adminpanel-Klick-Test nachholen (Chrome-Erweiterung war diese Session nicht verbunden), dann mit dem User klären, ob committed werden soll (Commit-Message-Vorschlag: "feat: Admin-Editor für Startseite — Farbpalette, Bilder, Texte, Logo/Logotext").
+
+---
+
+## Frühere Session: Adminpanel für Wohnungen ausgeweitet
 
 **Auftrag:** Wohnungen (Titel, Beschreibung, Infos, Bilder) sollen im Adminpanel editierbar sein; neue Beispiele sollen in den Slider auf der `/wohnung`-Seite ergänzt, bestehende gelöscht/aktualisiert werden können.
 
@@ -28,29 +82,14 @@
 - Alt-Text pro Bild ist beim Upload weiterhin leer (`alt: ""`) und im Admin nicht editierbar — nur Upload/Löschen/Sortieren. Kein Blocker für den aktuellen Auftrag, aber falls SEO/Barrierefreiheit der Bild-Alt-Texte mal wichtig wird, bräuchte es ein zusätzliches Formularfeld pro Bild.
 - Die „Ausstattung"-Sektion unten auf `/wohnung` (Betten, Küche, Bad, …) ist weiterhin global/statisch aus dem Dictionary, nicht pro Wohnung editierbar — der Auftrag sprach von „Infos" im Sinne von Größe/Gäste/Schlafzimmer (die editierbar sind), nicht von einer pro-Wohnung-Ausstattungsliste. Falls das gewünscht ist, wäre das ein separates, größeres Schema-/UI-Thema.
 
+Frühere offene Punkte aus noch älteren Sessions (SSO-Schutz auf `.vercel.app`-URLs, Rechtsdaten-Domain-Mismatch, `main` hinter Production) — Stand dazu siehe Git-Historie/vorherige Commits, hier nicht dupliziert.
+
 ## Architektur (weiterhin gültig)
 
-- **DB:** Vercel Postgres via Neon, Drizzle ORM (`drizzle-orm/neon-http`, **kein** `db.transaction()` — Treiber unterstützt keine Transaktionen). Reorder-Operationen (Bilder wie jetzt auch Wohnungen) sind deshalb zwei sequenzielle `UPDATE`s statt einer Transaktion — bei einem sehr seltenen Race würde man einfach nochmal klicken müssen, kein funktionaler Bug.
+- **DB:** Vercel Postgres via Neon, Drizzle ORM (`drizzle-orm/neon-http`, **kein** `db.transaction()` — Treiber unterstützt keine Transaktionen). Reorder-Operationen (Bilder wie auch Wohnungen) sind deshalb zwei sequenzielle `UPDATE`s statt einer Transaktion — bei einem sehr seltenen Race würde man einfach nochmal klicken müssen, kein funktionaler Bug.
 - **Blob:** `@vercel/blob`, Store `auszeit-website-11`, `access: public`
 - **Auth:** NextAuth v5 (Credentials-Provider, JWT-Session), kein Users-Table — Admin-Identität aus `ADMIN_EMAIL`/`ADMIN_PASSWORD_HASH` (bcrypt) Env-Vars.
-- **Rendering:** DB-lesende Seiten sind `export const dynamic = "force-dynamic"` + `revalidatePath(...)` in Server Actions
+- **Rendering:** DB-lesende Seiten sind `export const dynamic = "force-dynamic"` + `revalidatePath(...)` in Server Actions.
 - **Wohnungen-Schema** (`src/db/schema.ts`): `apartments` (slug, name, description, sizeSqm, guests, bedrooms, sortOrder) + `apartmentImages` (url, alt, sortOrder, cascade on delete). `getApartments()`/`getApartment(id)` in `src/db/queries.ts` liefern immer inkl. sortierter `images`-Relation.
-- **Public-Seite `/[lang]/wohnung`:** zeigt jetzt **alle** DB-Wohnungen im Slider (`WohnungenSlider`/`WohnungenShowcase`), keine künstliche Obergrenze mehr. Reihenfolge = `sortOrder`, steuerbar im Admin.
-
-## Was noch offen ist
-
-1. Diese Session ist noch nicht committed — Diff umfasst `src/app/[lang]/wohnung/page.tsx`, `src/app/admin/(dashboard)/wohnungen/{actions.ts,page.tsx}`, `src/dictionaries/{de,en}.ts`.
-2. `.agents/`, `.claude/`, `auszeit-apartments/`, `skills-lock.json` bleiben absichtlich ungetracked — nicht versehentlich committen.
-3. Alt-Text-Editing pro Bild und pro-Wohnung-Ausstattungslisten sind bewusst nicht gebaut worden (siehe oben) — nur bei explizitem Wunsch nachziehen.
-4. Frühere offene Punkte aus vorherigen Sessions (SSO-Schutz auf `.vercel.app`-URLs, Rechtsdaten-Domain-Mismatch, `main` hinter Production) wurden in dieser Session nicht angefasst — Stand dazu siehe Git-Historie/vorherige Commits, hier nicht erneut dupliziert.
-
-## Standing Instructions
-
-- **Git-Workflow:** Feature-Branches pro Aufgabe, regelmäßig committen. **Nie selbst `git config` ändern** (harte Regel) — den User bitten, das selbst zu tun.
-- Force-Push nur mit explizitem User-OK, nie eigenmächtig.
-- Für neue Projekte/GitHub-Repos/Vercel-Deploys IMMER `codewithmaik`/`coding.maikel@gmail.com` (siehe globale CLAUDE.md).
-- Browser-Automation: `window.confirm()`-geschützte Aktionen (z. B. „Wohnung löschen") lassen sich nicht per Klick automatisieren — für Test-Cleanup stattdessen ein Wegwerf-DB-Skript nach Muster `scripts/update-*.mts` schreiben, ausführen, wieder löschen.
-
-## Wie eine neue Session weitermachen sollte
-
-Änderungen sind lokal fertig, getestet, aber noch nicht committed. Nächster Schritt: mit dem User klären, ob committed werden soll (Commit-Message-Vorschlag: "feat: Wohnungen-Slider zeigt alle Adminpanel-Einträge, Wohnungs-Reorder im Admin ergänzt").
+- **`siteSettings`-Schema:** Singleton-Row (immer nur eine Zeile), Kontaktdaten + Rechtstexte + (seit dieser Session) Branding/Theme/Startseiten-Felder, siehe oben.
+- **Public-Seite `/[lang]/wohnung`:** zeigt alle DB-Wohnungen im Slider (`WohnungenSlider`/`WohnungenShowcase`), keine künstliche Obergrenze. Reihenfolge = `sortOrder`, steuerbar im Admin.

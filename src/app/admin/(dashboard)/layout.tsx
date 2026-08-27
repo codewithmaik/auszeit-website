@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogOut, LayoutDashboard, Home, Settings } from "lucide-react";
+import { LogOut, LayoutDashboard, Home, Settings, Palette } from "lucide-react";
 import { signOut } from "@/auth";
 
 export const metadata = { title: { template: "%s — Admin", default: "Admin" } };
@@ -25,6 +25,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link href="/admin/wohnungen" className="flex items-center gap-1.5 hover:text-gold transition-colors">
               <Home className="w-4 h-4" strokeWidth={1.5} />
               Wohnungen
+            </Link>
+            <Link href="/admin/design" className="flex items-center gap-1.5 hover:text-gold transition-colors">
+              <Palette className="w-4 h-4" strokeWidth={1.5} />
+              Design
             </Link>
             <Link href="/admin/einstellungen" className="flex items-center gap-1.5 hover:text-gold transition-colors">
               <Settings className="w-4 h-4" strokeWidth={1.5} />
