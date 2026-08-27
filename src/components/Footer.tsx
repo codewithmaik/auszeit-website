@@ -65,19 +65,33 @@ export default async function Footer({ locale, dict }: { locale: Locale; dict: D
             <CookieSettingsLink label={dict.footer.cookieSettings} />
           </span>
         </div>
-        <div className="pt-5 mt-2 border-t border-white/10 text-center">
+        <div className="pt-5 mt-2 border-t border-white/10 text-center text-[0.72rem] tracking-[0.03em] text-white/40">
+          {dict.footer.creditPrefix}{" "}
           <a
             href="https://codewithmaik.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="group inline-flex items-center gap-1 text-[0.72rem] tracking-[0.03em] text-white/40 hover:text-white/90 transition-colors duration-300"
+            className="group inline-flex items-center gap-1 hover:text-white/90 transition-colors duration-300"
           >
-            <span>
-              {dict.footer.creditPrefix}{" "}
-              <span className="relative text-white/55 group-hover:text-gold transition-colors duration-300">
-                codewithmaik
-                <span className="absolute left-0 -bottom-0.5 h-px w-full origin-left scale-x-0 bg-gold transition-transform duration-300 ease-out group-hover:scale-x-100" />
-              </span>
+            <span className="relative text-white/55 group-hover:text-gold transition-colors duration-300">
+              codewithmaik
+              <span className="absolute left-0 -bottom-0.5 h-px w-full origin-left scale-x-0 bg-gold transition-transform duration-300 ease-out group-hover:scale-x-100" />
+            </span>
+            <ArrowUpRight
+              className="w-3 h-3 text-gold opacity-0 -translate-x-1 transition-all duration-300 ease-out group-hover:opacity-100 group-hover:translate-x-0"
+              strokeWidth={2}
+            />
+          </a>
+          {" & "}
+          <a
+            href="https://johnomwata-dev.vercel.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group inline-flex items-center gap-1 hover:text-white/90 transition-colors duration-300"
+          >
+            <span className="relative text-white/55 group-hover:text-gold transition-colors duration-300">
+              coding-johnny
+              <span className="absolute left-0 -bottom-0.5 h-px w-full origin-left scale-x-0 bg-gold transition-transform duration-300 ease-out group-hover:scale-x-100" />
             </span>
             <ArrowUpRight
               className="w-3 h-3 text-gold opacity-0 -translate-x-1 transition-all duration-300 ease-out group-hover:opacity-100 group-hover:translate-x-0"
