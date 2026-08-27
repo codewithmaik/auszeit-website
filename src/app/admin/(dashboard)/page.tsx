@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, Settings } from "lucide-react";
+import { Home, Palette, Settings } from "lucide-react";
 
 export default function AdminHomePage() {
   return (
@@ -16,6 +16,17 @@ export default function AdminHomePage() {
           <h2 className="text-[1.1rem] mb-1 group-hover:text-gold transition-colors">Wohnungen</h2>
           <p className="text-[0.9rem] text-ink-soft m-0">
             Wohnungen anlegen, bearbeiten, Fotos verwalten oder entfernen.
+          </p>
+        </Link>
+
+        <Link
+          href="/admin/design"
+          className="group bg-white border border-line rounded-[2px] p-6 hover:border-gold transition-colors"
+        >
+          <Palette className="w-6 h-6 text-gold mb-3" strokeWidth={1.5} />
+          <h2 className="text-[1.1rem] mb-1 group-hover:text-gold transition-colors">Design</h2>
+          <p className="text-[0.9rem] text-ink-soft m-0">
+            Farbpalette, Logo und alle Startseiten-Bilder und -Texte pflegen.
           </p>
         </Link>
 
