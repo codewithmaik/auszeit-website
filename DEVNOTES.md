@@ -4,10 +4,21 @@
 
 ## Aktueller Stand
 
-**Branch:** `feature/admin-design-editor` — lokal, neu von `feature/i18n-datenschutz-cookies` abgezweigt, noch nicht committed (siehe „Was in dieser Session gemacht wurde" unten), **nicht** nach `main` gemerged.
-**Dev-Server:** läuft auf `localhost:3100` (`npm run dev -- -p 3100`).
+**Branch:** `feature/admin-design-editor` — gepusht nach `origin` (GitHub `codewithmaik/auszeit-website-11`), **nicht** nach `main` gemerged. Working tree sauber (bis auf absichtlich ungetrackte `.agents/`, `.claude/`, `auszeit-apartments/`, `skills-lock.json`, s. u.).
+**Dev-Server:** aktuell nicht gestartet.
+**Production:** läuft über `auszeit-mosel.vercel.app` (Details s. „Frühere Session: Footer-Link + Domain-Aufräumen" unten) — aktueller Stand des Branches ist live.
 
-## Was in dieser Session gemacht wurde: Admin-Editor „Design" (Farbpalette, Bilder, Texte, Logo/Logotext)
+Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwischen committed (`9bdeec9`, `4eeda79`, `28f74cd`) und deployed — der frühere Hinweis „noch nicht committed" in dieser Datei war veraltet.
+
+## Frühere Session: Footer-Link + Domain-Aufräumen
+
+**Auftrag:** Im Footer bei „Technische Umsetzung: codewithmaik" zusätzlich „coding-johnny" verlinken (→ `https://johnomwata-dev.vercel.app`), danach commit/push/deploy. Anschließend: Deploy soll wie bisher unter `auszeit-mosel.vercel.app` laufen, alle anderen Domains fürs Projekt entfernen.
+
+- `src/components/Footer.tsx`: Credit-Zeile umgebaut — Prefix + zwei separate `<a>`-Links („codewithmaik" → codewithmaik.com, „coding-johnny" → johnomwata-dev.vercel.app), gleiche Hover-Unterstrich-Optik wie vorher, durch „&" getrennt. Commit `0d60548`.
+- **Domain-Befund:** Das Vercel-Projekt `auszeit-mosel` hatte zwischenzeitlich 3 `.vercel.app`-Aliase: `auszeit-mosel.vercel.app` (Zieldomain), `auszeit-website-11.vercel.app` (war durch einen `vercel --prod`-Deploy zur „Latest Production URL" geworden, obwohl `auszeit-mosel.vercel.app` gar nicht mitaktualisiert wurde) und `auszeit-mosel-codewithmaik.vercel.app` (Team-Default-Alias). **Fix:** `vercel alias set` hat `auszeit-mosel.vercel.app` explizit auf den aktuellen Production-Deployment gesetzt, danach `vercel alias rm` für die beiden anderen. Verifiziert: `auszeit-mosel.vercel.app` → 200 (redirect auf `/de`), `auszeit-website-11.vercel.app` → 404.
+- **Hinweis für zukünftige Deploys:** `vercel project ls` zeigt in der Spalte „Latest Production URL" ggf. weiterhin eine veraltete Domain an (gecachtes Projekt-Metadatenfeld, kein Live-Routing) — die tatsächlich aktive Domain ist die, die in `vercel alias ls` auf den neuesten Deployment-Hash zeigt. Bei künftigen `vercel --prod`-Deploys prüfen, ob `auszeit-mosel.vercel.app` automatisch mitaktualisiert wird oder ob wieder ein manuelles `vercel alias set` nötig ist.
+
+## Frühere Session: Admin-Editor „Design" (Farbpalette, Bilder, Texte, Logo/Logotext)
 
 **Auftrag:** Neuer Adminpanel-Menüpunkt, über den die Startseite (Farbpalette, Bilder, Texte) sowie Logo/Logotext in der Navbar eigenständig gepflegt werden können, ohne dass Bilder auf der Website „kaputt" aussehen können — mit Plan vorab, Empfehlungen bei offenen Fragen, kein Commit/Push vor Test.
 
@@ -42,10 +53,10 @@
 
 ## Was noch offen ist
 
-1. **Vor jedem Commit:** Adminpanel im Browser durchklicken (`/admin/login` → `/admin/design`) — insbesondere Datei-Upload für Logo/Logo-Schriftzug/Hero/Wohlfühl-Bild, die beiden „Speichern"/„Zurücksetzen"-Buttons pro Formular, und mobile Ansicht der Navbar mit gesetztem Logo-Schriftzug-Bild.
-2. Diese Session ist noch nicht committed — Diff umfasst `src/db/{schema.ts,queries.ts}`, `src/db/home-content.ts` (neu), `src/app/layout.tsx`, `src/components/Header.tsx`, `src/app/[lang]/page.tsx`, `src/app/admin/(dashboard)/layout.tsx`, `src/app/admin/(dashboard)/design/` (neu).
+1. **Adminpanel-Klick-Test steht weiterhin aus:** `/admin/login` → `/admin/design` im Browser durchklicken — insbesondere Datei-Upload für Logo/Logo-Schriftzug/Hero/Wohlfühl-Bild, die beiden „Speichern"/„Zurücksetzen"-Buttons pro Formular, mobile Navbar mit gesetztem Logo-Schriftzug-Bild. War schon bei `9bdeec9` offen und wurde seither in keiner Session nachgeholt (keine Chrome-Automation-Verbindung).
+2. **`feature/admin-design-editor` noch nicht nach `main` gemerged** — Branch ist auf GitHub aktuell (`origin`), Production läuft direkt vom Branch-Deploy über `auszeit-mosel.vercel.app`, nicht über einen `main`-Merge.
 3. `.agents/`, `.claude/`, `auszeit-apartments/`, `skills-lock.json` bleiben absichtlich ungetracked — nicht versehentlich committen.
-4. Frühere offene Punkte (Alt-Text pro Bild, Ausstattungslisten pro Wohnung, SSO-Schutz auf `.vercel.app`-URLs, Rechtsdaten-Domain-Mismatch) wurden in dieser Session nicht angefasst.
+4. Frühere offene Punkte (Alt-Text pro Bild, Ausstattungslisten pro Wohnung, SSO-Schutz auf `.vercel.app`-URLs, Rechtsdaten-Domain-Mismatch) sind weiterhin unangetastet.
 
 ## Standing Instructions
 
@@ -54,10 +65,11 @@
 - Für neue Projekte/GitHub-Repos/Vercel-Deploys IMMER `codewithmaik`/`coding.maikel@gmail.com` (siehe globale CLAUDE.md).
 - Browser-Automation: `window.confirm()`-geschützte Aktionen (z. B. „Wohnung löschen") lassen sich nicht per Klick automatisieren — für Test-Cleanup stattdessen ein Wegwerf-DB-Skript nach Muster `scripts/update-*.mts` schreiben, ausführen, wieder löschen.
 - `drizzle-kit push` braucht die Env-Vars aus `.env.local` explizit geladen (`set -a && source .env.local && set +a && npm run db:push`), da `drizzle.config.ts` sie nicht automatisch lädt.
+- Nach `vercel --prod`-Deploys die Ziel-Domain (`auszeit-mosel.vercel.app`) per `vercel alias ls` prüfen, statt sich auf `vercel project ls`/„Latest Production URL" zu verlassen — dieses Feld kann veraltete Domains anzeigen (s. „Frühere Session: Footer-Link + Domain-Aufräumen").
 
 ## Wie eine neue Session weitermachen sollte
 
-Adminpanel-Klick-Test nachholen (Chrome-Erweiterung war diese Session nicht verbunden), dann mit dem User klären, ob committed werden soll (Commit-Message-Vorschlag: "feat: Admin-Editor für Startseite — Farbpalette, Bilder, Texte, Logo/Logotext").
+Adminpanel-Klick-Test nachholen (Chrome-Erweiterung verbinden, `/admin/design` durchklicken, s. „Was noch offen ist" Punkt 1). Danach mit dem User klären, ob/wann `feature/admin-design-editor` nach `main` gemerged werden soll — aktuell läuft Production direkt vom Feature-Branch.
 
 ---
 
