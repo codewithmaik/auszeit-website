@@ -43,6 +43,7 @@ export async function resetToFactorySettings() {
     homeWohlfuehlImageUrl: null,
     homeContentDe: null,
     homeContentEn: null,
+    homeTextStyles: null,
     updatedAt: new Date(),
   };
 

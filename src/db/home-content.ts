@@ -20,3 +20,7 @@ export type HomeContent = {
   wohlfuehl: { title: string; text: string; more: string };
   trust: { title: string; text: string }[];
 };
+
+// Schriftgröße/-farbe je Startseiten-Textfeld, keyed by Feldpfad (z. B.
+// "hero.title1", "features.0.title") — dieselben Pfade wie in saveHomeContent.
+export type HomeTextStyles = Record<string, { fontSize?: string; color?: string }>;

@@ -1,6 +1,6 @@
 import { pgTable, serial, text, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import type { HomeContent } from "./home-content";
+import type { HomeContent, HomeTextStyles } from "./home-content";
 
 export const siteSettings = pgTable("site_settings", {
   id: serial("id").primaryKey(),
@@ -31,6 +31,11 @@ export const siteSettings = pgTable("site_settings", {
   // null = Dictionary-Default wird verwendet.
   homeContentDe: jsonb("home_content_de").$type<HomeContent>(),
   homeContentEn: jsonb("home_content_en").$type<HomeContent>(),
+
+  // Schriftgröße/-farbe je Startseiten-Textfeld (Feldpfad -> Override), gilt für
+  // beide Sprachen gleichermaßen (rein visuelle Einstellung). null/fehlender
+  // Eintrag = Standardgröße/-farbe aus dem Layout.
+  homeTextStyles: jsonb("home_text_styles").$type<HomeTextStyles>(),
 
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

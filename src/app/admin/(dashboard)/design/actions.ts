@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { put, del } from "@vercel/blob";
 import { db } from "@/db/client";
 import { siteSettings } from "@/db/schema";
-import { FEATURE_KEYS, type HomeContent } from "@/db/home-content";
+import { FEATURE_KEYS, type HomeContent, type HomeTextStyles } from "@/db/home-content";
 import { BUSINESS } from "@/lib/site";
 
 const HEX_RE = /^#[0-9a-f]{6}$/i;
@@ -44,7 +44,11 @@ function revalidateDesign() {
 
 type ImageColumn = "logoImageUrl" | "logoTextImageUrl" | "homeHeroImageUrl" | "homeWohlfuehlImageUrl";
 
-async function uploadSiteImage(column: ImageColumn, blobFolder: string, formData: FormData) {
+async function uploadSiteImage(
+  column: ImageColumn,
+  blobFolder: string,
+  formData: FormData,
+): Promise<{ url: string } | undefined> {
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return;
 
@@ -63,6 +67,7 @@ async function uploadSiteImage(column: ImageColumn, blobFolder: string, formData
   }
 
   revalidateDesign();
+  return { url: blob.url };
 }
 
 async function resetSiteImage(column: ImageColumn) {
@@ -97,14 +102,14 @@ export async function resetLogoTextImage() {
 }
 
 export async function uploadHomeHeroImage(formData: FormData) {
-  await uploadSiteImage("homeHeroImageUrl", "home", formData);
+  return uploadSiteImage("homeHeroImageUrl", "home", formData);
 }
 export async function resetHomeHeroImage() {
   await resetSiteImage("homeHeroImageUrl");
 }
 
 export async function uploadHomeWohlfuehlImage(formData: FormData) {
-  await uploadSiteImage("homeWohlfuehlImageUrl", "home", formData);
+  return uploadSiteImage("homeWohlfuehlImageUrl", "home", formData);
 }
 export async function resetHomeWohlfuehlImage() {
   await resetSiteImage("homeWohlfuehlImageUrl");
@@ -197,5 +202,35 @@ export async function saveHomeContent(formData: FormData) {
 
 export async function resetHomeContent() {
   await updateSettings({ homeContentDe: null, homeContentEn: null });
+  revalidateDesign();
+}
+
+// ---------- Startseiten-Textstile (Schriftgröße/-farbe je Feld) ----------
+
+const FONT_SIZE_RE = /^\d+(\.\d+)?rem$/;
+
+function sanitizeHomeTextStyles(styles: HomeTextStyles): HomeTextStyles {
+  const clean: HomeTextStyles = {};
+  for (const [path, override] of Object.entries(styles)) {
+    if (!override || typeof path !== "string") continue;
+    const entry: { fontSize?: string; color?: string } = {};
+    if (typeof override.fontSize === "string" && FONT_SIZE_RE.test(override.fontSize)) {
+      entry.fontSize = override.fontSize;
+    }
+    if (typeof override.color === "string" && HEX_RE.test(override.color)) {
+      entry.color = override.color;
+    }
+    if (entry.fontSize || entry.color) clean[path] = entry;
+  }
+  return clean;
+}
+
+export async function saveHomeTextStyles(styles: HomeTextStyles) {
+  await updateSettings({ homeTextStyles: sanitizeHomeTextStyles(styles) });
+  revalidateDesign();
+}
+
+export async function resetHomeTextStyles() {
+  await updateSettings({ homeTextStyles: null });
   revalidateDesign();
 }

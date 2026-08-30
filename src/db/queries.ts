@@ -1,7 +1,7 @@
 import { asc } from "drizzle-orm";
 import { db, isDatabaseConfigured } from "./client";
 import { apartments, apartmentImages, type Apartment, type ApartmentImage } from "./schema";
-import type { HomeContent } from "./home-content";
+import type { HomeContent, HomeTextStyles } from "./home-content";
 import { BUSINESS } from "@/lib/site";
 
 export type ApartmentWithImages = Apartment & { images: ApartmentImage[] };
@@ -24,6 +24,7 @@ const DEFAULT_SETTINGS = {
   homeWohlfuehlImageUrl: null as string | null,
   homeContentDe: null as HomeContent | null,
   homeContentEn: null as HomeContent | null,
+  homeTextStyles: null as HomeTextStyles | null,
 };
 
 export async function getApartments(): Promise<ApartmentWithImages[]> {
