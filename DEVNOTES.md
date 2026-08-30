@@ -6,9 +6,19 @@
 
 **Branch:** `feature/admin-design-editor` — gepusht nach `origin` (GitHub `codewithmaik/auszeit-website-11`), **nicht** nach `main` gemerged. Working tree sauber (bis auf absichtlich ungetrackte `.agents/`, `.claude/`, `auszeit-apartments/`, `skills-lock.json`, s. u.).
 **Dev-Server:** aktuell nicht gestartet.
-**Production:** läuft über `auszeit-mosel.vercel.app` (Details s. „Frühere Session: Footer-Link + Domain-Aufräumen" unten) — aktueller Stand des Branches ist live.
+**Production:** läuft über `auszeit-mosel.vercel.app` — **das ist die einzige gültige Domain für dieses Projekt**, alle anderen `.vercel.app`-Aliase (`auszeit-website-11.vercel.app`, `auszeit-mosel-codewithmaik.vercel.app`) werden nach jedem Deploy wieder entfernt (s. „Domain-Aufräumen" unten, inkl. **wichtigem Hinweis für jeden künftigen Deploy**).
 
 Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwischen committed (`9bdeec9`, `4eeda79`, `28f74cd`) und deployed — der frühere Hinweis „noch nicht committed" in dieser Datei war veraltet.
+
+## Session: Startseite als Live-Vorschau-Editor + Farbpaletten-Templates
+
+**Auftrag:** Design-Menüpunkt komplett umgebaut — statt langem Formular eine anklickbare Live-Vorschau der Startseite (Klick auf Text/Bild → Popup zum Bearbeiten, inkl. Schriftgröße/-farbe je Feld), plus 10 kuratierte Farbpaletten-Templates zum Ein-Klick-Anwenden.
+
+- Neue Komponenten unter `src/components/admin/home-editor/` (`HomePreviewEditor.tsx`, `EditPopup.tsx`, `fields.ts` = Feld-Registry mit Get/Set pro Pfad, `palettes.ts` = die 10 Templates).
+- Neue DB-Spalte `home_text_styles` (jsonb, `siteSettings`) — Schriftgröße/-farbe-Override je Feldpfad, geteilt über beide Sprachen. Per `db:push` live in Neon angelegt.
+- **Wichtig:** Die öffentliche Startseite (`src/app/[lang]/page.tsx`) muss `settings.homeTextStyles` selbst auslesen und anwenden (`styleFor()`-Helper) — das wurde in dieser Session zunächst vergessen (nur die Admin-Vorschau hat die Styles gerendert) und beim Live-Test in Chrome nachträglich gefixt. Bei ähnlichen Erweiterungen des Editors immer prüfen, ob Admin-Vorschau UND öffentliche Seite beide den neuen State lesen.
+- End-to-End im Chrome-Browser getestet (Login, Textstil-Popup, Palette-Klick, Persistenz nach Reload, Wirkung auf der echten `/de`-Seite) — dafür kurzzeitig `ADMIN_PASSWORD_HASH` in `.env.local` auf ein Test-Passwort gesetzt und danach exakt zurückgesetzt (Diff verifiziert).
+- Commit `ea5d6db`, gepusht, per `vercel --prod --scope codewithmaik` deployed. Danach wie gewohnt `auszeit-mosel.vercel.app` per `vercel alias set` nachgezogen und die beiden Nebenaliase entfernt (s. Hinweis unten — passiert bei **jedem** `--prod`-Deploy erneut).
 
 ## Frühere Session: Footer-Link + Domain-Aufräumen
 
@@ -17,6 +27,12 @@ Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwisc
 - `src/components/Footer.tsx`: Credit-Zeile umgebaut — Prefix + zwei separate `<a>`-Links („codewithmaik" → codewithmaik.com, „coding-johnny" → johnomwata-dev.vercel.app), gleiche Hover-Unterstrich-Optik wie vorher, durch „&" getrennt. Commit `0d60548`.
 - **Domain-Befund:** Das Vercel-Projekt `auszeit-mosel` hatte zwischenzeitlich 3 `.vercel.app`-Aliase: `auszeit-mosel.vercel.app` (Zieldomain), `auszeit-website-11.vercel.app` (war durch einen `vercel --prod`-Deploy zur „Latest Production URL" geworden, obwohl `auszeit-mosel.vercel.app` gar nicht mitaktualisiert wurde) und `auszeit-mosel-codewithmaik.vercel.app` (Team-Default-Alias). **Fix:** `vercel alias set` hat `auszeit-mosel.vercel.app` explizit auf den aktuellen Production-Deployment gesetzt, danach `vercel alias rm` für die beiden anderen. Verifiziert: `auszeit-mosel.vercel.app` → 200 (redirect auf `/de`), `auszeit-website-11.vercel.app` → 404.
 - **Hinweis für zukünftige Deploys:** `vercel project ls` zeigt in der Spalte „Latest Production URL" ggf. weiterhin eine veraltete Domain an (gecachtes Projekt-Metadatenfeld, kein Live-Routing) — die tatsächlich aktive Domain ist die, die in `vercel alias ls` auf den neuesten Deployment-Hash zeigt. Bei künftigen `vercel --prod`-Deploys prüfen, ob `auszeit-mosel.vercel.app` automatisch mitaktualisiert wird oder ob wieder ein manuelles `vercel alias set` nötig ist.
+- **Bestätigt reproduzierbar (2026-08-30):** Jeder `vercel --prod`-Deploy legt automatisch die beiden Aliase `auszeit-website-11.vercel.app` und `auszeit-mosel-codewithmaik.vercel.app` neu an (Projekt-Default-Aliase), **ohne** `auszeit-mosel.vercel.app` mitzuziehen — das bleibt auf dem vorherigen Deployment stehen, bis man es manuell nachzieht. **Nach jedem Production-Deploy also immer:**
+  1. `vercel alias set <neue-deployment-url> auszeit-mosel.vercel.app --scope codewithmaik`
+  2. `vercel alias rm auszeit-website-11.vercel.app --scope codewithmaik --yes`
+  3. `vercel alias rm auszeit-mosel-codewithmaik.vercel.app --scope codewithmaik --yes`
+  4. Verifizieren: `curl -o /dev/null -w '%{http_code}' https://auszeit-mosel.vercel.app/de` → `200`, `.../auszeit-website-11.vercel.app/de` → `404`.
+  `auszeit-mosel.vercel.app` ist laut User die **einzige gültige Domain** für dieses Projekt — alle anderen `.vercel.app`-Aliase sind unerwünscht und nach jedem Deploy zu entfernen.
 
 ## Frühere Session: Admin-Editor „Design" (Farbpalette, Bilder, Texte, Logo/Logotext)
 
