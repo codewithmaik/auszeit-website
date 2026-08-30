@@ -19,6 +19,14 @@ export default auth((req) => {
 
   const isLoginPage = pathname === "/admin/login";
   const isAdminRoute = pathname.startsWith("/admin");
+  const isWebdevLoginPage = pathname === "/bierp4a4/login";
+
+  if (isWebdevLoginPage) {
+    if (req.auth) {
+      return NextResponse.redirect(new URL("/admin", req.nextUrl.origin));
+    }
+    return NextResponse.next();
+  }
 
   if (isAdminRoute) {
     if (!isLoginPage && !req.auth) {

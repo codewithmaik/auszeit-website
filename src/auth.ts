@@ -16,16 +16,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const password = credentials?.password;
         if (typeof email !== "string" || typeof password !== "string") return null;
 
-        const adminEmail = process.env.ADMIN_EMAIL;
-        const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
-        if (!adminEmail || !adminPasswordHash) return null;
+        const accounts = [
+          { id: "admin", name: "Admin", email: process.env.ADMIN_EMAIL, hash: process.env.ADMIN_PASSWORD_HASH },
+          { id: "webdev", name: "Webdev", email: process.env.WEBDEV_EMAIL, hash: process.env.WEBDEV_PASSWORD_HASH },
+        ];
 
-        if (email.toLowerCase() !== adminEmail.toLowerCase()) return null;
+        for (const account of accounts) {
+          if (!account.email || !account.hash) continue;
+          if (email.toLowerCase() !== account.email.toLowerCase()) continue;
+          if (await bcrypt.compare(password, account.hash)) {
+            return { id: account.id, email: account.email, name: account.name };
+          }
+        }
 
-        const valid = await bcrypt.compare(password, adminPasswordHash);
-        if (!valid) return null;
-
-        return { id: "admin", email: adminEmail, name: "Admin" };
+        return null;
       },
     }),
   ],
