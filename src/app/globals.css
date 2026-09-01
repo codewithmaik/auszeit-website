@@ -16,6 +16,11 @@
 
   --font-serif: var(--font-playfair), Georgia, serif;
   --font-sans: var(--font-jost), "Helvetica Neue", Arial, sans-serif;
+
+  /* Globale Button-Gestaltung (Design-Editor) — Defaults entsprechen dem
+     bisherigen festen Look, damit ein leerer Override nichts verändert. */
+  --button-border-width: 1px;
+  --button-radius: 2px;
 }
 
 @theme inline {
@@ -60,4 +65,141 @@ html {
   p {
     color: var(--color-ink-soft);
   }
+}
+
+/* Button-Hover-Animationen (Design-Editor, globale Button-Gestaltung).
+   Aktiviert über data-button-anim="<key>" auf <html> (veröffentlichter Stand,
+   src/app/layout.tsx) oder auf einem umgebenden Element (Admin-Vorschau,
+   zeigt den Entwurfsstand) — wirkt dadurch automatisch auf jeden Button mit
+   der Marker-Klasse ".btn" darunter, ohne dass jede Verwendungsstelle
+   (Header/Footer/Formulare/...) einen eigenen Prop übergeben muss. Kein
+   data-button-anim gesetzt = altes, einfaches Farb-Hover bleibt wie bisher. */
+.btn {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    letter-spacing 0.2s ease;
+}
+
+[data-button-anim="lift"] .btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px -8px rgba(0, 0, 0, 0.35);
+}
+[data-button-anim="scale"] .btn:hover {
+  transform: scale(1.06);
+}
+[data-button-anim="glow"] .btn:hover {
+  box-shadow: 0 0 0 4px rgba(201, 154, 63, 0.35);
+}
+[data-button-anim="underline-sweep"] .btn {
+  position: relative;
+  overflow: hidden;
+}
+[data-button-anim="underline-sweep"] .btn::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 100%;
+  bottom: 0;
+  height: 2px;
+  background: currentColor;
+  transition: right 0.25s ease;
+}
+[data-button-anim="underline-sweep"] .btn:hover::after {
+  right: 0;
+}
+[data-button-anim="shine"] .btn {
+  position: relative;
+  overflow: hidden;
+}
+[data-button-anim="shine"] .btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.5s ease;
+}
+[data-button-anim="shine"] .btn:hover::before {
+  left: 120%;
+}
+[data-button-anim="pulse"] .btn:hover {
+  animation: btn-anim-pulse 0.6s ease-in-out;
+}
+@keyframes btn-anim-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+[data-button-anim="bounce"] .btn:hover {
+  animation: btn-anim-bounce 0.5s ease;
+}
+@keyframes btn-anim-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-6px);
+  }
+  60% {
+    transform: translateY(0);
+  }
+  80% {
+    transform: translateY(-2px);
+  }
+}
+[data-button-anim="slide-fill"] .btn {
+  position: relative;
+  overflow: hidden;
+  z-index: 0;
+}
+[data-button-anim="slide-fill"] .btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0.14;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  z-index: -1;
+}
+[data-button-anim="slide-fill"] .btn:hover::before {
+  transform: translateX(0);
+}
+[data-button-anim="ripple"] .btn {
+  position: relative;
+  overflow: hidden;
+}
+[data-button-anim="ripple"] .btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.5) 10%, transparent 10.5%);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 1000% 1000%;
+  opacity: 0;
+  transition:
+    opacity 0.5s ease,
+    background-size 0.01s;
+}
+[data-button-anim="ripple"] .btn:hover::after {
+  opacity: 1;
+  background-size: 260% 260%;
+  transition: opacity 0.5s ease, background-size 0.6s ease;
+}
+[data-button-anim="spacing"] .btn:hover {
+  letter-spacing: 0.24em;
 }

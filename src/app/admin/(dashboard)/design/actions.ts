@@ -14,6 +14,7 @@ import {
 } from "@/db/home-content";
 import { BUSINESS } from "@/lib/site";
 import { isValidFontKey } from "@/lib/fonts";
+import { isValidButtonAnimation } from "@/lib/button-animations";
 
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 const DRAFT_HISTORY_CAP = 20;
@@ -202,6 +203,44 @@ export async function resetThemeColors() {
     themePrimaryDark: null,
     themeAccent: null,
     themeBackground: null,
+  });
+}
+
+// ---------- Globale Button-Gestaltung ----------
+
+const CSS_LENGTH_RE = /^\d+(\.\d+)?px$/;
+
+function readCssLength(formData: FormData, name: string): string | null {
+  const raw = String(formData.get(name) ?? "").trim();
+  if (!raw) return null;
+  if (!CSS_LENGTH_RE.test(raw)) throw new Error(`Ungültiger Pixel-Wert für "${name}".`);
+  return raw;
+}
+
+function readAnimationKey(formData: FormData, name: string): string | null {
+  const raw = String(formData.get(name) ?? "").trim();
+  if (!raw) return null;
+  if (!isValidButtonAnimation(raw)) throw new Error(`Ungültige Animation für "${name}".`);
+  return raw;
+}
+
+export async function saveButtonStyle(formData: FormData) {
+  await saveDesignDraft({
+    buttonBorderWidth: readCssLength(formData, "buttonBorderWidth"),
+    buttonColor: readHex(formData, "buttonColor"),
+    buttonBorderColor: readHex(formData, "buttonBorderColor"),
+    buttonBorderRadius: readCssLength(formData, "buttonBorderRadius"),
+    buttonAnimation: readAnimationKey(formData, "buttonAnimation"),
+  });
+}
+
+export async function resetButtonStyle() {
+  await saveDesignDraft({
+    buttonBorderWidth: null,
+    buttonColor: null,
+    buttonBorderColor: null,
+    buttonBorderRadius: null,
+    buttonAnimation: null,
   });
 }
 

@@ -53,6 +53,16 @@ export default async function AdminDesignPage() {
         hasThemeOverride={Boolean(
           draft.themePrimary || draft.themePrimaryDark || draft.themeAccent || draft.themeBackground,
         )}
+        initialButtonStyle={{
+          borderWidth: draft.buttonBorderWidth,
+          color: draft.buttonColor,
+          borderColor: draft.buttonBorderColor,
+          borderRadius: draft.buttonBorderRadius,
+          animation: draft.buttonAnimation,
+        }}
+        hasButtonOverride={Boolean(
+          draft.buttonBorderWidth || draft.buttonColor || draft.buttonBorderColor || draft.buttonBorderRadius || draft.buttonAnimation,
+        )}
         hasDraft={hasDraft}
         draftHistoryCount={draftHistoryCount}
       />

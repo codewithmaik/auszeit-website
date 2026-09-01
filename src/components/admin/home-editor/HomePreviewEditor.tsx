@@ -7,6 +7,7 @@ import type { HomeContent, HomeTextStyles, DesignDraft } from "@/db/home-content
 import { ICONS as BRAND_ICON_SRC } from "@/components/BrandIcon";
 import { FEATURE_ICONS, FEATURE_ICON_FRAME, TRUST_ICONS, STEP_ICONS } from "@/lib/home-icons";
 import { fontFamilyFor } from "@/lib/fonts";
+import { BUTTON_BASE_CLASS, BUTTON_VARIANT_CLASS, BUTTON_SHAPE_STYLE } from "@/components/Button";
 import {
   saveHomeTextAndStyles,
   resetHomeContent,
@@ -21,6 +22,8 @@ import {
   resetLogoTextImage,
   saveThemeColors,
   resetThemeColors,
+  saveButtonStyle,
+  resetButtonStyle,
   publishDesign,
   discardDesignDraft,
   undoDesignDraft,
@@ -28,6 +31,7 @@ import {
 import { FIELDS, buildHomeContentFormData, type TextRole } from "./fields";
 import { PALETTE_TEMPLATES, DEFAULT_COLORS, type ThemeColors } from "./palettes";
 import { TextEditPopup, ImageEditPopup, type ActiveEditor } from "./EditPopup";
+import { BUTTON_ANIMATION_OPTIONS } from "@/lib/button-animations";
 
 const resetButtonClass =
   "inline-flex items-center gap-1.5 px-4 py-2.5 border border-line text-ink-soft font-sans text-[0.72rem] tracking-[0.08em] uppercase rounded-[2px] hover:text-forest hover:border-forest transition-colors";
@@ -99,8 +103,26 @@ type Props = {
   isLogoTextDefault: boolean;
   initialColors: ThemeColors;
   hasThemeOverride: boolean;
+  initialButtonStyle: ButtonStyleState;
+  hasButtonOverride: boolean;
   hasDraft: boolean;
   draftHistoryCount: number;
+};
+
+export type ButtonStyleState = {
+  borderWidth: string | null;
+  color: string | null;
+  borderColor: string | null;
+  borderRadius: string | null;
+  animation: string | null;
+};
+
+const DEFAULT_BUTTON_STYLE: ButtonStyleState = {
+  borderWidth: null,
+  color: null,
+  borderColor: null,
+  borderRadius: null,
+  animation: null,
 };
 
 const DEFAULT_LOGO_IMAGE = "/images/logo.png";
@@ -124,6 +146,8 @@ export default function HomePreviewEditor({
   isLogoTextDefault,
   initialColors,
   hasThemeOverride,
+  initialButtonStyle,
+  hasButtonOverride,
   hasDraft,
   draftHistoryCount,
 }: Props) {
@@ -141,6 +165,8 @@ export default function HomePreviewEditor({
   const [logoTextIsDefault, setLogoTextIsDefault] = useState(isLogoTextDefault);
   const [colors, setColors] = useState<ThemeColors>(initialColors);
   const [themeOverride, setThemeOverride] = useState(hasThemeOverride);
+  const [buttonStyle, setButtonStyle] = useState<ButtonStyleState>(initialButtonStyle);
+  const [buttonOverride, setButtonOverride] = useState(hasButtonOverride);
   const [previewLocale, setPreviewLocale] = useState<"de" | "en">("de");
   const [activeEditor, setActiveEditor] = useState<ActiveEditor>(null);
   const [draftExists, setDraftExists] = useState(hasDraft);
@@ -156,6 +182,10 @@ export default function HomePreviewEditor({
     "--color-forest-dark": colors.primaryDark,
     "--color-gold": colors.accent,
     "--color-bg": colors.background,
+    ...(buttonStyle.borderWidth && { "--button-border-width": buttonStyle.borderWidth }),
+    ...(buttonStyle.color && { "--button-bg": buttonStyle.color }),
+    ...(buttonStyle.borderColor && { "--button-border-color": buttonStyle.borderColor }),
+    ...(buttonStyle.borderRadius && { "--button-radius": buttonStyle.borderRadius }),
   } as CSSProperties;
 
   function markDraftChanged() {
@@ -183,6 +213,18 @@ export default function HomePreviewEditor({
       background: next.themeBackground ?? DEFAULT_COLORS.background,
     });
     setThemeOverride(Boolean(next.themePrimary || next.themePrimaryDark || next.themeAccent || next.themeBackground));
+    setButtonStyle({
+      borderWidth: next.buttonBorderWidth,
+      color: next.buttonColor,
+      borderColor: next.buttonBorderColor,
+      borderRadius: next.buttonBorderRadius,
+      animation: next.buttonAnimation,
+    });
+    setButtonOverride(
+      Boolean(
+        next.buttonBorderWidth || next.buttonColor || next.buttonBorderColor || next.buttonBorderRadius || next.buttonAnimation,
+      ),
+    );
   }
 
   function openTextEditor(id: string) {
@@ -384,6 +426,31 @@ export default function HomePreviewEditor({
     markDraftChanged();
     startTransition(async () => {
       await resetThemeColors();
+    });
+  }
+
+  function updateButtonStyle(patch: Partial<ButtonStyleState>) {
+    const next = { ...buttonStyle, ...patch };
+    setButtonStyle(next);
+    setButtonOverride(true);
+    markDraftChanged();
+    startTransition(async () => {
+      const fd = new FormData();
+      if (next.borderWidth) fd.set("buttonBorderWidth", next.borderWidth);
+      if (next.color) fd.set("buttonColor", next.color);
+      if (next.borderColor) fd.set("buttonBorderColor", next.borderColor);
+      if (next.borderRadius) fd.set("buttonBorderRadius", next.borderRadius);
+      if (next.animation) fd.set("buttonAnimation", next.animation);
+      await saveButtonStyle(fd);
+    });
+  }
+
+  function resetButtonStyleLocal() {
+    setButtonStyle(DEFAULT_BUTTON_STYLE);
+    setButtonOverride(false);
+    markDraftChanged();
+    startTransition(async () => {
+      await resetButtonStyle();
     });
   }
 
@@ -607,6 +674,111 @@ export default function HomePreviewEditor({
         )}
       </div>
 
+      {/* Buttons */}
+      <div className="bg-white border border-line rounded-[2px] p-6 mb-8">
+        <h2 className="text-[1.15rem] mb-1">Buttons</h2>
+        <p className="text-[0.85rem] text-ink-soft mb-4">
+          Randdicke, Farben, Rundung und Hover-Animation gelten für <strong>alle Buttons der Website</strong>{" "}
+          (Navigation, Formulare, Hero-Buttons etc.).
+        </p>
+
+        <div className="grid grid-cols-2 max-[640px]:grid-cols-1 gap-4 mb-6">
+          <div>
+            <span className="block text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft mb-1.5">Button-Farbe</span>
+            <input
+              type="color"
+              value={buttonStyle.color ?? colors.primary}
+              onChange={(e) => updateButtonStyle({ color: e.target.value })}
+              className="w-full h-11 border border-line rounded-[2px] cursor-pointer"
+            />
+          </div>
+          <div>
+            <span className="block text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft mb-1.5">Rahmenfarbe</span>
+            <input
+              type="color"
+              value={buttonStyle.borderColor ?? colors.primary}
+              onChange={(e) => updateButtonStyle({ borderColor: e.target.value })}
+              className="w-full h-11 border border-line rounded-[2px] cursor-pointer"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 max-[640px]:grid-cols-1 gap-4 mb-6">
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft">Randdicke</span>
+              <span className="text-[0.75rem] text-ink-soft">{parseInt(buttonStyle.borderWidth ?? "1", 10)}px</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={6}
+              step={1}
+              value={parseInt(buttonStyle.borderWidth ?? "1", 10)}
+              onChange={(e) => updateButtonStyle({ borderWidth: `${e.target.value}px` })}
+              className="w-full accent-gold cursor-pointer"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft">Rundung</span>
+              <span className="text-[0.75rem] text-ink-soft">
+                {buttonStyle.borderRadius === "999px" ? "Pille" : `${parseInt(buttonStyle.borderRadius ?? "2", 10)}px`}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={30}
+              step={1}
+              value={buttonStyle.borderRadius === "999px" ? 30 : parseInt(buttonStyle.borderRadius ?? "2", 10)}
+              onChange={(e) => updateButtonStyle({ borderRadius: `${e.target.value}px` })}
+              className="w-full accent-gold cursor-pointer"
+            />
+            <button
+              type="button"
+              onClick={() => updateButtonStyle({ borderRadius: "999px" })}
+              className={resetButtonClass + " mt-2"}
+            >
+              Pille (voll rund)
+            </button>
+          </div>
+        </div>
+
+        <span className="block text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft mb-2">Hover-Animation</span>
+        <div
+          style={previewThemeStyle}
+          className="grid grid-cols-5 max-[760px]:grid-cols-3 max-[480px]:grid-cols-2 gap-3 mb-2"
+        >
+          {BUTTON_ANIMATION_OPTIONS.map((a) => (
+            <div
+              key={a.key}
+              data-button-anim={a.key}
+              className={`flex flex-col items-center gap-2 border rounded-[2px] p-3 ${
+                buttonStyle.animation === a.key ? "border-gold" : "border-line"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => updateButtonStyle({ animation: a.key })}
+                className={`${BUTTON_BASE_CLASS} ${BUTTON_VARIANT_CLASS.primary} px-4 py-2 text-[0.62rem]`}
+                style={BUTTON_SHAPE_STYLE}
+              >
+                Beispiel
+              </button>
+              <span className="text-[0.68rem] text-ink-soft text-center">{a.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {buttonOverride && (
+          <button type="button" onClick={resetButtonStyleLocal} className={resetButtonClass + " mt-3"}>
+            <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
+            Auf Standard-Buttons zurücksetzen
+          </button>
+        )}
+      </div>
+
       {/* Live-Vorschau */}
       <div className="bg-white border border-line rounded-[2px] overflow-hidden mb-8">
         <div className="flex items-center justify-between gap-4 flex-wrap px-5 py-3.5 border-b border-line bg-bg-soft">
@@ -647,7 +819,7 @@ export default function HomePreviewEditor({
           </div>
         </div>
 
-        <div style={previewThemeStyle} className="bg-bg">
+        <div style={previewThemeStyle} data-button-anim={buttonStyle.animation ?? undefined} className="bg-bg">
           {/* Hero */}
           <section className="relative min-h-[64vh] flex items-end overflow-hidden">
             <div className="absolute inset-0 cursor-pointer group" onClick={() => openImageEditor("hero")}>
@@ -677,14 +849,16 @@ export default function HomePreviewEditor({
                 <button
                   type="button"
                   onClick={() => openTextEditor("hero.ctaWohnungen")}
-                  className={`${editableClass} inline-flex items-center gap-2 px-[30px] py-[14px] font-sans text-[0.78rem] tracking-[0.14em] uppercase rounded-[2px] border transition-colors duration-200 bg-forest text-white border-transparent hover:bg-forest-dark`}
+                  className={`${editableClass} ${BUTTON_BASE_CLASS} ${BUTTON_VARIANT_CLASS.primary}`}
+                  style={BUTTON_SHAPE_STYLE}
                 >
                   {content.hero.ctaWohnungen}
                 </button>
                 <button
                   type="button"
                   onClick={() => openTextEditor("hero.ctaBuchen")}
-                  className={`${editableClass} inline-flex items-center gap-2 px-[30px] py-[14px] font-sans text-[0.78rem] tracking-[0.14em] uppercase rounded-[2px] border transition-colors duration-200 bg-transparent text-white border-white/80 hover:bg-white hover:text-forest`}
+                  className={`${editableClass} ${BUTTON_BASE_CLASS} ${BUTTON_VARIANT_CLASS["outline-light"]}`}
+                  style={BUTTON_SHAPE_STYLE}
                 >
                   {content.hero.ctaBuchen}
                 </button>

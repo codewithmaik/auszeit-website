@@ -67,6 +67,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     ...(settings.themePrimaryDark && { "--color-forest-dark": settings.themePrimaryDark }),
     ...(settings.themeAccent && { "--color-gold": settings.themeAccent }),
     ...(settings.themeBackground && { "--color-bg": settings.themeBackground }),
+    ...(settings.buttonBorderWidth && { "--button-border-width": settings.buttonBorderWidth }),
+    ...(settings.buttonColor && { "--button-bg": settings.buttonColor }),
+    ...(settings.buttonBorderColor && { "--button-border-color": settings.buttonBorderColor }),
+    ...(settings.buttonBorderRadius && { "--button-radius": settings.buttonBorderRadius }),
   } as React.CSSProperties;
 
   const jsonLd = {
@@ -90,6 +94,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       lang={locale}
       className={`${playfair.variable} ${jost.variable} ${FONT_VARIABLE_CLASSNAME}`}
       style={themeStyle}
+      data-button-anim={settings.buttonAnimation ?? undefined}
     >
       <body className="flex flex-col min-h-screen">
         <script
