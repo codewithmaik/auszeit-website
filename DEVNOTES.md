@@ -5,10 +5,38 @@
 ## Aktueller Stand
 
 **Branch:** `feature/admin-design-editor` — gepusht nach `origin` (GitHub `codewithmaik/auszeit-website-11`), **nicht** nach `main` gemerged. Working tree sauber (bis auf absichtlich ungetrackte `.agents/`, `.claude/`, `auszeit-apartments/`, `skills-lock.json`, s. u.).
-**Dev-Server:** aktuell nicht gestartet.
+**Dev-Server:** läuft im Hintergrund auf `http://localhost:3002` (Port 3000 war belegt), Log unter `/tmp/auszeit-dev.log`.
 **Production:** läuft über `auszeit-mosel.vercel.app` — **das ist die einzige gültige Domain für dieses Projekt**, alle anderen `.vercel.app`-Aliase (`auszeit-website-11.vercel.app`, `auszeit-mosel-codewithmaik.vercel.app`) werden nach jedem Deploy wieder entfernt (s. „Domain-Aufräumen" unten, inkl. **wichtigem Hinweis für jeden künftigen Deploy**).
 
 Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwischen committed (`9bdeec9`, `4eeda79`, `28f74cd`) und deployed — der frühere Hinweis „noch nicht committed" in dieser Datei war veraltet.
+
+## Session: Design-Editor — Entwurf/Veröffentlichen-Workflow + erweiterte Optionen (laufend)
+
+**Auftrag:** Design-Menü überarbeiten — (1) Änderungen sollen nur noch in einem Entwurf landen und erst nach explizitem „Veröffentlichen" auf der echten Website sichtbar werden (bisher: sofort live), (2) die Vorschau soll Änderungen weiterhin sofort/live zeigen, (3) Text-Editier-Optionen um Fett/Kursiv/Unterstrichen + freie Schriftart pro Feld erweitern, (4) Bildzuschnitt beim Upload, (5) globale Button-Gestaltung (Randdicke/-farbe, Button-Farbe, Border-Radius, 10 Hover-Animationen), (6) immer sichtbarer „Zurück"-Button für die letzte Entwurfs-Änderung. Plan mit dem User abgestimmt (inkl. 3 Rückfragen: „Bild" in der Textformat-Liste = Tippfehler für „Fett"; Schriftart-Auswahl pro Textfeld statt global; Button-Optionen global für die ganze Website statt nur die 2 Hero-CTAs), vollständiger Plan liegt unter `~/.claude/plans/squishy-coalescing-scroll.md`.
+
+**Umsetzung in 5 Phasen** (jede Phase: eigener Commit + Push + Devnotes-Update):
+1. Entwurf/Veröffentlichen/Zurück-Infrastruktur — **erledigt, committed (`b8e56b9`), gepusht.**
+2. Text-Erweiterungen (Fett/Kursiv/Unterstrichen + Schriftart pro Feld) — **teilweise erledigt** (Fett/Kursiv/Unterstrichen bereits in Phase 1 mitgeliefert, da Datenmodell ohnehin angefasst wurde; Schriftart-Auswahl mit kuratierten Google Fonts steht noch aus).
+3. Bildzuschnitt — offen.
+4. Globale Button-Gestaltung — offen.
+5. End-to-End-Check + Devnotes-Abschluss — offen.
+
+**Phase 1 im Detail** (Commit `b8e56b9`):
+- Neue `siteSettings`-Spalten (`src/db/schema.ts`, per `db:push` bereits gegen die Dev-DB ausgeführt): `designDraft` (jsonb, kompletter Entwurfs-Snapshot), `designDraftHistory` (jsonb-Array, Ringpuffer für „Zurück", Cap 20 Einträge), plus `buttonBorderWidth`/`buttonColor`/`buttonBorderColor`/`buttonBorderRadius`/`buttonAnimation` (Spalten für Phase 4 schon angelegt, aktuell ungenutzt/immer `null`).
+- `DesignDraft`-Typ + `publishedDesignSnapshot()`/`effectiveDesignState()`-Helper (rein funktional, keine DB-Abhängigkeit) in `src/db/home-content.ts` — bauen den Entwurfs-Snapshot aus dem veröffentlichten Zustand bzw. liefern den effektiven Arbeitszustand (Entwurf ?? veröffentlicht).
+- `src/app/admin/(dashboard)/design/actions.ts` komplett umgebaut: zentraler `saveDesignDraft()`-Helper (schreibt in den Entwurf, pusht vorherigen Entwurfsstand in die History), `publishDesign()` (kopiert Entwurf → veröffentlichte Spalten, räumt ersetzte Blob-Bilder auf, leert Entwurf+History), `discardDesignDraft()` (verwirft Entwurf, gibt den veröffentlichten Snapshot zurück, räumt verwaiste Blobs auf), `undoDesignDraft()` (holt letzten History-Eintrag zurück, gibt ihn zurück). Bild-Uploads schreiben die Blob-URL jetzt in den Entwurf statt direkt in die veröffentlichte Spalte — **wichtig:** dadurch wird das alte Blob beim Ersetzen nicht mehr sofort gelöscht (das würde das noch live geschaltete Bild kaputt machen), sondern erst beim Veröffentlichen/Verwerfen aufgeräumt.
+- `HomePreviewEditor.tsx`: neue Toolbar oben (Zurück/Entwurf verwerfen/Veröffentlichen mit Inline-Bestätigung statt `window.confirm()`), Branding (Logo/Logo-Schriftzug) aus `design/page.tsx` hierher verschoben und auf denselben Klick-Popup-Mechanismus wie Hero-/Wohlfühl-Bild umgestellt (`ImageEditPopup` um `previewAspectClassName`/`round`-Props erweitert) — das war nötig, damit Logo-Änderungen denselben Entwurfszustand teilen wie der Rest (sonst hätte man den Seiten-Reload-Umweg über `router.refresh()`/Remount-`key` gebraucht; stattdessen synct `applyDraftState()` nach Undo/Verwerfen alle Felder manuell im Client-State).
+- `HomeTextStyles` (`src/db/home-content.ts`) um `bold`/`italic`/`underline`/`fontFamily` erweitert; `TextEditPopup` (`EditPopup.tsx`) hat jetzt drei Toggle-Buttons (Fett/Kursiv/Unterstrichen); Admin-Vorschau (`Editable`) und öffentliche Seite (`styleFor()` in `src/app/[lang]/page.tsx`) wenden beide `fontWeight`/`fontStyle`/`textDecoration` an. `fontFamily` ist im Typ/in der Sanitize-Funktion schon vorbereitet, aber noch nirgends im UI wählbar (kommt mit der kuratierten Font-Liste in Phase 2).
+- Verifiziert: `npx tsc --noEmit` und `npx eslint` auf allen geänderten Dateien sauber. `db:push` gegen die Dev-DB erfolgreich.
+- **Noch nicht verifiziert:** der eigentliche Klick-Weg im Browser (Login → `/admin/design` → Entwurf anlegen → Vorschau bleibt live unverändert auf der öffentlichen Seite → Veröffentlichen → öffentliche Seite zeigt Änderung → Zurück/Verwerfen testen). Grund: zum Einloggen bräuchte es entweder das echte Admin-Passwort oder ein kurzzeitiges Ersetzen von `ADMIN_PASSWORD_HASH` in `.env.local` (wie in einer früheren Session gemacht) — der dafür nötige `node -e "bcrypt.hashSync(...)"`-Befehl wurde diesmal vom Auto-Mode-Classifier blockiert (als sensible Credential-Operation eingestuft). Es wurde **nicht** versucht, das zu umgehen. Für den Rest der Session daher: entweder der User loggt sich einmal selbst unter `/admin/design` (oder `/bierp4a4/login`) ein und ich mache mit der bereits authentifizierten Chrome-Session weiter, oder der User erlaubt den bcrypt-Befehl explizit.
+
+## Was noch offen ist (aktuelle Session)
+
+1. Browser-Login für den End-to-End-Test klären (s. o.).
+2. Phase 2 fertigstellen: kuratierte, DSGVO-unbedenkliche Google-Fonts-Liste (`src/lib/fonts.ts`, via `next/font/google` wie die bestehenden `Playfair_Display`/`Jost`), Font-Dropdown im `TextEditPopup`, Anwendung in `Editable` + `styleFor()`.
+3. Phase 3: Bildzuschnitt (`react-easy-crop`, neue Abhängigkeit) für alle vier Bild-Slots (Hero 16:9, Wohlfühl 4:3, Logo 1:1 rund, Logo-Schriftzug 3:1).
+4. Phase 4: globale Button-Gestaltung (CSS-Variablen in `layout.tsx`/`globals.css`, `Button.tsx`-Umbau, Hero-CTAs auf gemeinsame Button-Hilfsfunktion umstellen, 10 CSS-Hover-Animationen, neue „Buttons"-Sektion im Editor).
+5. Phase 5: End-to-End-Check im Browser, Devnotes-Abschluss.
 
 ## Session: Startseite als Live-Vorschau-Editor + Farbpaletten-Templates
 
