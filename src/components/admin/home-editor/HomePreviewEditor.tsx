@@ -298,6 +298,7 @@ export default function HomePreviewEditor({
       isDefault: c.isDefault,
       previewAspectClassName: id === "logo" ? "aspect-square" : id === "logoText" ? "aspect-[3/1]" : undefined,
       round: id === "logo",
+      aspectRatio: id === "hero" ? 16 / 9 : id === "wohlfuehl" ? 4 / 3 : id === "logo" ? 1 : 3 / 1,
     });
   }
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, RotateCcw, Upload, Bold, Italic, Underline } from "lucide-react";
+import { X, RotateCcw, Upload, Bold, Italic, Underline, Crop } from "lucide-react";
+import Cropper, { type Area, type Point } from "react-easy-crop";
 import { FONT_OPTIONS } from "@/lib/fonts";
 
 export type TextEditor = {
@@ -32,8 +33,10 @@ export type ImageEditor = {
   isDefault: boolean;
   /** z. B. "aspect-square" für Logo — steuert nur den Vorschau-Rahmen im Popup. */
   previewAspectClassName?: string;
-  /** Rundes Vorschau-Overlay (z. B. für das Logo). */
+  /** Rundes Vorschau-Overlay + runder Zuschnitt (z. B. für das Logo). */
   round?: boolean;
+  /** Breite/Höhe-Verhältnis für den Zuschnitt-Schritt, z. B. 16/9. */
+  aspectRatio: number;
 };
 
 export type ActiveEditor = TextEditor | ImageEditor | null;
@@ -262,6 +265,28 @@ export function TextEditPopup({
   );
 }
 
+function loadImageElement(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Bild konnte nicht geladen werden."));
+    img.src = src;
+  });
+}
+
+async function cropImageToFile(objectUrl: string, area: Area, fileName: string, mimeType: string): Promise<File> {
+  const image = await loadImageElement(objectUrl);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(area.width));
+  canvas.height = Math.max(1, Math.round(area.height));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Zuschnitt wird von diesem Browser nicht unterstützt.");
+  ctx.drawImage(image, area.x, area.y, area.width, area.height, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mimeType, 0.92));
+  if (!blob) throw new Error("Zuschnitt fehlgeschlagen.");
+  return new File([blob], fileName, { type: blob.type });
+}
+
 export function ImageEditPopup({
   editor,
   saving,
@@ -276,44 +301,124 @@ export function ImageEditPopup({
   onReset: () => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [cropping, setCropping] = useState(false);
+  const [cropError, setCropError] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [objectUrl]);
+
+  function selectFile(next: File | null) {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    setFile(next);
+    setObjectUrl(next ? URL.createObjectURL(next) : null);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setCroppedAreaPixels(null);
+    setCropError(null);
+  }
+
+  async function applyCrop() {
+    if (!file || !objectUrl || !croppedAreaPixels) return;
+    setCropping(true);
+    setCropError(null);
+    try {
+      const cropped = await cropImageToFile(objectUrl, croppedAreaPixels, file.name, file.type || "image/jpeg");
+      onUpload(cropped);
+    } catch {
+      setCropError("Zuschnitt fehlgeschlagen. Bitte andere Datei versuchen.");
+    } finally {
+      setCropping(false);
+    }
+  }
+
+  const busy = saving || cropping;
 
   return (
     <Modal onClose={onClose}>
       <ModalHeader title={editor.label} onClose={onClose} />
       <div className="p-6">
         <p className="text-[0.85rem] text-ink-soft mb-4">{editor.hint}</p>
-        <div
-          className={`relative w-full ${editor.previewAspectClassName ?? "aspect-video"} bg-bg-soft border border-line rounded-[2px] overflow-hidden mb-4 ${editor.round ? "max-w-[160px] mx-auto rounded-full" : ""}`}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={editor.currentSrc} alt="" className="w-full h-full object-cover" />
-        </div>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="text-[0.85rem] file:mr-3 file:px-4 file:py-2 file:border-0 file:rounded-[2px] file:bg-bg-soft file:text-ink file:text-[0.78rem] file:uppercase file:tracking-[0.05em] file:cursor-pointer mb-5 block"
-        />
-        <div className="flex items-center gap-3 flex-wrap">
-          <button
-            type="button"
-            disabled={!file || saving}
-            onClick={() => file && onUpload(file)}
-            className={saveButtonClass}
-          >
-            <Upload className="w-3.5 h-3.5" strokeWidth={2} />
-            {saving ? "Lädt hoch…" : "Hochladen"}
-          </button>
-          {!editor.isDefault && (
-            <button type="button" disabled={saving} onClick={onReset} className={resetButtonClass}>
-              <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
-              Auf Standardbild zurücksetzen
-            </button>
-          )}
-          <button type="button" onClick={onClose} className={resetButtonClass}>
-            Schließen
-          </button>
-        </div>
+
+        {!objectUrl ? (
+          <>
+            <div
+              className={`relative w-full ${editor.previewAspectClassName ?? "aspect-video"} bg-bg-soft border border-line rounded-[2px] overflow-hidden mb-4 ${editor.round ? "max-w-[160px] mx-auto rounded-full" : ""}`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={editor.currentSrc} alt="" className="w-full h-full object-cover" />
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => selectFile(e.target.files?.[0] ?? null)}
+              className="text-[0.85rem] file:mr-3 file:px-4 file:py-2 file:border-0 file:rounded-[2px] file:bg-bg-soft file:text-ink file:text-[0.78rem] file:uppercase file:tracking-[0.05em] file:cursor-pointer mb-5 block"
+            />
+            <div className="flex items-center gap-3 flex-wrap">
+              {!editor.isDefault && (
+                <button type="button" disabled={saving} onClick={onReset} className={resetButtonClass}>
+                  <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
+                  Auf Standardbild zurücksetzen
+                </button>
+              )}
+              <button type="button" onClick={onClose} className={resetButtonClass}>
+                Schließen
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="relative w-full h-72 bg-ink/90 rounded-[2px] overflow-hidden mb-4">
+              <Cropper
+                image={objectUrl}
+                crop={crop}
+                zoom={zoom}
+                aspect={editor.aspectRatio}
+                cropShape={editor.round ? "round" : "rect"}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={(_area, areaPixels) => setCroppedAreaPixels(areaPixels)}
+              />
+            </div>
+            <div className="mb-4">
+              <label className={labelClass}>Zoom</label>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.01}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-full accent-gold cursor-pointer"
+              />
+            </div>
+            {cropError && <p className="text-[0.8rem] text-red-600 mb-3">{cropError}</p>}
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                type="button"
+                disabled={!croppedAreaPixels || busy}
+                onClick={applyCrop}
+                className={saveButtonClass}
+              >
+                <Crop className="w-3.5 h-3.5" strokeWidth={2} />
+                {busy ? "Lädt hoch…" : "Zuschnitt anwenden & hochladen"}
+              </button>
+              <button type="button" disabled={busy} onClick={() => selectFile(null)} className={resetButtonClass}>
+                <Upload className="w-3.5 h-3.5" strokeWidth={2} />
+                Andere Datei wählen
+              </button>
+              <button type="button" disabled={busy} onClick={onClose} className={resetButtonClass}>
+                Abbrechen
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </Modal>
   );
