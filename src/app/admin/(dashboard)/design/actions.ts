@@ -5,11 +5,19 @@ import { revalidatePath } from "next/cache";
 import { put, del } from "@vercel/blob";
 import { db } from "@/db/client";
 import { siteSettings } from "@/db/schema";
-import { FEATURE_KEYS, type HomeContent, type HomeTextStyles } from "@/db/home-content";
+import {
+  FEATURE_KEYS,
+  publishedDesignSnapshot,
+  type HomeContent,
+  type HomeTextStyles,
+  type DesignDraft,
+} from "@/db/home-content";
 import { BUSINESS } from "@/lib/site";
 
 const HEX_RE = /^#[0-9a-f]{6}$/i;
+const DRAFT_HISTORY_CAP = 20;
 
+type SettingsRow = typeof siteSettings.$inferSelect;
 type SettingsUpdate = Partial<typeof siteSettings.$inferInsert>;
 
 async function ensureSettingsId(): Promise<number> {
@@ -27,8 +35,13 @@ async function ensureSettingsId(): Promise<number> {
   return created.id;
 }
 
-async function updateSettings(values: SettingsUpdate) {
+async function getRow(): Promise<SettingsRow> {
   const id = await ensureSettingsId();
+  const [row] = await db.select().from(siteSettings).where(eq(siteSettings.id, id)).limit(1);
+  return row;
+}
+
+async function updateSettings(id: number, values: SettingsUpdate) {
   await db
     .update(siteSettings)
     .set({ ...values, updatedAt: new Date() })
@@ -40,79 +53,128 @@ function revalidateDesign() {
   revalidatePath("/admin/design");
 }
 
+// ---------- Entwurf/Veröffentlichen/Zurück ----------
+//
+// Jede Design-Änderung landet in `designDraft` (siteSettings), NICHT direkt in
+// den veröffentlichten Spalten, die die öffentliche Website liest. Erst
+// `publishDesign()` kopiert den Entwurf in die veröffentlichten Spalten. Vor
+// jeder Entwurfs-Änderung wird der bisherige Entwurfsstand in
+// `designDraftHistory` gepusht (Ringpuffer) — das trägt den „Zurück"-Button.
+
+async function saveDesignDraft(partial: Partial<DesignDraft>): Promise<DesignDraft> {
+  const row = await getRow();
+  const currentDraft = row.designDraft ?? publishedDesignSnapshot(row);
+  const history = row.designDraftHistory ?? [];
+  const newHistory = [currentDraft, ...history].slice(0, DRAFT_HISTORY_CAP);
+  const newDraft: DesignDraft = { ...currentDraft, ...partial };
+
+  await updateSettings(row.id, { designDraft: newDraft, designDraftHistory: newHistory });
+  revalidateDesign();
+  return newDraft;
+}
+
+async function deleteBlobIfOrphaned(url: string | null, keepUrl: string | null) {
+  if (url && url !== keepUrl && url.startsWith("http")) {
+    try {
+      await del(url);
+    } catch {
+      // ignore blob deletion errors, don't block the workflow
+    }
+  }
+}
+
+export async function publishDesign() {
+  const row = await getRow();
+  const draft = row.designDraft;
+  if (!draft) return;
+
+  const published = publishedDesignSnapshot(row);
+  await Promise.all([
+    deleteBlobIfOrphaned(published.logoImageUrl, draft.logoImageUrl),
+    deleteBlobIfOrphaned(published.logoTextImageUrl, draft.logoTextImageUrl),
+    deleteBlobIfOrphaned(published.homeHeroImageUrl, draft.homeHeroImageUrl),
+    deleteBlobIfOrphaned(published.homeWohlfuehlImageUrl, draft.homeWohlfuehlImageUrl),
+  ]);
+
+  await updateSettings(row.id, { ...draft, designDraft: null, designDraftHistory: null });
+  revalidateDesign();
+}
+
+export async function discardDesignDraft(): Promise<DesignDraft> {
+  const row = await getRow();
+  const draft = row.designDraft;
+  const published = publishedDesignSnapshot(row);
+  if (draft) {
+    await Promise.all([
+      deleteBlobIfOrphaned(draft.logoImageUrl, published.logoImageUrl),
+      deleteBlobIfOrphaned(draft.logoTextImageUrl, published.logoTextImageUrl),
+      deleteBlobIfOrphaned(draft.homeHeroImageUrl, published.homeHeroImageUrl),
+      deleteBlobIfOrphaned(draft.homeWohlfuehlImageUrl, published.homeWohlfuehlImageUrl),
+    ]);
+  }
+  await updateSettings(row.id, { designDraft: null, designDraftHistory: null });
+  revalidateDesign();
+  return published;
+}
+
+export async function undoDesignDraft(): Promise<DesignDraft | null> {
+  const row = await getRow();
+  const history = row.designDraftHistory ?? [];
+  if (history.length === 0) return null;
+
+  const [previousDraft, ...rest] = history;
+  await updateSettings(row.id, { designDraft: previousDraft, designDraftHistory: rest });
+  revalidateDesign();
+  return previousDraft;
+}
+
 // ---------- Branding- & Startseiten-Bilder ----------
 
-type ImageColumn = "logoImageUrl" | "logoTextImageUrl" | "homeHeroImageUrl" | "homeWohlfuehlImageUrl";
+type ImageField = "logoImageUrl" | "logoTextImageUrl" | "homeHeroImageUrl" | "homeWohlfuehlImageUrl";
 
-async function uploadSiteImage(
-  column: ImageColumn,
+async function uploadDraftImage(
+  field: ImageField,
   blobFolder: string,
   formData: FormData,
 ): Promise<{ url: string } | undefined> {
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return;
 
-  const [current] = await db.select().from(siteSettings).limit(1);
-  const previousUrl = current?.[column];
-
   const blob = await put(`${blobFolder}/${Date.now()}-${file.name}`, file, { access: "public" });
-  await updateSettings({ [column]: blob.url });
-
-  if (previousUrl?.startsWith("http")) {
-    try {
-      await del(previousUrl);
-    } catch {
-      // ignore blob deletion errors, don't block the swap
-    }
-  }
-
-  revalidateDesign();
+  await saveDesignDraft({ [field]: blob.url });
   return { url: blob.url };
 }
 
-async function resetSiteImage(column: ImageColumn) {
-  const [current] = await db.select().from(siteSettings).limit(1);
-  const previousUrl = current?.[column];
-
-  await updateSettings({ [column]: null });
-
-  if (previousUrl?.startsWith("http")) {
-    try {
-      await del(previousUrl);
-    } catch {
-      // ignore
-    }
-  }
-
-  revalidateDesign();
+async function resetDraftImage(field: ImageField) {
+  await saveDesignDraft({ [field]: null });
 }
 
 export async function uploadLogoImage(formData: FormData) {
-  await uploadSiteImage("logoImageUrl", "branding", formData);
+  return uploadDraftImage("logoImageUrl", "branding", formData);
 }
 export async function resetLogoImage() {
-  await resetSiteImage("logoImageUrl");
+  await resetDraftImage("logoImageUrl");
 }
 
 export async function uploadLogoTextImage(formData: FormData) {
-  await uploadSiteImage("logoTextImageUrl", "branding", formData);
+  return uploadDraftImage("logoTextImageUrl", "branding", formData);
 }
 export async function resetLogoTextImage() {
-  await resetSiteImage("logoTextImageUrl");
+  await resetDraftImage("logoTextImageUrl");
 }
 
 export async function uploadHomeHeroImage(formData: FormData) {
-  return uploadSiteImage("homeHeroImageUrl", "home", formData);
+  return uploadDraftImage("homeHeroImageUrl", "home", formData);
 }
 export async function resetHomeHeroImage() {
-  await resetSiteImage("homeHeroImageUrl");
+  await resetDraftImage("homeHeroImageUrl");
 }
 
 export async function uploadHomeWohlfuehlImage(formData: FormData) {
-  return uploadSiteImage("homeWohlfuehlImageUrl", "home", formData);
+  return uploadDraftImage("homeWohlfuehlImageUrl", "home", formData);
 }
 export async function resetHomeWohlfuehlImage() {
-  await resetSiteImage("homeWohlfuehlImageUrl");
+  await resetDraftImage("homeWohlfuehlImageUrl");
 }
 
 // ---------- Farbpalette ----------
@@ -125,23 +187,21 @@ function readHex(formData: FormData, name: string): string | null {
 }
 
 export async function saveThemeColors(formData: FormData) {
-  await updateSettings({
+  await saveDesignDraft({
     themePrimary: readHex(formData, "themePrimary"),
     themePrimaryDark: readHex(formData, "themePrimaryDark"),
     themeAccent: readHex(formData, "themeAccent"),
     themeBackground: readHex(formData, "themeBackground"),
   });
-  revalidateDesign();
 }
 
 export async function resetThemeColors() {
-  await updateSettings({
+  await saveDesignDraft({
     themePrimary: null,
     themePrimaryDark: null,
     themeAccent: null,
     themeBackground: null,
   });
-  revalidateDesign();
 }
 
 // ---------- Startseiten-Texte ----------
@@ -192,19 +252,6 @@ function parseHomeContent(formData: FormData, locale: "de" | "en"): HomeContent 
   };
 }
 
-export async function saveHomeContent(formData: FormData) {
-  await updateSettings({
-    homeContentDe: parseHomeContent(formData, "de"),
-    homeContentEn: parseHomeContent(formData, "en"),
-  });
-  revalidateDesign();
-}
-
-export async function resetHomeContent() {
-  await updateSettings({ homeContentDe: null, homeContentEn: null });
-  revalidateDesign();
-}
-
 // ---------- Startseiten-Textstile (Schriftgröße/-farbe je Feld) ----------
 
 const FONT_SIZE_RE = /^\d+(\.\d+)?rem$/;
@@ -213,24 +260,38 @@ function sanitizeHomeTextStyles(styles: HomeTextStyles): HomeTextStyles {
   const clean: HomeTextStyles = {};
   for (const [path, override] of Object.entries(styles)) {
     if (!override || typeof path !== "string") continue;
-    const entry: { fontSize?: string; color?: string } = {};
+    const entry: HomeTextStyles[string] = {};
     if (typeof override.fontSize === "string" && FONT_SIZE_RE.test(override.fontSize)) {
       entry.fontSize = override.fontSize;
     }
     if (typeof override.color === "string" && HEX_RE.test(override.color)) {
       entry.color = override.color;
     }
-    if (entry.fontSize || entry.color) clean[path] = entry;
+    if (typeof override.bold === "boolean") entry.bold = override.bold;
+    if (typeof override.italic === "boolean") entry.italic = override.italic;
+    if (typeof override.underline === "boolean") entry.underline = override.underline;
+    if (typeof override.fontFamily === "string" && override.fontFamily) {
+      entry.fontFamily = override.fontFamily;
+    }
+    if (Object.keys(entry).length > 0) clean[path] = entry;
   }
   return clean;
 }
 
-export async function saveHomeTextStyles(styles: HomeTextStyles) {
-  await updateSettings({ homeTextStyles: sanitizeHomeTextStyles(styles) });
-  revalidateDesign();
+// Speichert Text + Textstile einer Bearbeitung in einem Zug (ein Entwurfs-/
+// History-Eintrag statt zwei separaten).
+export async function saveHomeTextAndStyles(formData: FormData, styles: HomeTextStyles) {
+  await saveDesignDraft({
+    homeContentDe: parseHomeContent(formData, "de"),
+    homeContentEn: parseHomeContent(formData, "en"),
+    homeTextStyles: sanitizeHomeTextStyles(styles),
+  });
+}
+
+export async function resetHomeContent() {
+  await saveDesignDraft({ homeContentDe: null, homeContentEn: null });
 }
 
 export async function resetHomeTextStyles() {
-  await updateSettings({ homeTextStyles: null });
-  revalidateDesign();
+  await saveDesignDraft({ homeTextStyles: null });
 }

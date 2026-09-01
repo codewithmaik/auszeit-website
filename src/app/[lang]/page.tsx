@@ -22,6 +22,9 @@ function styleFor(styles: HomeTextStyles | null | undefined, id: string): React.
   return {
     ...(override.fontSize && { fontSize: override.fontSize }),
     ...(override.color && { color: override.color }),
+    ...(override.bold && { fontWeight: 700 }),
+    ...(override.italic && { fontStyle: "italic" }),
+    ...(override.underline && { textDecoration: "underline" }),
   };
 }
 

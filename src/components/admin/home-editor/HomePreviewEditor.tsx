@@ -1,21 +1,28 @@
 "use client";
 
 import { useState, useTransition, type CSSProperties, type ElementType, type ReactNode } from "react";
-import { Check, ArrowRight, CalendarCheck2, RotateCcw, Pencil } from "lucide-react";
-import type { HomeContent, HomeTextStyles } from "@/db/home-content";
+import Image from "next/image";
+import { Check, ArrowRight, CalendarCheck2, RotateCcw, Pencil, Undo2, UploadCloud, X } from "lucide-react";
+import type { HomeContent, HomeTextStyles, DesignDraft } from "@/db/home-content";
 import { ICONS as BRAND_ICON_SRC } from "@/components/BrandIcon";
 import { FEATURE_ICONS, FEATURE_ICON_FRAME, TRUST_ICONS, STEP_ICONS } from "@/lib/home-icons";
 import {
-  saveHomeContent,
+  saveHomeTextAndStyles,
   resetHomeContent,
-  saveHomeTextStyles,
   resetHomeTextStyles,
   uploadHomeHeroImage,
   resetHomeHeroImage,
   uploadHomeWohlfuehlImage,
   resetHomeWohlfuehlImage,
+  uploadLogoImage,
+  resetLogoImage,
+  uploadLogoTextImage,
+  resetLogoTextImage,
   saveThemeColors,
   resetThemeColors,
+  publishDesign,
+  discardDesignDraft,
+  undoDesignDraft,
 } from "@/app/admin/(dashboard)/design/actions";
 import { FIELDS, buildHomeContentFormData, type TextRole } from "./fields";
 import { PALETTE_TEMPLATES, DEFAULT_COLORS, type ThemeColors } from "./palettes";
@@ -25,6 +32,8 @@ const resetButtonClass =
   "inline-flex items-center gap-1.5 px-4 py-2.5 border border-line text-ink-soft font-sans text-[0.72rem] tracking-[0.08em] uppercase rounded-[2px] hover:text-forest hover:border-forest transition-colors";
 const saveButtonClass =
   "inline-flex items-center gap-2 px-6 py-3 bg-forest text-white font-sans text-[0.78rem] tracking-[0.1em] uppercase rounded-[2px] hover:bg-forest-dark transition-colors";
+
+type ImageId = "hero" | "wohlfuehl" | "logo" | "logoText";
 
 function roleColor(role: TextRole | undefined, colors: ThemeColors): string {
   if (role === "forest") return colors.primary;
@@ -57,6 +66,9 @@ function Editable({
   if (field?.styleable) {
     if (override?.fontSize) style.fontSize = override.fontSize;
     if (override?.color) style.color = override.color;
+    if (override?.bold) style.fontWeight = 700;
+    if (override?.italic) style.fontStyle = "italic";
+    if (override?.underline) style.textDecoration = "underline";
   }
   return (
     <Tag className={`${className} ${editableClass}`} style={style} onClick={() => onEdit(id)}>
@@ -78,9 +90,17 @@ type Props = {
   initialWohlfuehlImage: string;
   defaultWohlfuehlImage: string;
   isWohlfuehlDefault: boolean;
+  initialLogoImage: string;
+  isLogoDefault: boolean;
+  initialLogoTextImage: string;
+  isLogoTextDefault: boolean;
   initialColors: ThemeColors;
   hasThemeOverride: boolean;
+  hasDraft: boolean;
+  draftHistoryCount: number;
 };
+
+const DEFAULT_LOGO_IMAGE = "/images/logo.png";
 
 export default function HomePreviewEditor({
   initialContentDe,
@@ -95,8 +115,14 @@ export default function HomePreviewEditor({
   initialWohlfuehlImage,
   defaultWohlfuehlImage,
   isWohlfuehlDefault,
+  initialLogoImage,
+  isLogoDefault,
+  initialLogoTextImage,
+  isLogoTextDefault,
   initialColors,
   hasThemeOverride,
+  hasDraft,
+  draftHistoryCount,
 }: Props) {
   const [contentDe, setContentDe] = useState(initialContentDe);
   const [contentEn, setContentEn] = useState(initialContentEn);
@@ -106,10 +132,17 @@ export default function HomePreviewEditor({
   const [heroIsDefault, setHeroIsDefault] = useState(isHeroDefault);
   const [wohlfuehlImage, setWohlfuehlImage] = useState(initialWohlfuehlImage);
   const [wohlfuehlIsDefault, setWohlfuehlIsDefault] = useState(isWohlfuehlDefault);
+  const [logoImage, setLogoImage] = useState(initialLogoImage);
+  const [logoIsDefault, setLogoIsDefault] = useState(isLogoDefault);
+  const [logoTextImage, setLogoTextImage] = useState(initialLogoTextImage);
+  const [logoTextIsDefault, setLogoTextIsDefault] = useState(isLogoTextDefault);
   const [colors, setColors] = useState<ThemeColors>(initialColors);
   const [themeOverride, setThemeOverride] = useState(hasThemeOverride);
   const [previewLocale, setPreviewLocale] = useState<"de" | "en">("de");
   const [activeEditor, setActiveEditor] = useState<ActiveEditor>(null);
+  const [draftExists, setDraftExists] = useState(hasDraft);
+  const [historyCount, setHistoryCount] = useState(draftHistoryCount);
+  const [confirmingPublish, setConfirmingPublish] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const content = previewLocale === "de" ? contentDe : contentEn;
@@ -121,6 +154,33 @@ export default function HomePreviewEditor({
     "--color-gold": colors.accent,
     "--color-bg": colors.background,
   } as CSSProperties;
+
+  function markDraftChanged() {
+    setDraftExists(true);
+    setHistoryCount((c) => c + 1);
+  }
+
+  function applyDraftState(next: DesignDraft) {
+    setContentDe(next.homeContentDe ?? defaultContentDe);
+    setContentEn(next.homeContentEn ?? defaultContentEn);
+    setStyles(next.homeTextStyles ?? {});
+    setHomeOverride(Boolean(next.homeContentDe || next.homeContentEn));
+    setHeroImage(next.homeHeroImageUrl || defaultHeroImage);
+    setHeroIsDefault(!next.homeHeroImageUrl);
+    setWohlfuehlImage(next.homeWohlfuehlImageUrl || defaultWohlfuehlImage);
+    setWohlfuehlIsDefault(!next.homeWohlfuehlImageUrl);
+    setLogoImage(next.logoImageUrl || DEFAULT_LOGO_IMAGE);
+    setLogoIsDefault(!next.logoImageUrl);
+    setLogoTextImage(next.logoTextImageUrl || DEFAULT_LOGO_IMAGE);
+    setLogoTextIsDefault(!next.logoTextImageUrl);
+    setColors({
+      primary: next.themePrimary ?? DEFAULT_COLORS.primary,
+      primaryDark: next.themePrimaryDark ?? DEFAULT_COLORS.primaryDark,
+      accent: next.themeAccent ?? DEFAULT_COLORS.accent,
+      background: next.themeBackground ?? DEFAULT_COLORS.background,
+    });
+    setThemeOverride(Boolean(next.themePrimary || next.themePrimaryDark || next.themeAccent || next.themeBackground));
+  }
 
   function openTextEditor(id: string) {
     const field = FIELDS[id];
@@ -137,23 +197,40 @@ export default function HomePreviewEditor({
       en: field.get(contentEn),
       fontRem: override?.fontSize ? parseFloat(override.fontSize) : (field.defaultRem ?? 1),
       color: override?.color ?? defaultColor,
+      bold: Boolean(override?.bold),
+      italic: Boolean(override?.italic),
+      underline: Boolean(override?.underline),
       defaultRem: field.defaultRem ?? 1,
       defaultColor,
-      hasOverride: Boolean(override?.fontSize || override?.color),
+      hasOverride: Boolean(
+        override?.fontSize || override?.color || override?.bold || override?.italic || override?.underline,
+      ),
     });
   }
 
-  function handleSaveText(values: { de: string; en: string; fontRem: number | null; color: string | null }) {
+  function handleSaveText(values: {
+    de: string;
+    en: string;
+    fontRem: number | null;
+    color: string | null;
+    bold: boolean;
+    italic: boolean;
+    underline: boolean;
+  }) {
     if (!activeEditor || activeEditor.kind !== "text") return;
     const id = activeEditor.id;
     const field = FIELDS[id];
     const newDe = field.set(contentDe, values.de);
     const newEn = field.set(contentEn, values.en);
     const newStyles = { ...styles };
-    if (values.fontRem !== null || values.color !== null) {
+    const hasAnyOverride = values.fontRem !== null || values.color !== null || values.bold || values.italic || values.underline;
+    if (hasAnyOverride) {
       newStyles[id] = {
         ...(values.fontRem !== null ? { fontSize: `${values.fontRem}rem` } : {}),
         ...(values.color !== null ? { color: values.color } : {}),
+        ...(values.bold ? { bold: true } : {}),
+        ...(values.italic ? { italic: true } : {}),
+        ...(values.underline ? { underline: true } : {}),
       };
     } else {
       delete newStyles[id];
@@ -164,75 +241,120 @@ export default function HomePreviewEditor({
     setStyles(newStyles);
     setHomeOverride(true);
     setActiveEditor(null);
+    markDraftChanged();
 
     startTransition(async () => {
-      await saveHomeContent(buildHomeContentFormData(newDe, newEn));
-      await saveHomeTextStyles(newStyles);
+      await saveHomeTextAndStyles(buildHomeContentFormData(newDe, newEn), newStyles);
     });
   }
 
-  function openImageEditor(id: "hero" | "wohlfuehl") {
-    if (id === "hero") {
-      setActiveEditor({
-        kind: "image",
-        id,
+  function openImageEditor(id: ImageId) {
+    const config: Record<ImageId, { label: string; hint: string; currentSrc: string; isDefault: boolean }> = {
+      hero: {
         label: "Hero-Bild",
         hint: "Großes Titelbild ganz oben auf der Startseite. Breitformat-Fotos wirken am besten.",
         currentSrc: heroImage,
         isDefault: heroIsDefault,
-      });
-    } else {
-      setActiveEditor({
-        kind: "image",
-        id,
+      },
+      wohlfuehl: {
         label: 'Bild "Wohlfühloase"',
         hint: "Bild in der Karte neben dem Buchungsformular.",
         currentSrc: wohlfuehlImage,
         isDefault: wohlfuehlIsDefault,
-      });
-    }
+      },
+      logo: {
+        label: "Logo",
+        hint: "Rundes Logo links in der Navigationsleiste. Quadratische Bilder passen am besten.",
+        currentSrc: logoImage,
+        isDefault: logoIsDefault,
+      },
+      logoText: {
+        label: "Logo-Schriftzug",
+        hint:
+          'Ersetzt den Text "AUSZEIT" samt Zeile darunter in der Navbar durch ein eigenes Bild. Ohne Upload bleibt der Standardtext sichtbar.',
+        currentSrc: logoTextImage,
+        isDefault: logoTextIsDefault,
+      },
+    };
+    const c = config[id];
+    setActiveEditor({
+      kind: "image",
+      id,
+      label: c.label,
+      hint: c.hint,
+      currentSrc: c.currentSrc,
+      isDefault: c.isDefault,
+      previewAspectClassName: id === "logo" ? "aspect-square" : id === "logoText" ? "aspect-[3/1]" : undefined,
+      round: id === "logo",
+    });
   }
 
   function handleUploadImage(file: File) {
     if (!activeEditor || activeEditor.kind !== "image") return;
-    const id = activeEditor.id;
+    const id = activeEditor.id as ImageId;
     const fd = new FormData();
     fd.set("file", file);
+    setActiveEditor(null);
     startTransition(async () => {
-      const result = id === "hero" ? await uploadHomeHeroImage(fd) : await uploadHomeWohlfuehlImage(fd);
+      const uploaders: Record<ImageId, (fd: FormData) => Promise<{ url: string } | undefined>> = {
+        hero: uploadHomeHeroImage,
+        wohlfuehl: uploadHomeWohlfuehlImage,
+        logo: uploadLogoImage,
+        logoText: uploadLogoTextImage,
+      };
+      const result = await uploaders[id](fd);
       if (result?.url) {
         if (id === "hero") {
           setHeroImage(result.url);
           setHeroIsDefault(false);
-        } else {
+        } else if (id === "wohlfuehl") {
           setWohlfuehlImage(result.url);
           setWohlfuehlIsDefault(false);
+        } else if (id === "logo") {
+          setLogoImage(result.url);
+          setLogoIsDefault(false);
+        } else {
+          setLogoTextImage(result.url);
+          setLogoTextIsDefault(false);
         }
+        markDraftChanged();
       }
-      setActiveEditor(null);
     });
   }
 
   function handleResetImage() {
     if (!activeEditor || activeEditor.kind !== "image") return;
-    const id = activeEditor.id;
+    const id = activeEditor.id as ImageId;
+    setActiveEditor(null);
     startTransition(async () => {
+      const resetters: Record<ImageId, () => Promise<void>> = {
+        hero: resetHomeHeroImage,
+        wohlfuehl: resetHomeWohlfuehlImage,
+        logo: resetLogoImage,
+        logoText: resetLogoTextImage,
+      };
+      await resetters[id]();
       if (id === "hero") {
-        await resetHomeHeroImage();
         setHeroImage(defaultHeroImage);
         setHeroIsDefault(true);
-      } else {
-        await resetHomeWohlfuehlImage();
+      } else if (id === "wohlfuehl") {
         setWohlfuehlImage(defaultWohlfuehlImage);
         setWohlfuehlIsDefault(true);
+      } else if (id === "logo") {
+        setLogoImage(DEFAULT_LOGO_IMAGE);
+        setLogoIsDefault(true);
+      } else {
+        setLogoTextImage(DEFAULT_LOGO_IMAGE);
+        setLogoTextIsDefault(true);
       }
-      setActiveEditor(null);
+      markDraftChanged();
     });
   }
 
   function applyPalette(p: ThemeColors) {
     setColors(p);
     setThemeOverride(true);
+    markDraftChanged();
     startTransition(async () => {
       const fd = new FormData();
       fd.set("themePrimary", p.primary);
@@ -246,6 +368,7 @@ export default function HomePreviewEditor({
   function resetColors() {
     setColors(DEFAULT_COLORS);
     setThemeOverride(false);
+    markDraftChanged();
     startTransition(async () => {
       await resetThemeColors();
     });
@@ -255,6 +378,7 @@ export default function HomePreviewEditor({
     setContentDe(defaultContentDe);
     setContentEn(defaultContentEn);
     setHomeOverride(false);
+    markDraftChanged();
     startTransition(async () => {
       await resetHomeContent();
     });
@@ -262,19 +386,136 @@ export default function HomePreviewEditor({
 
   function resetStyles() {
     setStyles({});
+    markDraftChanged();
     startTransition(async () => {
       await resetHomeTextStyles();
     });
   }
 
+  function handlePublish() {
+    startTransition(async () => {
+      await publishDesign();
+      setDraftExists(false);
+      setHistoryCount(0);
+      setConfirmingPublish(false);
+    });
+  }
+
+  function handleDiscard() {
+    startTransition(async () => {
+      const published = await discardDesignDraft();
+      applyDraftState(published);
+      setDraftExists(false);
+      setHistoryCount(0);
+    });
+  }
+
+  function handleUndo() {
+    startTransition(async () => {
+      const restored = await undoDesignDraft();
+      if (restored) {
+        applyDraftState(restored);
+        setHistoryCount((c) => Math.max(0, c - 1));
+      }
+    });
+  }
+
   return (
     <div>
+      {/* Entwurf/Veröffentlichen-Toolbar */}
+      <div className="sticky top-0 z-40 -mx-1 mb-8 flex flex-wrap items-center justify-between gap-3 rounded-[2px] border border-line bg-white/95 backdrop-blur px-5 py-3.5 shadow-[0_4px_16px_-8px_rgba(44,50,38,0.25)]">
+        <div className="text-[0.85rem]">
+          {draftExists ? (
+            <span className="inline-flex items-center gap-1.5 text-gold font-medium">
+              <span className="w-2 h-2 rounded-full bg-gold inline-block" />
+              Unveröffentlichter Entwurf — Änderungen sind nur hier sichtbar, nicht auf der Website.
+            </span>
+          ) : (
+            <span className="text-ink-soft">Keine offenen Änderungen — Website zeigt den veröffentlichten Stand.</span>
+          )}
+          {isPending && <span className="ml-2 text-ink-soft">Speichert…</span>}
+        </div>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            type="button"
+            disabled={historyCount === 0 || isPending}
+            onClick={handleUndo}
+            className={resetButtonClass + " disabled:opacity-40 disabled:cursor-not-allowed"}
+          >
+            <Undo2 className="w-3.5 h-3.5" strokeWidth={2} />
+            Zurück
+          </button>
+          <button
+            type="button"
+            disabled={!draftExists || isPending}
+            onClick={handleDiscard}
+            className={resetButtonClass + " disabled:opacity-40 disabled:cursor-not-allowed"}
+          >
+            <X className="w-3.5 h-3.5" strokeWidth={2} />
+            Entwurf verwerfen
+          </button>
+          {confirmingPublish ? (
+            <div className="flex items-center gap-2">
+              <span className="text-[0.78rem] text-ink-soft">Jetzt live schalten?</span>
+              <button type="button" onClick={handlePublish} disabled={isPending} className={saveButtonClass}>
+                <UploadCloud className="w-3.5 h-3.5" strokeWidth={2} />
+                Ja, veröffentlichen
+              </button>
+              <button type="button" onClick={() => setConfirmingPublish(false)} className={resetButtonClass}>
+                Abbrechen
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={!draftExists || isPending}
+              onClick={() => setConfirmingPublish(true)}
+              className={saveButtonClass + " disabled:opacity-40 disabled:cursor-not-allowed"}
+            >
+              <UploadCloud className="w-3.5 h-3.5" strokeWidth={2} />
+              Veröffentlichen
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Branding */}
+      <div className="bg-white border border-line rounded-[2px] p-6 mb-8">
+        <h2 className="text-[1.15rem] mb-4">Branding (Navbar)</h2>
+        <div className="flex flex-wrap gap-8">
+          <button type="button" onClick={() => openImageEditor("logo")} className="group text-left cursor-pointer">
+            <span className="relative block w-[72px] h-[72px] rounded-full overflow-hidden border border-line bg-bg-soft">
+              <Image src={logoImage} alt="" fill sizes="72px" className="object-cover" />
+              <span className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors" />
+            </span>
+            <span className="block mt-2 text-[0.72rem] tracking-[0.06em] uppercase text-ink-soft group-hover:text-forest transition-colors">
+              Logo ändern
+            </span>
+          </button>
+          <button type="button" onClick={() => openImageEditor("logoText")} className="group text-left cursor-pointer">
+            <span className="relative block w-[220px] h-[68px] rounded-[2px] overflow-hidden border border-line bg-bg-soft">
+              <Image
+                src={logoTextImage}
+                alt=""
+                fill
+                sizes="220px"
+                className={logoTextIsDefault ? "object-cover opacity-30" : "object-contain"}
+              />
+              <span className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors" />
+            </span>
+            <span className="block mt-2 text-[0.72rem] tracking-[0.06em] uppercase text-ink-soft group-hover:text-forest transition-colors">
+              Logo-Schriftzug ändern
+            </span>
+          </button>
+        </div>
+      </div>
+
       {/* Farbpalette */}
       <div className="bg-white border border-line rounded-[2px] p-6 mb-8">
         <h2 className="text-[1.15rem] mb-1">Farbpalette</h2>
         <p className="text-[0.85rem] text-ink-soft mb-4">
           Steuert das Erscheinungsbild der <strong>gesamten Website</strong>. Ein Klick auf ein Template übernimmt
-          es sofort — auch in der Vorschau unten.
+          es sofort in der Vorschau — sichtbar auf der Website erst nach „Veröffentlichen&rdquo;.
         </p>
         <div className="grid grid-cols-5 max-[760px]:grid-cols-3 max-[480px]:grid-cols-2 gap-3 mb-6">
           {PALETTE_TEMPLATES.map((p) => (

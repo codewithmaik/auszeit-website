@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, RotateCcw, Upload } from "lucide-react";
+import { X, RotateCcw, Upload, Bold, Italic, Underline } from "lucide-react";
 
 export type TextEditor = {
   kind: "text";
@@ -13,6 +13,9 @@ export type TextEditor = {
   en: string;
   fontRem: number;
   color: string;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
   defaultRem: number;
   defaultColor: string;
   hasOverride: boolean;
@@ -25,6 +28,10 @@ export type ImageEditor = {
   hint: string;
   currentSrc: string;
   isDefault: boolean;
+  /** z. B. "aspect-square" für Logo — steuert nur den Vorschau-Rahmen im Popup. */
+  previewAspectClassName?: string;
+  /** Rundes Vorschau-Overlay (z. B. für das Logo). */
+  round?: boolean;
 };
 
 export type ActiveEditor = TextEditor | ImageEditor | null;
@@ -83,12 +90,23 @@ export function TextEditPopup({
   editor: TextEditor;
   saving: boolean;
   onClose: () => void;
-  onSave: (values: { de: string; en: string; fontRem: number | null; color: string | null }) => void;
+  onSave: (values: {
+    de: string;
+    en: string;
+    fontRem: number | null;
+    color: string | null;
+    bold: boolean;
+    italic: boolean;
+    underline: boolean;
+  }) => void;
 }) {
   const [de, setDe] = useState(editor.de);
   const [en, setEn] = useState(editor.en);
   const [fontRem, setFontRem] = useState(editor.fontRem);
   const [color, setColor] = useState(editor.color);
+  const [bold, setBold] = useState(editor.bold);
+  const [italic, setItalic] = useState(editor.italic);
+  const [underline, setUnderline] = useState(editor.underline);
   const [styleTouched, setStyleTouched] = useState(editor.hasOverride);
 
   return (
@@ -134,7 +152,7 @@ export function TextEditPopup({
                 className="w-full accent-gold cursor-pointer"
               />
             </div>
-            <div className="flex items-center gap-4 flex-wrap justify-between">
+            <div className="flex items-center gap-4 flex-wrap justify-between mb-4">
               <div className="flex items-center gap-3">
                 <label className={labelClass + " mb-0"}>Textfarbe</label>
                 <input
@@ -153,6 +171,9 @@ export function TextEditPopup({
                   onClick={() => {
                     setFontRem(editor.defaultRem);
                     setColor(editor.defaultColor);
+                    setBold(false);
+                    setItalic(false);
+                    setUnderline(false);
                     setStyleTouched(false);
                   }}
                   className={resetButtonClass}
@@ -161,6 +182,30 @@ export function TextEditPopup({
                   Stil zurücksetzen
                 </button>
               )}
+            </div>
+            <div className="flex items-center gap-2">
+              <label className={labelClass + " mb-0 mr-1"}>Schriftschnitt</label>
+              {[
+                { key: "bold" as const, Icon: Bold, active: bold, set: setBold, title: "Fett" },
+                { key: "italic" as const, Icon: Italic, active: italic, set: setItalic, title: "Kursiv" },
+                { key: "underline" as const, Icon: Underline, active: underline, set: setUnderline, title: "Unterstrichen" },
+              ].map(({ key, Icon, active, set, title }) => (
+                <button
+                  key={key}
+                  type="button"
+                  title={title}
+                  aria-pressed={active}
+                  onClick={() => {
+                    set(!active);
+                    setStyleTouched(true);
+                  }}
+                  className={`inline-flex items-center justify-center w-9 h-9 border rounded-[2px] cursor-pointer transition-colors ${
+                    active ? "bg-forest text-white border-forest" : "border-line text-ink-soft hover:text-forest hover:border-forest"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" strokeWidth={2} />
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -175,6 +220,9 @@ export function TextEditPopup({
                 en,
                 fontRem: editor.styleable && styleTouched ? fontRem : null,
                 color: editor.styleable && styleTouched ? color : null,
+                bold: editor.styleable && bold,
+                italic: editor.styleable && italic,
+                underline: editor.styleable && underline,
               })
             }
             className={saveButtonClass}
@@ -210,7 +258,9 @@ export function ImageEditPopup({
       <ModalHeader title={editor.label} onClose={onClose} />
       <div className="p-6">
         <p className="text-[0.85rem] text-ink-soft mb-4">{editor.hint}</p>
-        <div className="relative w-full aspect-video bg-bg-soft border border-line rounded-[2px] overflow-hidden mb-4">
+        <div
+          className={`relative w-full ${editor.previewAspectClassName ?? "aspect-video"} bg-bg-soft border border-line rounded-[2px] overflow-hidden mb-4 ${editor.round ? "max-w-[160px] mx-auto rounded-full" : ""}`}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={editor.currentSrc} alt="" className="w-full h-full object-cover" />
         </div>

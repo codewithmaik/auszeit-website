@@ -1,6 +1,6 @@
 import { pgTable, serial, text, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import type { HomeContent, HomeTextStyles } from "./home-content";
+import type { HomeContent, HomeTextStyles, DesignDraft } from "./home-content";
 
 export const siteSettings = pgTable("site_settings", {
   id: serial("id").primaryKey(),
@@ -36,6 +36,22 @@ export const siteSettings = pgTable("site_settings", {
   // beide Sprachen gleichermaßen (rein visuelle Einstellung). null/fehlender
   // Eintrag = Standardgröße/-farbe aus dem Layout.
   homeTextStyles: jsonb("home_text_styles").$type<HomeTextStyles>(),
+
+  // Sitewide Button-Gestaltung — überschreibt Randdicke/-farbe/-radius/Farbe und
+  // Hover-Animation für alle Buttons (Button.tsx + Hero-CTAs). null = Standard.
+  buttonBorderWidth: text("button_border_width"),
+  buttonColor: text("button_color"),
+  buttonBorderColor: text("button_border_color"),
+  buttonBorderRadius: text("button_border_radius"),
+  buttonAnimation: text("button_animation"),
+
+  // Entwurf/Veröffentlichen-Workflow: `designDraft` hält den kompletten, noch
+  // nicht veröffentlichten Bearbeitungsstand aller obigen Design-Felder (siehe
+  // DesignDraft-Typ). null = kein offener Entwurf, Admin-Vorschau zeigt den
+  // veröffentlichten Stand. `designDraftHistory` ist ein Ringpuffer vorheriger
+  // Entwurfs-Snapshots für den „Zurück"-Button (neuester Eintrag zuerst).
+  designDraft: jsonb("design_draft").$type<DesignDraft>(),
+  designDraftHistory: jsonb("design_draft_history").$type<DesignDraft[]>(),
 
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
