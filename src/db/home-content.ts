@@ -35,6 +35,16 @@ export type HomeTextStyleOverride = {
 };
 export type HomeTextStyles = Record<string, HomeTextStyleOverride>;
 
+// Editierbare Footer-Texte je Sprache (Tagline, Spalten-Überschriften,
+// Copyright-Suffix). Kontaktdaten bleiben in "Einstellungen" verwaltet,
+// Legal-Link-Labels (Impressum/Datenschutz/Cookie/Credit) bleiben fest.
+export type FooterContent = {
+  tagline: string;
+  navHeading: string;
+  kontaktHeading: string;
+  copyrightSuffix: string;
+};
+
 // Vollständiger, noch nicht veröffentlichter Bearbeitungsstand des Design-Menüs
 // — spiegelt 1:1 die entwurfsfähigen Spalten aus siteSettings (src/db/schema.ts).
 // null bei einem Feld = "auf Standard zurücksetzen", nicht "unverändert" — ein
@@ -52,6 +62,8 @@ export type DesignDraft = {
   homeContentDe: HomeContent | null;
   homeContentEn: HomeContent | null;
   homeTextStyles: HomeTextStyles | null;
+  footerContentDe: FooterContent | null;
+  footerContentEn: FooterContent | null;
   buttonBorderWidth: string | null;
   buttonColor: string | null;
   buttonBorderColor: string | null;
@@ -76,6 +88,8 @@ export function publishedDesignSnapshot(settings: DesignDraft): DesignDraft {
     homeContentDe: settings.homeContentDe,
     homeContentEn: settings.homeContentEn,
     homeTextStyles: settings.homeTextStyles,
+    footerContentDe: settings.footerContentDe,
+    footerContentEn: settings.footerContentEn,
     buttonBorderWidth: settings.buttonBorderWidth,
     buttonColor: settings.buttonColor,
     buttonBorderColor: settings.buttonBorderColor,

@@ -1,4 +1,4 @@
-import type { HomeContent } from "@/db/home-content";
+import type { HomeContent, FooterContent } from "@/db/home-content";
 
 // Farbrolle eines Textfelds — bestimmt, welche Theme-Farbe als Ausgangswert im
 // Farbwähler erscheint, solange kein individueller Override gesetzt ist.
@@ -187,6 +187,39 @@ for (let i = 0; i < 4; i++) {
 export function buildHomeContentFormData(de: HomeContent, en: HomeContent): FormData {
   const fd = new FormData();
   for (const [path, field] of Object.entries(FIELDS)) {
+    fd.set(`de.${path}`, field.get(de));
+    fd.set(`en.${path}`, field.get(en));
+  }
+  return fd;
+}
+
+// Footer-Textfelder — eigene, kleinere Registry (kein Styling, anders als bei
+// FIELDS/HomeContent), gleiches Get/Set-Pattern, geteilt zwischen Popup-Öffnen
+// (HomePreviewEditor) und Server Action (design/actions.ts).
+export type FooterFieldDef = {
+  label: string;
+  get: (c: FooterContent) => string;
+  set: (c: FooterContent, value: string) => FooterContent;
+};
+
+function footerField(key: keyof FooterContent, label: string): FooterFieldDef {
+  return {
+    label,
+    get: (c) => c[key],
+    set: (c, v) => ({ ...c, [key]: v }),
+  };
+}
+
+export const FOOTER_FIELDS: Record<string, FooterFieldDef> = {
+  "footer.tagline": footerField("tagline", "Tagline"),
+  "footer.navHeading": footerField("navHeading", '„Navigation"-Überschrift'),
+  "footer.kontaktHeading": footerField("kontaktHeading", '„Kontakt"-Überschrift'),
+  "footer.copyrightSuffix": footerField("copyrightSuffix", "Copyright-Suffix"),
+};
+
+export function buildFooterContentFormData(de: FooterContent, en: FooterContent): FormData {
+  const fd = new FormData();
+  for (const [path, field] of Object.entries(FOOTER_FIELDS)) {
     fd.set(`de.${path}`, field.get(de));
     fd.set(`en.${path}`, field.get(en));
   }

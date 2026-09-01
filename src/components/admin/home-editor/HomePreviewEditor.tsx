@@ -3,7 +3,7 @@
 import { useState, useTransition, type CSSProperties, type ElementType, type ReactNode } from "react";
 import Image from "next/image";
 import { Check, ArrowRight, CalendarCheck2, RotateCcw, Pencil, Undo2, UploadCloud, X } from "lucide-react";
-import type { HomeContent, HomeTextStyles, DesignDraft } from "@/db/home-content";
+import type { HomeContent, HomeTextStyles, FooterContent, DesignDraft } from "@/db/home-content";
 import { ICONS as BRAND_ICON_SRC } from "@/components/BrandIcon";
 import { FEATURE_ICONS, FEATURE_ICON_FRAME, TRUST_ICONS, STEP_ICONS } from "@/lib/home-icons";
 import { fontFamilyFor } from "@/lib/fonts";
@@ -24,11 +24,13 @@ import {
   resetThemeColors,
   saveButtonStyle,
   resetButtonStyle,
+  saveFooterContent,
+  resetFooterContent,
   publishDesign,
   discardDesignDraft,
   undoDesignDraft,
 } from "@/app/admin/(dashboard)/design/actions";
-import { FIELDS, buildHomeContentFormData, type TextRole } from "./fields";
+import { FIELDS, FOOTER_FIELDS, buildHomeContentFormData, buildFooterContentFormData, type TextRole } from "./fields";
 import { DEFAULT_COLORS, type ThemeColors } from "./palettes";
 import { TextEditPopup, ImageEditPopup, PaletteEditPopup, type ActiveEditor } from "./EditPopup";
 import { BUTTON_ANIMATION_OPTIONS } from "@/lib/button-animations";
@@ -41,6 +43,13 @@ const PREVIEW_NAV_LABELS: Record<"de" | "en", string[]> = {
   en: ["Home", "The Apartments", "The Region", "Guest Reviews", "Contact"],
 };
 const PREVIEW_NAV_CTA: Record<"de" | "en", string> = { de: "Anfragen", en: "Enquire" };
+
+// Feste Footer-Legal-Labels (Impressum/Datenschutz/Cookie/Credit) — bewusst
+// nicht editierbar, analog zu den Nav-Labels oben.
+const PREVIEW_FOOTER_LEGAL: Record<"de" | "en", { impressum: string; datenschutz: string; cookieSettings: string }> = {
+  de: { impressum: "Impressum", datenschutz: "Datenschutz", cookieSettings: "Cookie-Einstellungen" },
+  en: { impressum: "Legal Notice", datenschutz: "Privacy Policy", cookieSettings: "Cookie Settings" },
+};
 
 const resetButtonClass =
   "inline-flex items-center gap-1.5 px-4 py-2.5 border border-line text-ink-soft font-sans text-[0.72rem] tracking-[0.08em] uppercase rounded-[2px] hover:text-forest hover:border-forest transition-colors";
@@ -100,6 +109,11 @@ type Props = {
   defaultContentEn: HomeContent;
   hasHomeOverride: boolean;
   initialStyles: HomeTextStyles;
+  initialFooterContentDe: FooterContent;
+  initialFooterContentEn: FooterContent;
+  defaultFooterContentDe: FooterContent;
+  defaultFooterContentEn: FooterContent;
+  hasFooterOverride: boolean;
   initialHeroImage: string;
   defaultHeroImage: string;
   isHeroDefault: boolean;
@@ -143,6 +157,11 @@ export default function HomePreviewEditor({
   defaultContentEn,
   hasHomeOverride,
   initialStyles,
+  initialFooterContentDe,
+  initialFooterContentEn,
+  defaultFooterContentDe,
+  defaultFooterContentEn,
+  hasFooterOverride,
   initialHeroImage,
   defaultHeroImage,
   isHeroDefault,
@@ -164,6 +183,9 @@ export default function HomePreviewEditor({
   const [contentEn, setContentEn] = useState(initialContentEn);
   const [homeOverride, setHomeOverride] = useState(hasHomeOverride);
   const [styles, setStyles] = useState<HomeTextStyles>(initialStyles);
+  const [footerContentDe, setFooterContentDe] = useState(initialFooterContentDe);
+  const [footerContentEn, setFooterContentEn] = useState(initialFooterContentEn);
+  const [footerOverride, setFooterOverride] = useState(hasFooterOverride);
   const [heroImage, setHeroImage] = useState(initialHeroImage);
   const [heroIsDefault, setHeroIsDefault] = useState(isHeroDefault);
   const [wohlfuehlImage, setWohlfuehlImage] = useState(initialWohlfuehlImage);
@@ -184,6 +206,7 @@ export default function HomePreviewEditor({
   const [isPending, startTransition] = useTransition();
 
   const content = previewLocale === "de" ? contentDe : contentEn;
+  const footerContent = previewLocale === "de" ? footerContentDe : footerContentEn;
   const hasStyleOverride = Object.keys(styles).length > 0;
 
   const previewThemeStyle = {
@@ -207,6 +230,9 @@ export default function HomePreviewEditor({
     setContentEn(next.homeContentEn ?? defaultContentEn);
     setStyles(next.homeTextStyles ?? {});
     setHomeOverride(Boolean(next.homeContentDe || next.homeContentEn));
+    setFooterContentDe(next.footerContentDe ?? defaultFooterContentDe);
+    setFooterContentEn(next.footerContentEn ?? defaultFooterContentEn);
+    setFooterOverride(Boolean(next.footerContentDe || next.footerContentEn));
     setHeroImage(next.homeHeroImageUrl || defaultHeroImage);
     setHeroIsDefault(!next.homeHeroImageUrl);
     setWohlfuehlImage(next.homeWohlfuehlImageUrl || defaultWohlfuehlImage);
@@ -237,6 +263,28 @@ export default function HomePreviewEditor({
   }
 
   function openTextEditor(id: string) {
+    const footerField = FOOTER_FIELDS[id];
+    if (footerField) {
+      setActiveEditor({
+        kind: "text",
+        id,
+        label: footerField.label,
+        multiline: false,
+        styleable: false,
+        de: footerField.get(footerContentDe),
+        en: footerField.get(footerContentEn),
+        fontRem: 1,
+        color: "#ffffff",
+        bold: false,
+        italic: false,
+        underline: false,
+        fontFamily: "",
+        defaultRem: 1,
+        defaultColor: "#ffffff",
+        hasOverride: false,
+      });
+      return;
+    }
     const field = FIELDS[id];
     if (!field) return;
     const override = styles[id];
@@ -280,6 +328,20 @@ export default function HomePreviewEditor({
   }) {
     if (!activeEditor || activeEditor.kind !== "text") return;
     const id = activeEditor.id;
+    const footerField = FOOTER_FIELDS[id];
+    if (footerField) {
+      const newFooterDe = footerField.set(footerContentDe, values.de);
+      const newFooterEn = footerField.set(footerContentEn, values.en);
+      setFooterContentDe(newFooterDe);
+      setFooterContentEn(newFooterEn);
+      setFooterOverride(true);
+      setActiveEditor(null);
+      markDraftChanged();
+      startTransition(async () => {
+        await saveFooterContent(buildFooterContentFormData(newFooterDe, newFooterEn));
+      });
+      return;
+    }
     const field = FIELDS[id];
     const newDe = field.set(contentDe, values.de);
     const newEn = field.set(contentEn, values.en);
@@ -482,6 +544,16 @@ export default function HomePreviewEditor({
     markDraftChanged();
     startTransition(async () => {
       await resetHomeTextStyles();
+    });
+  }
+
+  function resetFooterTexts() {
+    setFooterContentDe(defaultFooterContentDe);
+    setFooterContentEn(defaultFooterContentEn);
+    setFooterOverride(false);
+    markDraftChanged();
+    startTransition(async () => {
+      await resetFooterContent();
     });
   }
 
@@ -712,6 +784,12 @@ export default function HomePreviewEditor({
               <button type="button" onClick={resetTexts} className={resetButtonClass}>
                 <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
                 Texte zurücksetzen
+              </button>
+            )}
+            {footerOverride && (
+              <button type="button" onClick={resetFooterTexts} className={resetButtonClass}>
+                <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
+                Footer-Texte zurücksetzen
               </button>
             )}
           </div>
@@ -995,6 +1073,68 @@ export default function HomePreviewEditor({
               })}
             </div>
           </section>
+
+          {/* Footer */}
+          <footer className="bg-forest text-white/75 pt-[46px] pb-[22px]">
+            <div className="max-w-[1180px] mx-auto px-8">
+              <div className="grid grid-cols-[1.4fr_1fr_1fr] max-[860px]:grid-cols-1 gap-8 pb-6 border-b border-white/14">
+                <div>
+                  <span className="font-serif text-white text-[1.15rem] tracking-[0.1em]">AUSZEIT</span>
+                  <Editable
+                    styles={styles}
+                    onEdit={openTextEditor}
+                    id="footer.tagline"
+                    as="p"
+                    className="text-white/65 text-[0.85rem] mt-2 max-w-[300px]"
+                  >
+                    {footerContent.tagline}
+                  </Editable>
+                </div>
+                <div>
+                  <Editable
+                    styles={styles}
+                    onEdit={openTextEditor}
+                    id="footer.navHeading"
+                    as="h4"
+                    className="text-white font-sans text-[0.75rem] tracking-[0.12em] uppercase mb-3"
+                  >
+                    {footerContent.navHeading}
+                  </Editable>
+                  <div className="grid grid-cols-2 gap-x-4">
+                    {PREVIEW_NAV_LABELS[previewLocale].map((label) => (
+                      <span key={label} className="block text-white/68 text-[0.85rem] mb-1.5">
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Editable
+                    styles={styles}
+                    onEdit={openTextEditor}
+                    id="footer.kontaktHeading"
+                    as="h4"
+                    className="text-white font-sans text-[0.75rem] tracking-[0.12em] uppercase mb-3"
+                  >
+                    {footerContent.kontaktHeading}
+                  </Editable>
+                  <p className="text-white/45 text-[0.8rem] italic m-0">(Kontaktdaten aus „Einstellungen&rdquo;)</p>
+                </div>
+              </div>
+              <div className="flex justify-between flex-wrap gap-2.5 pt-4 text-[0.75rem] text-white/50">
+                <Editable styles={styles} onEdit={openTextEditor} id="footer.copyrightSuffix" as="span">
+                  © {new Date().getFullYear()} {footerContent.copyrightSuffix}
+                </Editable>
+                <span className="flex flex-wrap gap-x-2">
+                  <span>{PREVIEW_FOOTER_LEGAL[previewLocale].impressum}</span>
+                  <span>·</span>
+                  <span>{PREVIEW_FOOTER_LEGAL[previewLocale].datenschutz}</span>
+                  <span>·</span>
+                  <span>{PREVIEW_FOOTER_LEGAL[previewLocale].cookieSettings}</span>
+                </span>
+              </div>
+            </div>
+          </footer>
         </div>
       </div>
 

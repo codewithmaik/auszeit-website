@@ -1,6 +1,6 @@
 import { pgTable, serial, text, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import type { HomeContent, HomeTextStyles, DesignDraft } from "./home-content";
+import type { HomeContent, HomeTextStyles, FooterContent, DesignDraft } from "./home-content";
 
 export const siteSettings = pgTable("site_settings", {
   id: serial("id").primaryKey(),
@@ -36,6 +36,11 @@ export const siteSettings = pgTable("site_settings", {
   // beide Sprachen gleichermaßen (rein visuelle Einstellung). null/fehlender
   // Eintrag = Standardgröße/-farbe aus dem Layout.
   homeTextStyles: jsonb("home_text_styles").$type<HomeTextStyles>(),
+
+  // Editierbare Footer-Texte je Sprache (Tagline, Spalten-Überschriften,
+  // Copyright-Suffix). null = Dictionary-Default (dict.footer) wird verwendet.
+  footerContentDe: jsonb("footer_content_de").$type<FooterContent>(),
+  footerContentEn: jsonb("footer_content_en").$type<FooterContent>(),
 
   // Sitewide Button-Gestaltung — überschreibt Randdicke/-farbe/-radius/Farbe und
   // Hover-Animation für alle Buttons (Button.tsx + Hero-CTAs). null = Standard.

@@ -34,6 +34,11 @@ export default async function AdminDesignPage() {
         defaultContentEn={enDict.home}
         hasHomeOverride={Boolean(draft.homeContentDe || draft.homeContentEn)}
         initialStyles={draft.homeTextStyles ?? {}}
+        initialFooterContentDe={draft.footerContentDe ?? deDict.footer}
+        initialFooterContentEn={draft.footerContentEn ?? enDict.footer}
+        defaultFooterContentDe={deDict.footer}
+        defaultFooterContentEn={enDict.footer}
+        hasFooterOverride={Boolean(draft.footerContentDe || draft.footerContentEn)}
         initialHeroImage={draft.homeHeroImageUrl || defaultHeroImage}
         defaultHeroImage={defaultHeroImage}
         isHeroDefault={!draft.homeHeroImageUrl}

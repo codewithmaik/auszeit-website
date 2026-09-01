@@ -7,6 +7,8 @@ import CookieSettingsLink from "@/components/cookies/CookieSettingsLink";
 
 export default async function Footer({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const settings = await getSiteSettings();
+  const footerOverride = locale === "de" ? settings.footerContentDe : settings.footerContentEn;
+  const t = footerOverride ?? dict.footer;
 
   const navLinks = [
     { href: localeHref(locale, "/"), label: dict.nav.home },
@@ -22,11 +24,11 @@ export default async function Footer({ locale, dict }: { locale: Locale; dict: D
         <div className="grid grid-cols-[1.4fr_1fr_1fr] max-[860px]:grid-cols-1 gap-10 pb-[34px] border-b border-white/14">
           <div>
             <span className="font-serif text-white text-[1.3rem] tracking-[0.1em]">AUSZEIT</span>
-            <p className="text-white/65 text-[0.88rem] mt-2.5 max-w-[320px]">{dict.footer.tagline}</p>
+            <p className="text-white/65 text-[0.88rem] mt-2.5 max-w-[320px]">{t.tagline}</p>
           </div>
           <div>
             <h4 className="text-white font-sans text-[0.78rem] tracking-[0.12em] uppercase mb-3.5">
-              {dict.footer.navHeading}
+              {t.navHeading}
             </h4>
             <div className="grid grid-cols-2 gap-x-4">
               {navLinks.map((link) => (
@@ -42,7 +44,7 @@ export default async function Footer({ locale, dict }: { locale: Locale; dict: D
           </div>
           <div>
             <h4 className="text-white font-sans text-[0.78rem] tracking-[0.12em] uppercase mb-3.5">
-              {dict.footer.kontaktHeading}
+              {t.kontaktHeading}
             </h4>
             <p className="text-white/68 text-[0.88rem] mb-2">{settings.contactAddress}</p>
             <p className="text-white/68 text-[0.88rem] mb-2">{settings.contactPhone}</p>
@@ -51,7 +53,7 @@ export default async function Footer({ locale, dict }: { locale: Locale; dict: D
         </div>
         <div className="flex justify-between flex-wrap gap-2.5 pt-5 text-[0.78rem] text-white/50">
           <span>
-            © {new Date().getFullYear()} {dict.footer.copyrightSuffix}
+            © {new Date().getFullYear()} {t.copyrightSuffix}
           </span>
           <span className="flex flex-wrap gap-x-2">
             <Link href={localeHref(locale, "/impressum")} className="hover:text-gold">

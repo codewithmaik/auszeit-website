@@ -10,6 +10,7 @@ import {
   publishedDesignSnapshot,
   type HomeContent,
   type HomeTextStyles,
+  type FooterContent,
   type DesignDraft,
 } from "@/db/home-content";
 import { BUSINESS } from "@/lib/site";
@@ -334,4 +335,27 @@ export async function resetHomeContent() {
 
 export async function resetHomeTextStyles() {
   await saveDesignDraft({ homeTextStyles: null });
+}
+
+// ---------- Footer-Texte ----------
+
+function parseFooterContent(formData: FormData, locale: "de" | "en"): FooterContent {
+  const field = (path: string) => str(formData, `${locale}.${path}`);
+  return {
+    tagline: field("footer.tagline"),
+    navHeading: field("footer.navHeading"),
+    kontaktHeading: field("footer.kontaktHeading"),
+    copyrightSuffix: field("footer.copyrightSuffix"),
+  };
+}
+
+export async function saveFooterContent(formData: FormData) {
+  await saveDesignDraft({
+    footerContentDe: parseFooterContent(formData, "de"),
+    footerContentEn: parseFooterContent(formData, "en"),
+  });
+}
+
+export async function resetFooterContent() {
+  await saveDesignDraft({ footerContentDe: null, footerContentEn: null });
 }
