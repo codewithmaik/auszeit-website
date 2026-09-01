@@ -16,7 +16,7 @@ Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwisc
 
 **Umsetzung in 5 Phasen** (jede Phase: eigener Commit + Push + Devnotes-Update):
 1. Entwurf/Veröffentlichen/Zurück-Infrastruktur — **erledigt, committed (`b8e56b9`), gepusht.**
-2. Text-Erweiterungen (Fett/Kursiv/Unterstrichen + Schriftart pro Feld) — **teilweise erledigt** (Fett/Kursiv/Unterstrichen bereits in Phase 1 mitgeliefert, da Datenmodell ohnehin angefasst wurde; Schriftart-Auswahl mit kuratierten Google Fonts steht noch aus).
+2. Text-Erweiterungen (Fett/Kursiv/Unterstrichen + Schriftart pro Feld) — **erledigt, committed (`04e0381`), gepusht.** Neue Datei `src/lib/fonts.ts` mit 6 kuratierten Google Fonts (Inter, Lora, Merriweather, Montserrat, Nunito, Raleway; alle OFL-lizenziert, via `next/font/google` selbst gehostet — DSGVO-unbedenklich, siehe Kommentar in der Datei). Dropdown im `TextEditPopup`, Anwendung in `Editable` (Admin) + `styleFor()` (öffentliche Seite).
 3. Bildzuschnitt — offen.
 4. Globale Button-Gestaltung — offen.
 5. End-to-End-Check + Devnotes-Abschluss — offen.
