@@ -6,6 +6,7 @@ import { Check, ArrowRight, CalendarCheck2, RotateCcw, Pencil, Undo2, UploadClou
 import type { HomeContent, HomeTextStyles, DesignDraft } from "@/db/home-content";
 import { ICONS as BRAND_ICON_SRC } from "@/components/BrandIcon";
 import { FEATURE_ICONS, FEATURE_ICON_FRAME, TRUST_ICONS, STEP_ICONS } from "@/lib/home-icons";
+import { fontFamilyFor } from "@/lib/fonts";
 import {
   saveHomeTextAndStyles,
   resetHomeContent,
@@ -69,6 +70,8 @@ function Editable({
     if (override?.bold) style.fontWeight = 700;
     if (override?.italic) style.fontStyle = "italic";
     if (override?.underline) style.textDecoration = "underline";
+    const family = fontFamilyFor(override?.fontFamily);
+    if (family) style.fontFamily = family;
   }
   return (
     <Tag className={`${className} ${editableClass}`} style={style} onClick={() => onEdit(id)}>
@@ -200,10 +203,16 @@ export default function HomePreviewEditor({
       bold: Boolean(override?.bold),
       italic: Boolean(override?.italic),
       underline: Boolean(override?.underline),
+      fontFamily: override?.fontFamily ?? "",
       defaultRem: field.defaultRem ?? 1,
       defaultColor,
       hasOverride: Boolean(
-        override?.fontSize || override?.color || override?.bold || override?.italic || override?.underline,
+        override?.fontSize ||
+          override?.color ||
+          override?.bold ||
+          override?.italic ||
+          override?.underline ||
+          override?.fontFamily,
       ),
     });
   }
@@ -216,6 +225,7 @@ export default function HomePreviewEditor({
     bold: boolean;
     italic: boolean;
     underline: boolean;
+    fontFamily: string | null;
   }) {
     if (!activeEditor || activeEditor.kind !== "text") return;
     const id = activeEditor.id;
@@ -223,7 +233,8 @@ export default function HomePreviewEditor({
     const newDe = field.set(contentDe, values.de);
     const newEn = field.set(contentEn, values.en);
     const newStyles = { ...styles };
-    const hasAnyOverride = values.fontRem !== null || values.color !== null || values.bold || values.italic || values.underline;
+    const hasAnyOverride =
+      values.fontRem !== null || values.color !== null || values.bold || values.italic || values.underline || values.fontFamily;
     if (hasAnyOverride) {
       newStyles[id] = {
         ...(values.fontRem !== null ? { fontSize: `${values.fontRem}rem` } : {}),
@@ -231,6 +242,7 @@ export default function HomePreviewEditor({
         ...(values.bold ? { bold: true } : {}),
         ...(values.italic ? { italic: true } : {}),
         ...(values.underline ? { underline: true } : {}),
+        ...(values.fontFamily ? { fontFamily: values.fontFamily } : {}),
       };
     } else {
       delete newStyles[id];

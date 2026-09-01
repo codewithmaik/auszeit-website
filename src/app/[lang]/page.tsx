@@ -12,19 +12,22 @@ import { getDictionary } from "@/dictionaries";
 import { getSiteSettings } from "@/db/queries";
 import { FEATURE_ICONS, FEATURE_ICON_FRAME, TRUST_ICONS, STEP_ICONS } from "@/lib/home-icons";
 import type { HomeTextStyles } from "@/db/home-content";
+import { fontFamilyFor } from "@/lib/fonts";
 
-// Wendet einen im Adminpanel gesetzten Schriftgröße/-farbe-Override (falls
-// vorhanden) auf ein Startseiten-Textfeld an — Feldpfade siehe
+// Wendet einen im Adminpanel gesetzten Textstil-Override (falls vorhanden)
+// auf ein Startseiten-Textfeld an — Feldpfade siehe
 // src/components/admin/home-editor/fields.ts.
 function styleFor(styles: HomeTextStyles | null | undefined, id: string): React.CSSProperties {
   const override = styles?.[id];
   if (!override) return {};
+  const family = fontFamilyFor(override.fontFamily);
   return {
     ...(override.fontSize && { fontSize: override.fontSize }),
     ...(override.color && { color: override.color }),
     ...(override.bold && { fontWeight: 700 }),
     ...(override.italic && { fontStyle: "italic" }),
     ...(override.underline && { textDecoration: "underline" }),
+    ...(family && { fontFamily: family }),
   };
 }
 

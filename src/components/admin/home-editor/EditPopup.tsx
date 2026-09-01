@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { X, RotateCcw, Upload, Bold, Italic, Underline } from "lucide-react";
+import { FONT_OPTIONS } from "@/lib/fonts";
 
 export type TextEditor = {
   kind: "text";
@@ -16,6 +17,7 @@ export type TextEditor = {
   bold: boolean;
   italic: boolean;
   underline: boolean;
+  fontFamily: string;
   defaultRem: number;
   defaultColor: string;
   hasOverride: boolean;
@@ -98,6 +100,7 @@ export function TextEditPopup({
     bold: boolean;
     italic: boolean;
     underline: boolean;
+    fontFamily: string | null;
   }) => void;
 }) {
   const [de, setDe] = useState(editor.de);
@@ -107,6 +110,7 @@ export function TextEditPopup({
   const [bold, setBold] = useState(editor.bold);
   const [italic, setItalic] = useState(editor.italic);
   const [underline, setUnderline] = useState(editor.underline);
+  const [fontFamily, setFontFamily] = useState(editor.fontFamily);
   const [styleTouched, setStyleTouched] = useState(editor.hasOverride);
 
   return (
@@ -174,6 +178,7 @@ export function TextEditPopup({
                     setBold(false);
                     setItalic(false);
                     setUnderline(false);
+                    setFontFamily("");
                     setStyleTouched(false);
                   }}
                   className={resetButtonClass}
@@ -183,7 +188,7 @@ export function TextEditPopup({
                 </button>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-4">
               <label className={labelClass + " mb-0 mr-1"}>Schriftschnitt</label>
               {[
                 { key: "bold" as const, Icon: Bold, active: bold, set: setBold, title: "Fett" },
@@ -207,6 +212,24 @@ export function TextEditPopup({
                 </button>
               ))}
             </div>
+            <div>
+              <label className={labelClass}>Schriftart</label>
+              <select
+                value={fontFamily}
+                onChange={(e) => {
+                  setFontFamily(e.target.value);
+                  setStyleTouched(true);
+                }}
+                className={inputClass}
+              >
+                <option value="">Standard (Website-Schrift)</option>
+                {FONT_OPTIONS.map((f) => (
+                  <option key={f.key} value={f.key}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
 
@@ -223,6 +246,7 @@ export function TextEditPopup({
                 bold: editor.styleable && bold,
                 italic: editor.styleable && italic,
                 underline: editor.styleable && underline,
+                fontFamily: editor.styleable && styleTouched && fontFamily ? fontFamily : null,
               })
             }
             className={saveButtonClass}

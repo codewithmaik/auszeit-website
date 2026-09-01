@@ -13,6 +13,7 @@ import {
   type DesignDraft,
 } from "@/db/home-content";
 import { BUSINESS } from "@/lib/site";
+import { isValidFontKey } from "@/lib/fonts";
 
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 const DRAFT_HISTORY_CAP = 20;
@@ -270,7 +271,7 @@ function sanitizeHomeTextStyles(styles: HomeTextStyles): HomeTextStyles {
     if (typeof override.bold === "boolean") entry.bold = override.bold;
     if (typeof override.italic === "boolean") entry.italic = override.italic;
     if (typeof override.underline === "boolean") entry.underline = override.underline;
-    if (typeof override.fontFamily === "string" && override.fontFamily) {
+    if (typeof override.fontFamily === "string" && isValidFontKey(override.fontFamily)) {
       entry.fontFamily = override.fontFamily;
     }
     if (Object.keys(entry).length > 0) clean[path] = entry;

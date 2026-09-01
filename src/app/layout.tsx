@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Jost, Playfair_Display } from "next/font/google";
+import { FONT_VARIABLE_CLASSNAME } from "@/lib/fonts";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { SITE_URL, BUSINESS } from "@/lib/site";
@@ -85,7 +86,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   };
 
   return (
-    <html lang={locale} className={`${playfair.variable} ${jost.variable}`} style={themeStyle}>
+    <html
+      lang={locale}
+      className={`${playfair.variable} ${jost.variable} ${FONT_VARIABLE_CLASSNAME}`}
+      style={themeStyle}
+    >
       <body className="flex flex-col min-h-screen">
         <script
           type="application/ld+json"
