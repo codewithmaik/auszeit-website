@@ -32,13 +32,19 @@ Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwisc
 
 ## Was noch offen ist (aktuelle Session)
 
-Phasen 1–4 sind alle committed und gepusht (`b8e56b9`, `04e0381`, `33983e6`, `e8b2aa2`). `npx tsc --noEmit` und `npx eslint` sind nach jeder Phase über alle geänderten Dateien sauber durchgelaufen, der Dev-Server (`localhost:3002`) kompiliert ohne Fehler. Es bleibt nur noch **Phase 5**, die eigentliche Browser-Verifikation:
+Phasen 1–4 sind alle committed und gepusht (`b8e56b9`, `04e0381`, `33983e6`, `e8b2aa2`, Devnotes-Commits dazwischen). `npx tsc --noEmit` und `npx eslint` sind nach jeder Phase über alle geänderten Dateien sauber durchgelaufen, der Dev-Server (`localhost:3002`) kompiliert ohne Fehler.
 
-1. **Browser-Login klären** — der `node -e "bcrypt.hashSync(...)"`-Befehl, um kurzzeitig ein Test-Passwort in `ADMIN_PASSWORD_HASH` zu setzen (wie in einer früheren Session gemacht, danach exakt zurückgesetzt), wurde vom Auto-Mode-Classifier als sensible Credential-Operation blockiert — es wurde nicht versucht, das zu umgehen. Um den Klick-Weg testen zu können, entweder:
-   - der User loggt sich selbst einmal unter `/admin/login` oder `/bierp4a4/login` ein, danach kann mit der bereits authentifizierten Chrome-Session weitergemacht werden, oder
-   - der User erlaubt den bcrypt-Befehl explizit für diese Session.
-2. Nach erfolgreichem Login, kompletter Klick-Test gemäß Plan (`~/.claude/plans/squishy-coalescing-scroll.md`, Abschnitt „Verifikation"): Text mit Fett/Kursiv/Schriftart bearbeiten → Vorschau live beim Tippen → zweiter Tab mit der öffentlichen Seite bleibt unverändert, bis „Veröffentlichen" geklickt wird → danach sichtbar. Bild-Upload mit Zuschnitt (alle 4 Slots). Button-Stil + Animation setzen → veröffentlichen → auf `/de` prüfen. „Zurück" nach mehreren Änderungen (mehrfach nutzbar). „Entwurf verwerfen".
-3. Danach: Devnotes-Abschluss für diese Session, ggf. `feature/admin-design-editor` mit dem User besprechen (Merge nach `main`? Bislang läuft Production direkt vom Branch, s. „Was noch offen ist" weiter unten in den älteren Sessions).
+**Phase 5 (End-to-End-Klicktest im Browser) wurde bewusst übersprungen** — der Login dafür brauchte entweder ein kurzzeitiges Ersetzen von `ADMIN_PASSWORD_HASH` (der dafür nötige `node -e "bcrypt.hashSync(...)"`-Befehl wurde vom Auto-Mode-Classifier als sensible Credential-Operation blockiert) oder dass der User sich selbst einloggt. Der User hat sich explizit dafür entschieden, **ohne** Browser-Test zu committen und die Website bei Gelegenheit selbst zu prüfen. Das heißt: alles ist auf `feature/admin-design-editor` gepusht und typ-/lint-sauber, aber **der eigentliche Klick-Weg im Adminpanel ist nicht verifiziert** — insbesondere:
+
+1. Login → `/admin/design` → kompletter Editor lädt fehlerfrei.
+2. Entwurf/Veröffentlichen/Zurück: Text bearbeiten → Vorschau live → **öffentliche Seite bleibt unverändert**, bis „Veröffentlichen" geklickt wird → danach sichtbar. „Zurück" mehrfach nutzbar. „Entwurf verwerfen" stellt den veröffentlichten Stand wieder her.
+3. Fett/Kursiv/Unterstrichen + Schriftart-Dropdown im Text-Popup.
+4. Bildzuschnitt (react-easy-crop) für alle vier Slots (Hero/Wohlfühl/Logo/Logo-Schriftzug), inkl. rundem Zuschnitt beim Logo.
+5. Buttons-Sektion: Randdicke/Farbe/Rahmenfarbe/Radius/Animation setzen, veröffentlichen, auf `/de` prüfen (insbesondere ob die 10 CSS-Animationen wie erwartet aussehen — die visuelle Feinabstimmung wurde nie im Browser gesehen, nur aus der CSS-Definition heraus konstruiert).
+
+**Nächste Session sollte mit genau diesem Klicktest starten**, bevor an weiteren Features gebaut wird — das ist die einzige noch fehlende Absicherung für die komplette Session.
+
+Danach: ggf. `feature/admin-design-editor` mit dem User besprechen (Merge nach `main`? Bislang läuft Production direkt vom Branch, s. „Was noch offen ist" weiter unten in den älteren Sessions).
 
 ## Session: Startseite als Live-Vorschau-Editor + Farbpaletten-Templates
 
