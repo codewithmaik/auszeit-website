@@ -7,10 +7,14 @@ import { db } from "@/db/client";
 import { siteSettings } from "@/db/schema";
 import {
   FEATURE_KEYS,
+  BUTTON_IDS,
+  isValidButtonId,
   publishedDesignSnapshot,
   type HomeContent,
   type HomeTextStyles,
   type FooterContent,
+  type ButtonStyleOverride,
+  type ButtonStyles,
   type DesignDraft,
 } from "@/db/home-content";
 import { BUSINESS } from "@/lib/site";
@@ -207,8 +211,6 @@ export async function resetThemeColors() {
   });
 }
 
-// ---------- Globale Button-Gestaltung ----------
-
 const CSS_LENGTH_RE = /^\d+(\.\d+)?px$/;
 
 function readCssLength(formData: FormData, name: string): string | null {
@@ -223,26 +225,6 @@ function readAnimationKey(formData: FormData, name: string): string | null {
   if (!raw) return null;
   if (!isValidButtonAnimation(raw)) throw new Error(`Ungültige Animation für "${name}".`);
   return raw;
-}
-
-export async function saveButtonStyle(formData: FormData) {
-  await saveDesignDraft({
-    buttonBorderWidth: readCssLength(formData, "buttonBorderWidth"),
-    buttonColor: readHex(formData, "buttonColor"),
-    buttonBorderColor: readHex(formData, "buttonBorderColor"),
-    buttonBorderRadius: readCssLength(formData, "buttonBorderRadius"),
-    buttonAnimation: readAnimationKey(formData, "buttonAnimation"),
-  });
-}
-
-export async function resetButtonStyle() {
-  await saveDesignDraft({
-    buttonBorderWidth: null,
-    buttonColor: null,
-    buttonBorderColor: null,
-    buttonBorderRadius: null,
-    buttonAnimation: null,
-  });
 }
 
 // ---------- Startseiten-Texte ----------
@@ -358,4 +340,68 @@ export async function saveFooterContent(formData: FormData) {
 
 export async function resetFooterContent() {
   await saveDesignDraft({ footerContentDe: null, footerContentEn: null });
+}
+
+// ---------- Individuelle Button-Gestaltung ----------
+//
+// Nur die drei im Design-Preview sichtbaren Buttons (BUTTON_IDS) können einen
+// eigenen Stil bekommen. `saveButtonEdit` speichert Button-Stil UND (falls
+// vorhanden, d. h. bei den beiden Hero-CTAs) den Button-Text in einem Zug —
+// die komplette Startseiten-Text-FormData wird vom Client mitgeschickt
+// (gleiches Muster wie saveHomeTextAndStyles), damit ein Klick = ein
+// Entwurfs-/History-Eintrag bleibt. Ist die "an alle Buttons linken"-Checkbox
+// aktiv, schreibt der Stil zusätzlich in alle drei Button-IDs sowie in den
+// Default-Stil (buttonBorderWidth/…, s. o.) — das ist die einzige Stelle, an
+// der der Default-Stil noch geändert werden kann, seit die frühere globale
+// "Buttons"-Sektion durch die Popups pro Button ersetzt wurde.
+
+function readButtonStyle(formData: FormData): ButtonStyleOverride {
+  return {
+    borderWidth: readCssLength(formData, "borderWidth"),
+    color: readHex(formData, "color"),
+    borderColor: readHex(formData, "borderColor"),
+    borderRadius: readCssLength(formData, "borderRadius"),
+    animation: readAnimationKey(formData, "animation"),
+  };
+}
+
+export async function saveButtonEdit(formData: FormData) {
+  const buttonId = str(formData, "buttonId");
+  if (!isValidButtonId(buttonId)) throw new Error(`Unbekannte Button-ID "${buttonId}".`);
+  const linked = str(formData, "linked") === "true";
+  const style = readButtonStyle(formData);
+
+  const row = await getRow();
+  const currentDraft = row.designDraft ?? publishedDesignSnapshot(row);
+
+  const partial: Partial<DesignDraft> = {
+    homeContentDe: parseHomeContent(formData, "de"),
+    homeContentEn: parseHomeContent(formData, "en"),
+  };
+
+  if (linked) {
+    const linkedStyles: ButtonStyles = {};
+    for (const id of BUTTON_IDS) linkedStyles[id] = style;
+    partial.buttonStyles = linkedStyles;
+    partial.buttonsLinked = true;
+    partial.buttonBorderWidth = style.borderWidth;
+    partial.buttonColor = style.color;
+    partial.buttonBorderColor = style.borderColor;
+    partial.buttonBorderRadius = style.borderRadius;
+    partial.buttonAnimation = style.animation;
+  } else {
+    partial.buttonStyles = { ...currentDraft.buttonStyles, [buttonId]: style };
+    partial.buttonsLinked = false;
+  }
+
+  await saveDesignDraft(partial);
+}
+
+export async function resetButtonStyleForId(buttonId: string) {
+  if (!isValidButtonId(buttonId)) throw new Error(`Unbekannte Button-ID "${buttonId}".`);
+  const row = await getRow();
+  const currentDraft = row.designDraft ?? publishedDesignSnapshot(row);
+  const nextStyles = { ...currentDraft.buttonStyles };
+  delete nextStyles[buttonId];
+  await saveDesignDraft({ buttonStyles: nextStyles, buttonsLinked: false });
 }

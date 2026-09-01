@@ -7,17 +7,21 @@ import { useState } from "react";
 import { Heart, Menu, X } from "lucide-react";
 import { localeHref, swapLocale, type Locale } from "@/lib/i18n";
 import type { Dictionary } from "@/dictionaries";
+import type { ButtonStyleOverride } from "@/db/home-content";
+import Button from "@/components/Button";
 
 export default function Header({
   locale,
   dict,
   logoImageUrl,
   logoTextImageUrl,
+  navCtaStyle,
 }: {
   locale: Locale;
   dict: Dictionary;
   logoImageUrl?: string | null;
   logoTextImageUrl?: string | null;
+  navCtaStyle?: ButtonStyleOverride | null;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -116,7 +120,13 @@ export default function Header({
             </button>
           )}
           <Heart className="w-[19px] h-[19px] text-forest max-[560px]:hidden" strokeWidth={1.5} aria-hidden="true" />
-          <Button href={`${localeHref(locale, "/kontakt")}#buchen`} label={dict.nav.anfragen} />
+          <Button
+            href={`${localeHref(locale, "/kontakt")}#buchen`}
+            styleOverride={navCtaStyle}
+            className="max-[560px]:px-3 max-[560px]:py-2 max-[560px]:text-[0.66rem] max-[560px]:tracking-[0.06em] whitespace-nowrap"
+          >
+            {dict.nav.anfragen}
+          </Button>
           <button
             className="hidden max-[900px]:flex bg-transparent border-none text-forest cursor-pointer flex-none"
             aria-label={open ? dict.nav.menuClose : dict.nav.menuOpen}
@@ -128,16 +138,5 @@ export default function Header({
         </div>
       </div>
     </header>
-  );
-}
-
-function Button({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      className="inline-flex items-center gap-2 px-[22px] max-[560px]:px-3 py-[11px] max-[560px]:py-2 bg-forest text-white font-sans text-[0.78rem] max-[560px]:text-[0.66rem] tracking-[0.14em] max-[560px]:tracking-[0.06em] uppercase rounded-[2px] hover:bg-forest-dark transition-colors whitespace-nowrap"
-    >
-      {label}
-    </Link>
   );
 }

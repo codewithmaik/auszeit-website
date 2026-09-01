@@ -109,6 +109,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           dict={dict}
           logoImageUrl={settings.logoImageUrl}
           logoTextImageUrl={settings.logoTextImageUrl}
+          navCtaStyle={settings.buttonStyles?.["navbar.cta"]}
         />
         <main className="flex-1">{children}</main>
         <Footer locale={locale} dict={dict} />

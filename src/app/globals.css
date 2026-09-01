@@ -67,13 +67,18 @@ html {
   }
 }
 
-/* Button-Hover-Animationen (Design-Editor, globale Button-Gestaltung).
-   Aktiviert über data-button-anim="<key>" auf <html> (veröffentlichter Stand,
-   src/app/layout.tsx) oder auf einem umgebenden Element (Admin-Vorschau,
-   zeigt den Entwurfsstand) — wirkt dadurch automatisch auf jeden Button mit
-   der Marker-Klasse ".btn" darunter, ohne dass jede Verwendungsstelle
-   (Header/Footer/Formulare/...) einen eigenen Prop übergeben muss. Kein
-   data-button-anim gesetzt = altes, einfaches Farb-Hover bleibt wie bisher. */
+/* Button-Hover-Animationen (Design-Editor, globale + individuelle Button-
+   Gestaltung). Aktiviert über data-button-anim="<key>" entweder auf einem
+   Vorfahren (<html> = veröffentlichter Default-Stil, oder ein umgebendes
+   Element in der Admin-Vorschau) — wirkt dann automatisch auf jeden Button
+   mit der Marker-Klasse ".btn" darunter — ODER direkt auf dem .btn-Element
+   selbst (individueller Override eines einzelnen Buttons, s. Button.tsx/
+   HomePreviewEditor.tsx). Beide Formen sind unten dupliziert, das
+   Self-Selektor hat dieselbe Spezifität wie der Vorfahre-Selektor und
+   gewinnt daher als das "näher am Element" gesetzte data-Attribut effektiv,
+   sobald ein individueller Override das data-button-anim direkt am Button
+   setzt. Kein data-button-anim gesetzt = altes, einfaches Farb-Hover bleibt
+   wie bisher. */
 .btn {
   transition:
     background-color 0.2s ease,
@@ -84,21 +89,26 @@ html {
     letter-spacing 0.2s ease;
 }
 
-[data-button-anim="lift"] .btn:hover {
+[data-button-anim="lift"] .btn:hover,
+.btn[data-button-anim="lift"]:hover {
   transform: translateY(-3px);
   box-shadow: 0 10px 20px -8px rgba(0, 0, 0, 0.35);
 }
-[data-button-anim="scale"] .btn:hover {
+[data-button-anim="scale"] .btn:hover,
+.btn[data-button-anim="scale"]:hover {
   transform: scale(1.06);
 }
-[data-button-anim="glow"] .btn:hover {
+[data-button-anim="glow"] .btn:hover,
+.btn[data-button-anim="glow"]:hover {
   box-shadow: 0 0 0 4px rgba(201, 154, 63, 0.35);
 }
-[data-button-anim="underline-sweep"] .btn {
+[data-button-anim="underline-sweep"] .btn,
+.btn[data-button-anim="underline-sweep"] {
   position: relative;
   overflow: hidden;
 }
-[data-button-anim="underline-sweep"] .btn::after {
+[data-button-anim="underline-sweep"] .btn::after,
+.btn[data-button-anim="underline-sweep"]::after {
   content: "";
   position: absolute;
   left: 0;
@@ -108,14 +118,17 @@ html {
   background: currentColor;
   transition: right 0.25s ease;
 }
-[data-button-anim="underline-sweep"] .btn:hover::after {
+[data-button-anim="underline-sweep"] .btn:hover::after,
+.btn[data-button-anim="underline-sweep"]:hover::after {
   right: 0;
 }
-[data-button-anim="shine"] .btn {
+[data-button-anim="shine"] .btn,
+.btn[data-button-anim="shine"] {
   position: relative;
   overflow: hidden;
 }
-[data-button-anim="shine"] .btn::before {
+[data-button-anim="shine"] .btn::before,
+.btn[data-button-anim="shine"]::before {
   content: "";
   position: absolute;
   top: 0;
@@ -126,10 +139,12 @@ html {
   transform: skewX(-20deg);
   transition: left 0.5s ease;
 }
-[data-button-anim="shine"] .btn:hover::before {
+[data-button-anim="shine"] .btn:hover::before,
+.btn[data-button-anim="shine"]:hover::before {
   left: 120%;
 }
-[data-button-anim="pulse"] .btn:hover {
+[data-button-anim="pulse"] .btn:hover,
+.btn[data-button-anim="pulse"]:hover {
   animation: btn-anim-pulse 0.6s ease-in-out;
 }
 @keyframes btn-anim-pulse {
@@ -141,7 +156,8 @@ html {
     transform: scale(1.08);
   }
 }
-[data-button-anim="bounce"] .btn:hover {
+[data-button-anim="bounce"] .btn:hover,
+.btn[data-button-anim="bounce"]:hover {
   animation: btn-anim-bounce 0.5s ease;
 }
 @keyframes btn-anim-bounce {
@@ -159,12 +175,14 @@ html {
     transform: translateY(-2px);
   }
 }
-[data-button-anim="slide-fill"] .btn {
+[data-button-anim="slide-fill"] .btn,
+.btn[data-button-anim="slide-fill"] {
   position: relative;
   overflow: hidden;
   z-index: 0;
 }
-[data-button-anim="slide-fill"] .btn::before {
+[data-button-anim="slide-fill"] .btn::before,
+.btn[data-button-anim="slide-fill"]::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -174,14 +192,17 @@ html {
   transition: transform 0.3s ease;
   z-index: -1;
 }
-[data-button-anim="slide-fill"] .btn:hover::before {
+[data-button-anim="slide-fill"] .btn:hover::before,
+.btn[data-button-anim="slide-fill"]:hover::before {
   transform: translateX(0);
 }
-[data-button-anim="ripple"] .btn {
+[data-button-anim="ripple"] .btn,
+.btn[data-button-anim="ripple"] {
   position: relative;
   overflow: hidden;
 }
-[data-button-anim="ripple"] .btn::after {
+[data-button-anim="ripple"] .btn::after,
+.btn[data-button-anim="ripple"]::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -195,11 +216,13 @@ html {
     opacity 0.5s ease,
     background-size 0.01s;
 }
-[data-button-anim="ripple"] .btn:hover::after {
+[data-button-anim="ripple"] .btn:hover::after,
+.btn[data-button-anim="ripple"]:hover::after {
   opacity: 1;
   background-size: 260% 260%;
   transition: opacity 0.5s ease, background-size 0.6s ease;
 }
-[data-button-anim="spacing"] .btn:hover {
+[data-button-anim="spacing"] .btn:hover,
+.btn[data-button-anim="spacing"]:hover {
   letter-spacing: 0.24em;
 }

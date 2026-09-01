@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { X, RotateCcw, Upload, Bold, Italic, Underline, Crop } from "lucide-react";
+import { useEffect, useState, type CSSProperties } from "react";
+import { X, RotateCcw, Upload, Bold, Italic, Underline, Crop, Undo2 } from "lucide-react";
 import Cropper, { type Area, type Point } from "react-easy-crop";
 import { FONT_OPTIONS } from "@/lib/fonts";
+import { BUTTON_BASE_CLASS, BUTTON_VARIANT_CLASS, BUTTON_SHAPE_STYLE } from "@/components/Button";
+import { BUTTON_ANIMATION_OPTIONS } from "@/lib/button-animations";
+import type { ButtonStyleOverride } from "@/db/home-content";
 import { PALETTE_TEMPLATES, type ThemeColors } from "./palettes";
 
 export type TextEditor = {
@@ -46,7 +49,18 @@ export type PaletteEditor = {
   hasOverride: boolean;
 };
 
-export type ActiveEditor = TextEditor | ImageEditor | PaletteEditor | null;
+export type ButtonEditor = {
+  kind: "button";
+  id: string;
+  label: string;
+  /** null = kein Textfeld im Popup (z. B. Navbar-CTA, dessen Label sitewide/dictionary-basiert ist). */
+  text: { de: string; en: string } | null;
+  style: ButtonStyleOverride;
+  linked: boolean;
+  hasOverride: boolean;
+};
+
+export type ActiveEditor = TextEditor | ImageEditor | PaletteEditor | ButtonEditor | null;
 
 const inputClass =
   "w-full px-3 py-[11px] border border-line rounded-[2px] font-sans text-[0.92rem] bg-bg text-ink focus:outline-2 focus:outline-gold focus:outline-offset-1";
@@ -543,6 +557,212 @@ export function PaletteEditPopup({
           )}
           <button type="button" onClick={onClose} className={resetButtonClass}>
             Schließen
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+type ButtonLocalState = {
+  de: string;
+  en: string;
+  borderWidth: string;
+  color: string;
+  borderColor: string;
+  borderRadius: string;
+  animation: string | null;
+  linked: boolean;
+};
+
+export function ButtonEditPopup({
+  editor,
+  saving,
+  defaultColors,
+  onClose,
+  onSave,
+  onReset,
+}: {
+  editor: ButtonEditor;
+  saving: boolean;
+  defaultColors: ThemeColors;
+  onClose: () => void;
+  onSave: (values: { de: string; en: string; style: ButtonStyleOverride; linked: boolean }) => void;
+  onReset: () => void;
+}) {
+  const initial: ButtonLocalState = {
+    de: editor.text?.de ?? "",
+    en: editor.text?.en ?? "",
+    borderWidth: editor.style.borderWidth ?? "1px",
+    color: editor.style.color ?? defaultColors.primary,
+    borderColor: editor.style.borderColor ?? defaultColors.primary,
+    borderRadius: editor.style.borderRadius ?? "2px",
+    animation: editor.style.animation,
+    linked: editor.linked,
+  };
+  const [state, setState] = useState<ButtonLocalState>(initial);
+  const [history, setHistory] = useState<ButtonLocalState[]>([]);
+
+  function update(patch: Partial<ButtonLocalState>) {
+    setHistory((h) => [state, ...h].slice(0, 20));
+    setState((s) => ({ ...s, ...patch }));
+  }
+
+  function undoLastStep() {
+    if (history.length === 0) return;
+    const [previous, ...rest] = history;
+    setState(previous);
+    setHistory(rest);
+  }
+
+  return (
+    <Modal onClose={onClose}>
+      <ModalHeader title={editor.label} onClose={onClose} />
+      <div className="p-6">
+        {editor.text && (
+          <div className="grid grid-cols-2 max-[480px]:grid-cols-1 gap-3 mb-5">
+            <div>
+              <span className="block text-[0.65rem] text-ink-soft mb-1">Deutsch</span>
+              <input value={state.de} onChange={(e) => update({ de: e.target.value })} className={inputClass} autoFocus />
+            </div>
+            <div>
+              <span className="block text-[0.65rem] text-ink-soft mb-1">Englisch</span>
+              <input value={state.en} onChange={(e) => update({ en: e.target.value })} className={inputClass} />
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4 mb-5">
+          <div>
+            <span className={labelClass}>Button-Farbe</span>
+            <input
+              type="color"
+              value={state.color}
+              onChange={(e) => update({ color: e.target.value })}
+              className={colorInputClass}
+            />
+          </div>
+          <div>
+            <span className={labelClass}>Rahmenfarbe</span>
+            <input
+              type="color"
+              value={state.borderColor}
+              onChange={(e) => update({ borderColor: e.target.value })}
+              className={colorInputClass}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mb-5">
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className={labelClass + " mb-0"}>Randdicke</span>
+              <span className="text-[0.75rem] text-ink-soft">{parseInt(state.borderWidth, 10)}px</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={6}
+              step={1}
+              value={parseInt(state.borderWidth, 10)}
+              onChange={(e) => update({ borderWidth: `${e.target.value}px` })}
+              className="w-full accent-gold cursor-pointer"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className={labelClass + " mb-0"}>Rundung</span>
+              <span className="text-[0.75rem] text-ink-soft">
+                {state.borderRadius === "999px" ? "Pille" : `${parseInt(state.borderRadius, 10)}px`}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={30}
+              step={1}
+              value={state.borderRadius === "999px" ? 30 : parseInt(state.borderRadius, 10)}
+              onChange={(e) => update({ borderRadius: `${e.target.value}px` })}
+              className="w-full accent-gold cursor-pointer"
+            />
+            <button type="button" onClick={() => update({ borderRadius: "999px" })} className={resetButtonClass + " mt-2"}>
+              Pille (voll rund)
+            </button>
+          </div>
+        </div>
+
+        <span className={labelClass}>Hover-Animation</span>
+        <div className="grid grid-cols-4 max-[420px]:grid-cols-3 gap-2.5 mb-5">
+          {BUTTON_ANIMATION_OPTIONS.map((a) => (
+            <div
+              key={a.key}
+              data-button-anim={a.key}
+              className={`flex flex-col items-center gap-1.5 border rounded-[2px] p-2 ${
+                state.animation === a.key ? "border-gold" : "border-line"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => update({ animation: a.key })}
+                className={`${BUTTON_BASE_CLASS} ${BUTTON_VARIANT_CLASS.primary} px-3 py-1.5 text-[0.58rem]`}
+                style={{ ...BUTTON_SHAPE_STYLE, "--button-bg": state.color, "--button-border-color": state.borderColor } as CSSProperties}
+              >
+                Beispiel
+              </button>
+              <span className="text-[0.64rem] text-ink-soft text-center">{a.label}</span>
+            </div>
+          ))}
+        </div>
+
+        <label className="flex items-center gap-2.5 mb-5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={state.linked}
+            onChange={(e) => update({ linked: e.target.checked })}
+            className="w-4 h-4 accent-gold cursor-pointer"
+          />
+          <span className="text-[0.82rem] text-ink">Für alle Buttons der Website übernehmen (verlinkt)</span>
+        </label>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() =>
+              onSave({
+                de: state.de,
+                en: state.en,
+                style: {
+                  borderWidth: state.borderWidth,
+                  color: state.color,
+                  borderColor: state.borderColor,
+                  borderRadius: state.borderRadius,
+                  animation: state.animation,
+                },
+                linked: state.linked,
+              })
+            }
+            className={saveButtonClass}
+          >
+            {saving ? "Speichert…" : "Übernehmen"}
+          </button>
+          <button
+            type="button"
+            disabled={history.length === 0}
+            onClick={undoLastStep}
+            className={resetButtonClass + " disabled:opacity-40 disabled:cursor-not-allowed"}
+          >
+            <Undo2 className="w-3.5 h-3.5" strokeWidth={2} />
+            Letzten Schritt rückgängig
+          </button>
+          {editor.hasOverride && (
+            <button type="button" disabled={saving} onClick={onReset} className={resetButtonClass}>
+              <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
+              Zurücksetzen
+            </button>
+          )}
+          <button type="button" onClick={onClose} className={resetButtonClass}>
+            Abbrechen
           </button>
         </div>
       </div>

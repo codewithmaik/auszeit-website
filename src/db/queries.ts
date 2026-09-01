@@ -1,7 +1,7 @@
 import { asc } from "drizzle-orm";
 import { db, isDatabaseConfigured } from "./client";
 import { apartments, apartmentImages, type Apartment, type ApartmentImage } from "./schema";
-import type { HomeContent, HomeTextStyles, FooterContent, DesignDraft } from "./home-content";
+import type { HomeContent, HomeTextStyles, FooterContent, ButtonStyles, DesignDraft } from "./home-content";
 import { BUSINESS } from "@/lib/site";
 
 export type ApartmentWithImages = Apartment & { images: ApartmentImage[] };
@@ -32,6 +32,8 @@ const DEFAULT_SETTINGS = {
   buttonBorderColor: null as string | null,
   buttonBorderRadius: null as string | null,
   buttonAnimation: null as string | null,
+  buttonStyles: null as ButtonStyles | null,
+  buttonsLinked: false,
   designDraft: null as DesignDraft | null,
   designDraftHistory: null as DesignDraft[] | null,
 };

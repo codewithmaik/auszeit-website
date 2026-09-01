@@ -1,11 +1,16 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import type { ButtonStyleOverride } from "@/db/home-content";
 
 type ButtonProps = {
   href: string;
   children: ReactNode;
   variant?: "primary" | "outline" | "outline-light";
   className?: string;
+  /** Individueller Design-Editor-Override für genau diese eine Button-Instanz
+   *  (Hero-CTAs, Navbar-CTA) — überschreibt die sitewide Default-CSS-Vars nur
+   *  für dieses Element. Ohne Override (Standard) unverändertes Verhalten. */
+  styleOverride?: ButtonStyleOverride | null;
 };
 
 // ".btn" ist die Marker-Klasse für die im Design-Editor wählbare, sitewide
@@ -43,9 +48,23 @@ export default function Button({
   children,
   variant = "primary",
   className = "",
+  styleOverride,
 }: ButtonProps) {
+  const overrideStyle: CSSProperties = styleOverride
+    ? ({
+        ...(styleOverride.borderWidth && { "--button-border-width": styleOverride.borderWidth }),
+        ...(styleOverride.color && { "--button-bg": styleOverride.color }),
+        ...(styleOverride.borderColor && { "--button-border-color": styleOverride.borderColor }),
+        ...(styleOverride.borderRadius && { "--button-radius": styleOverride.borderRadius }),
+      } as CSSProperties)
+    : {};
   return (
-    <Link href={href} className={`${base} ${variants[variant]} ${className}`} style={shapeStyle}>
+    <Link
+      href={href}
+      className={`${base} ${variants[variant]} ${className}`}
+      style={{ ...shapeStyle, ...overrideStyle }}
+      data-button-anim={styleOverride?.animation ?? undefined}
+    >
       {children}
     </Link>
   );

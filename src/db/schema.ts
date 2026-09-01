@@ -1,6 +1,6 @@
-import { pgTable, serial, text, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, jsonb, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import type { HomeContent, HomeTextStyles, FooterContent, DesignDraft } from "./home-content";
+import type { HomeContent, HomeTextStyles, FooterContent, ButtonStyles, DesignDraft } from "./home-content";
 
 export const siteSettings = pgTable("site_settings", {
   id: serial("id").primaryKey(),
@@ -42,13 +42,22 @@ export const siteSettings = pgTable("site_settings", {
   footerContentDe: jsonb("footer_content_de").$type<FooterContent>(),
   footerContentEn: jsonb("footer_content_en").$type<FooterContent>(),
 
-  // Sitewide Button-Gestaltung — überschreibt Randdicke/-farbe/-radius/Farbe und
-  // Hover-Animation für alle Buttons (Button.tsx + Hero-CTAs). null = Standard.
+  // Default-Button-Stil — Fallback für alle Buttons, die keinen individuellen
+  // Override haben (buttonStyles unten), inkl. aller Buttons außerhalb des
+  // Design-Preview-Scopes (Wohnung/Bewertungen/Slider). null = Standard.
   buttonBorderWidth: text("button_border_width"),
   buttonColor: text("button_color"),
   buttonBorderColor: text("button_border_color"),
   buttonBorderRadius: text("button_border_radius"),
   buttonAnimation: text("button_animation"),
+
+  // Individuelle Button-Gestaltung je Button-ID (siehe BUTTON_IDS in
+  // home-content.ts) — überschreibt den Default-Stil oben nur für diesen einen
+  // Button. `buttonsLinked` steuert die "Für alle Buttons übernehmen"-Checkbox
+  // im Button-Popup: bei true schreibt jede Änderung gleichzeitig in alle drei
+  // Button-IDs UND in den Default-Stil (siehe saveButtonEdit-Action).
+  buttonStyles: jsonb("button_styles").$type<ButtonStyles>(),
+  buttonsLinked: boolean("buttons_linked").notNull().default(false),
 
   // Entwurf/Veröffentlichen-Workflow: `designDraft` hält den kompletten, noch
   // nicht veröffentlichten Bearbeitungsstand aller obigen Design-Felder (siehe

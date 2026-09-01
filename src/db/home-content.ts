@@ -45,6 +45,27 @@ export type FooterContent = {
   copyrightSuffix: string;
 };
 
+// Individuelle Button-Gestaltung: nur die im Design-Preview sichtbaren
+// Buttons (Hero-CTA 1/2, Navbar-CTA) können eigene Overrides bekommen — alle
+// übrigen Buttons der Website (Wohnung/Bewertungen/Slider) folgen weiterhin
+// dem gemeinsamen Default-Stil (die bisherigen buttonBorderWidth/.../-Spalten
+// weiter unten). null je Feld = kein individueller Wert, Default-Stil greift.
+export const BUTTON_IDS = ["hero.ctaWohnungen", "hero.ctaBuchen", "navbar.cta"] as const;
+export type ButtonId = (typeof BUTTON_IDS)[number];
+
+export function isValidButtonId(id: string): id is ButtonId {
+  return (BUTTON_IDS as readonly string[]).includes(id);
+}
+
+export type ButtonStyleOverride = {
+  borderWidth: string | null;
+  color: string | null;
+  borderColor: string | null;
+  borderRadius: string | null;
+  animation: string | null;
+};
+export type ButtonStyles = Partial<Record<ButtonId, ButtonStyleOverride>>;
+
 // Vollständiger, noch nicht veröffentlichter Bearbeitungsstand des Design-Menüs
 // — spiegelt 1:1 die entwurfsfähigen Spalten aus siteSettings (src/db/schema.ts).
 // null bei einem Feld = "auf Standard zurücksetzen", nicht "unverändert" — ein
@@ -69,6 +90,8 @@ export type DesignDraft = {
   buttonBorderColor: string | null;
   buttonBorderRadius: string | null;
   buttonAnimation: string | null;
+  buttonStyles: ButtonStyles | null;
+  buttonsLinked: boolean;
 };
 
 // Baut den DesignDraft-Snapshot aus dem aktuell *veröffentlichten* Zustand
@@ -95,6 +118,8 @@ export function publishedDesignSnapshot(settings: DesignDraft): DesignDraft {
     buttonBorderColor: settings.buttonBorderColor,
     buttonBorderRadius: settings.buttonBorderRadius,
     buttonAnimation: settings.buttonAnimation,
+    buttonStyles: settings.buttonStyles,
+    buttonsLinked: settings.buttonsLinked,
   };
 }
 

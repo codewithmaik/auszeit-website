@@ -68,8 +68,14 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
             {t.hero.lead2}
           </p>
           <div className="flex gap-3.5 mt-6 flex-wrap">
-            <Button href={localeHref(lang, "/wohnung")}>{t.hero.ctaWohnungen}</Button>
-            <Button href={`${localeHref(lang, "/kontakt")}#buchen`} variant="outline-light">
+            <Button href={localeHref(lang, "/wohnung")} styleOverride={settings.buttonStyles?.["hero.ctaWohnungen"]}>
+              {t.hero.ctaWohnungen}
+            </Button>
+            <Button
+              href={`${localeHref(lang, "/kontakt")}#buchen`}
+              variant="outline-light"
+              styleOverride={settings.buttonStyles?.["hero.ctaBuchen"]}
+            >
               {t.hero.ctaBuchen}
             </Button>
           </div>

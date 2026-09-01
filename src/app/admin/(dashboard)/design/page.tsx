@@ -65,9 +65,8 @@ export default async function AdminDesignPage() {
           borderRadius: draft.buttonBorderRadius,
           animation: draft.buttonAnimation,
         }}
-        hasButtonOverride={Boolean(
-          draft.buttonBorderWidth || draft.buttonColor || draft.buttonBorderColor || draft.buttonBorderRadius || draft.buttonAnimation,
-        )}
+        initialButtonStyles={draft.buttonStyles ?? {}}
+        initialButtonsLinked={draft.buttonsLinked}
         hasDraft={hasDraft}
         draftHistoryCount={draftHistoryCount}
       />

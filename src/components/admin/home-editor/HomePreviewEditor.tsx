@@ -3,7 +3,16 @@
 import { useState, useTransition, type CSSProperties, type ElementType, type ReactNode } from "react";
 import Image from "next/image";
 import { Check, ArrowRight, CalendarCheck2, RotateCcw, Pencil, Undo2, UploadCloud, X } from "lucide-react";
-import type { HomeContent, HomeTextStyles, FooterContent, DesignDraft } from "@/db/home-content";
+import type {
+  HomeContent,
+  HomeTextStyles,
+  FooterContent,
+  ButtonStyleOverride,
+  ButtonStyles,
+  ButtonId,
+  DesignDraft,
+} from "@/db/home-content";
+import { BUTTON_IDS } from "@/db/home-content";
 import { ICONS as BRAND_ICON_SRC } from "@/components/BrandIcon";
 import { FEATURE_ICONS, FEATURE_ICON_FRAME, TRUST_ICONS, STEP_ICONS } from "@/lib/home-icons";
 import { fontFamilyFor } from "@/lib/fonts";
@@ -22,8 +31,8 @@ import {
   resetLogoTextImage,
   saveThemeColors,
   resetThemeColors,
-  saveButtonStyle,
-  resetButtonStyle,
+  saveButtonEdit,
+  resetButtonStyleForId,
   saveFooterContent,
   resetFooterContent,
   publishDesign,
@@ -32,8 +41,7 @@ import {
 } from "@/app/admin/(dashboard)/design/actions";
 import { FIELDS, FOOTER_FIELDS, buildHomeContentFormData, buildFooterContentFormData, type TextRole } from "./fields";
 import { DEFAULT_COLORS, type ThemeColors } from "./palettes";
-import { TextEditPopup, ImageEditPopup, PaletteEditPopup, type ActiveEditor } from "./EditPopup";
-import { BUTTON_ANIMATION_OPTIONS } from "@/lib/button-animations";
+import { TextEditPopup, ImageEditPopup, PaletteEditPopup, ButtonEditPopup, type ActiveEditor } from "./EditPopup";
 
 // Statische Nav-Labels für die dekorative Preview-Navbar (kein echtes Routing,
 // nicht editierbar — die Navbar-Links sind sitewide/dictionary-basiert und
@@ -126,26 +134,18 @@ type Props = {
   isLogoTextDefault: boolean;
   initialColors: ThemeColors;
   hasThemeOverride: boolean;
-  initialButtonStyle: ButtonStyleState;
-  hasButtonOverride: boolean;
+  initialButtonStyle: ButtonStyleOverride;
+  initialButtonStyles: ButtonStyles;
+  initialButtonsLinked: boolean;
   hasDraft: boolean;
   draftHistoryCount: number;
 };
 
-export type ButtonStyleState = {
-  borderWidth: string | null;
-  color: string | null;
-  borderColor: string | null;
-  borderRadius: string | null;
-  animation: string | null;
-};
-
-const DEFAULT_BUTTON_STYLE: ButtonStyleState = {
-  borderWidth: null,
-  color: null,
-  borderColor: null,
-  borderRadius: null,
-  animation: null,
+// Anzeige-Labels für die drei individuell gestaltbaren Buttons (Popup-Titel).
+const BUTTON_LABELS: Record<ButtonId, string> = {
+  "hero.ctaWohnungen": 'Button „Zu den Wohnungen" (Hero)',
+  "hero.ctaBuchen": 'Button „Buchen & Anfragen" (Hero)',
+  "navbar.cta": 'Button „Anfragen" (Navbar)',
 };
 
 const DEFAULT_LOGO_IMAGE = "/images/logo.png";
@@ -175,7 +175,8 @@ export default function HomePreviewEditor({
   initialColors,
   hasThemeOverride,
   initialButtonStyle,
-  hasButtonOverride,
+  initialButtonStyles,
+  initialButtonsLinked,
   hasDraft,
   draftHistoryCount,
 }: Props) {
@@ -196,8 +197,9 @@ export default function HomePreviewEditor({
   const [logoTextIsDefault, setLogoTextIsDefault] = useState(isLogoTextDefault);
   const [colors, setColors] = useState<ThemeColors>(initialColors);
   const [themeOverride, setThemeOverride] = useState(hasThemeOverride);
-  const [buttonStyle, setButtonStyle] = useState<ButtonStyleState>(initialButtonStyle);
-  const [buttonOverride, setButtonOverride] = useState(hasButtonOverride);
+  const [buttonStyle, setButtonStyle] = useState<ButtonStyleOverride>(initialButtonStyle);
+  const [buttonStyles, setButtonStyles] = useState<ButtonStyles>(initialButtonStyles);
+  const [buttonsLinked, setButtonsLinked] = useState(initialButtonsLinked);
   const [previewLocale, setPreviewLocale] = useState<"de" | "en">("de");
   const [activeEditor, setActiveEditor] = useState<ActiveEditor>(null);
   const [draftExists, setDraftExists] = useState(hasDraft);
@@ -208,6 +210,26 @@ export default function HomePreviewEditor({
   const content = previewLocale === "de" ? contentDe : contentEn;
   const footerContent = previewLocale === "de" ? footerContentDe : footerContentEn;
   const hasStyleOverride = Object.keys(styles).length > 0;
+
+  // Individueller Override eines Buttons, mit Fallback auf den Default-Stil
+  // (buttonStyle) — angewendet als Inline-CSS-Vars direkt auf dem jeweiligen
+  // Button-Element (höhere Spezifität als die Container-Vars unten).
+  function buttonInlineStyle(id: ButtonId): CSSProperties {
+    const override = buttonStyles[id];
+    const borderWidth = override?.borderWidth ?? buttonStyle.borderWidth;
+    const color = override?.color ?? buttonStyle.color;
+    const borderColor = override?.borderColor ?? buttonStyle.borderColor;
+    const borderRadius = override?.borderRadius ?? buttonStyle.borderRadius;
+    return {
+      ...(borderWidth && { "--button-border-width": borderWidth }),
+      ...(color && { "--button-bg": color }),
+      ...(borderColor && { "--button-border-color": borderColor }),
+      ...(borderRadius && { "--button-radius": borderRadius }),
+    } as CSSProperties;
+  }
+  function buttonAnimationAttr(id: ButtonId): string | undefined {
+    return buttonStyles[id]?.animation ?? buttonStyle.animation ?? undefined;
+  }
 
   const previewThemeStyle = {
     "--color-forest": colors.primary,
@@ -255,11 +277,8 @@ export default function HomePreviewEditor({
       borderRadius: next.buttonBorderRadius,
       animation: next.buttonAnimation,
     });
-    setButtonOverride(
-      Boolean(
-        next.buttonBorderWidth || next.buttonColor || next.buttonBorderColor || next.buttonBorderRadius || next.buttonAnimation,
-      ),
-    );
+    setButtonStyles(next.buttonStyles ?? {});
+    setButtonsLinked(next.buttonsLinked);
   }
 
   function openTextEditor(id: string) {
@@ -504,28 +523,70 @@ export default function HomePreviewEditor({
     });
   }
 
-  function updateButtonStyle(patch: Partial<ButtonStyleState>) {
-    const next = { ...buttonStyle, ...patch };
-    setButtonStyle(next);
-    setButtonOverride(true);
-    markDraftChanged();
-    startTransition(async () => {
-      const fd = new FormData();
-      if (next.borderWidth) fd.set("buttonBorderWidth", next.borderWidth);
-      if (next.color) fd.set("buttonColor", next.color);
-      if (next.borderColor) fd.set("buttonBorderColor", next.borderColor);
-      if (next.borderRadius) fd.set("buttonBorderRadius", next.borderRadius);
-      if (next.animation) fd.set("buttonAnimation", next.animation);
-      await saveButtonStyle(fd);
+  function openButtonEditor(id: ButtonId) {
+    const field = FIELDS[id];
+    const override = buttonStyles[id];
+    setActiveEditor({
+      kind: "button",
+      id,
+      label: BUTTON_LABELS[id],
+      text: field ? { de: field.get(contentDe), en: field.get(contentEn) } : null,
+      style: override ?? buttonStyle,
+      linked: buttonsLinked,
+      hasOverride: Boolean(override),
     });
   }
 
-  function resetButtonStyleLocal() {
-    setButtonStyle(DEFAULT_BUTTON_STYLE);
-    setButtonOverride(false);
+  function handleSaveButton(values: { de: string; en: string; style: ButtonStyleOverride; linked: boolean }) {
+    if (!activeEditor || activeEditor.kind !== "button") return;
+    const id = activeEditor.id as ButtonId;
+    const field = FIELDS[id];
+    let newDe = contentDe;
+    let newEn = contentEn;
+    if (field) {
+      newDe = field.set(contentDe, values.de);
+      newEn = field.set(contentEn, values.en);
+      setContentDe(newDe);
+      setContentEn(newEn);
+      setHomeOverride(true);
+    }
+
+    if (values.linked) {
+      const linkedStyles: ButtonStyles = {};
+      for (const bid of BUTTON_IDS) linkedStyles[bid] = values.style;
+      setButtonStyles(linkedStyles);
+      setButtonStyle(values.style);
+    } else {
+      setButtonStyles({ ...buttonStyles, [id]: values.style });
+    }
+    setButtonsLinked(values.linked);
+    setActiveEditor(null);
+    markDraftChanged();
+
+    startTransition(async () => {
+      const fd = buildHomeContentFormData(newDe, newEn);
+      fd.set("buttonId", id);
+      fd.set("linked", String(values.linked));
+      if (values.style.borderWidth) fd.set("borderWidth", values.style.borderWidth);
+      if (values.style.color) fd.set("color", values.style.color);
+      if (values.style.borderColor) fd.set("borderColor", values.style.borderColor);
+      if (values.style.borderRadius) fd.set("borderRadius", values.style.borderRadius);
+      if (values.style.animation) fd.set("animation", values.style.animation);
+      await saveButtonEdit(fd);
+    });
+  }
+
+  function handleResetButton() {
+    if (!activeEditor || activeEditor.kind !== "button") return;
+    const id = activeEditor.id as ButtonId;
+    const nextStyles = { ...buttonStyles };
+    delete nextStyles[id];
+    setButtonStyles(nextStyles);
+    setButtonsLinked(false);
+    setActiveEditor(null);
     markDraftChanged();
     startTransition(async () => {
-      await resetButtonStyle();
+      await resetButtonStyleForId(id);
     });
   }
 
@@ -644,111 +705,6 @@ export default function HomePreviewEditor({
         </div>
       </div>
 
-      {/* Buttons */}
-      <div className="bg-white border border-line rounded-[2px] p-6 mb-8">
-        <h2 className="text-[1.15rem] mb-1">Buttons</h2>
-        <p className="text-[0.85rem] text-ink-soft mb-4">
-          Randdicke, Farben, Rundung und Hover-Animation gelten für <strong>alle Buttons der Website</strong>{" "}
-          (Navigation, Formulare, Hero-Buttons etc.).
-        </p>
-
-        <div className="grid grid-cols-2 max-[640px]:grid-cols-1 gap-4 mb-6">
-          <div>
-            <span className="block text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft mb-1.5">Button-Farbe</span>
-            <input
-              type="color"
-              value={buttonStyle.color ?? colors.primary}
-              onChange={(e) => updateButtonStyle({ color: e.target.value })}
-              className="w-full h-11 border border-line rounded-[2px] cursor-pointer"
-            />
-          </div>
-          <div>
-            <span className="block text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft mb-1.5">Rahmenfarbe</span>
-            <input
-              type="color"
-              value={buttonStyle.borderColor ?? colors.primary}
-              onChange={(e) => updateButtonStyle({ borderColor: e.target.value })}
-              className="w-full h-11 border border-line rounded-[2px] cursor-pointer"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 max-[640px]:grid-cols-1 gap-4 mb-6">
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft">Randdicke</span>
-              <span className="text-[0.75rem] text-ink-soft">{parseInt(buttonStyle.borderWidth ?? "1", 10)}px</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={6}
-              step={1}
-              value={parseInt(buttonStyle.borderWidth ?? "1", 10)}
-              onChange={(e) => updateButtonStyle({ borderWidth: `${e.target.value}px` })}
-              className="w-full accent-gold cursor-pointer"
-            />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft">Rundung</span>
-              <span className="text-[0.75rem] text-ink-soft">
-                {buttonStyle.borderRadius === "999px" ? "Pille" : `${parseInt(buttonStyle.borderRadius ?? "2", 10)}px`}
-              </span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={30}
-              step={1}
-              value={buttonStyle.borderRadius === "999px" ? 30 : parseInt(buttonStyle.borderRadius ?? "2", 10)}
-              onChange={(e) => updateButtonStyle({ borderRadius: `${e.target.value}px` })}
-              className="w-full accent-gold cursor-pointer"
-            />
-            <button
-              type="button"
-              onClick={() => updateButtonStyle({ borderRadius: "999px" })}
-              className={resetButtonClass + " mt-2"}
-            >
-              Pille (voll rund)
-            </button>
-          </div>
-        </div>
-
-        <span className="block text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft mb-2">Hover-Animation</span>
-        <div
-          style={previewThemeStyle}
-          className="grid grid-cols-5 max-[760px]:grid-cols-3 max-[480px]:grid-cols-2 gap-3 mb-2"
-        >
-          {BUTTON_ANIMATION_OPTIONS.map((a) => (
-            <div
-              key={a.key}
-              data-button-anim={a.key}
-              className={`flex flex-col items-center gap-2 border rounded-[2px] p-3 ${
-                buttonStyle.animation === a.key ? "border-gold" : "border-line"
-              }`}
-            >
-              <button
-                type="button"
-                onClick={() => updateButtonStyle({ animation: a.key })}
-                className={`${BUTTON_BASE_CLASS} ${BUTTON_VARIANT_CLASS.primary} px-4 py-2 text-[0.62rem]`}
-                style={BUTTON_SHAPE_STYLE}
-              >
-                Beispiel
-              </button>
-              <span className="text-[0.68rem] text-ink-soft text-center">{a.label}</span>
-            </div>
-          ))}
-        </div>
-
-        {buttonOverride && (
-          <button type="button" onClick={resetButtonStyleLocal} className={resetButtonClass + " mt-3"}>
-            <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
-            Auf Standard-Buttons zurücksetzen
-          </button>
-        )}
-      </div>
-
       {/* Live-Vorschau */}
       <div className="bg-white border border-line rounded-[2px] overflow-hidden mb-8">
         <div className="flex items-center justify-between gap-4 flex-wrap px-5 py-3.5 border-b border-line bg-bg-soft">
@@ -853,9 +809,18 @@ export default function HomePreviewEditor({
                 </span>
               ))}
             </nav>
-            <span className={`${BUTTON_BASE_CLASS} ${BUTTON_VARIANT_CLASS.primary} flex-none`} style={BUTTON_SHAPE_STYLE}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                openButtonEditor("navbar.cta");
+              }}
+              className={`${editableClass} ${BUTTON_BASE_CLASS} ${BUTTON_VARIANT_CLASS.primary} flex-none`}
+              style={{ ...BUTTON_SHAPE_STYLE, ...buttonInlineStyle("navbar.cta") }}
+              data-button-anim={buttonAnimationAttr("navbar.cta")}
+            >
               {PREVIEW_NAV_CTA[previewLocale]}
-            </span>
+            </button>
           </div>
 
           {/* Hero */}
@@ -886,17 +851,19 @@ export default function HomePreviewEditor({
               <div className="flex gap-3.5 mt-6 flex-wrap">
                 <button
                   type="button"
-                  onClick={() => openTextEditor("hero.ctaWohnungen")}
+                  onClick={() => openButtonEditor("hero.ctaWohnungen")}
                   className={`${editableClass} ${BUTTON_BASE_CLASS} ${BUTTON_VARIANT_CLASS.primary}`}
-                  style={BUTTON_SHAPE_STYLE}
+                  style={{ ...BUTTON_SHAPE_STYLE, ...buttonInlineStyle("hero.ctaWohnungen") }}
+                  data-button-anim={buttonAnimationAttr("hero.ctaWohnungen")}
                 >
                   {content.hero.ctaWohnungen}
                 </button>
                 <button
                   type="button"
-                  onClick={() => openTextEditor("hero.ctaBuchen")}
+                  onClick={() => openButtonEditor("hero.ctaBuchen")}
                   className={`${editableClass} ${BUTTON_BASE_CLASS} ${BUTTON_VARIANT_CLASS["outline-light"]}`}
-                  style={BUTTON_SHAPE_STYLE}
+                  style={{ ...BUTTON_SHAPE_STYLE, ...buttonInlineStyle("hero.ctaBuchen") }}
+                  data-button-anim={buttonAnimationAttr("hero.ctaBuchen")}
                 >
                   {content.hero.ctaBuchen}
                 </button>
@@ -1168,6 +1135,16 @@ export default function HomePreviewEditor({
             resetColors();
             setActiveEditor(null);
           }}
+        />
+      )}
+      {activeEditor?.kind === "button" && (
+        <ButtonEditPopup
+          editor={activeEditor}
+          saving={isPending}
+          defaultColors={colors}
+          onClose={() => setActiveEditor(null)}
+          onSave={handleSaveButton}
+          onReset={handleResetButton}
         />
       )}
     </div>
