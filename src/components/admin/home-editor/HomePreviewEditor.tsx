@@ -29,9 +29,18 @@ import {
   undoDesignDraft,
 } from "@/app/admin/(dashboard)/design/actions";
 import { FIELDS, buildHomeContentFormData, type TextRole } from "./fields";
-import { PALETTE_TEMPLATES, DEFAULT_COLORS, type ThemeColors } from "./palettes";
-import { TextEditPopup, ImageEditPopup, type ActiveEditor } from "./EditPopup";
+import { DEFAULT_COLORS, type ThemeColors } from "./palettes";
+import { TextEditPopup, ImageEditPopup, PaletteEditPopup, type ActiveEditor } from "./EditPopup";
 import { BUTTON_ANIMATION_OPTIONS } from "@/lib/button-animations";
+
+// Statische Nav-Labels für die dekorative Preview-Navbar (kein echtes Routing,
+// nicht editierbar — die Navbar-Links sind sitewide/dictionary-basiert und
+// bewusst nicht Teil des Design-Editors, siehe src/dictionaries/{de,en}.ts nav).
+const PREVIEW_NAV_LABELS: Record<"de" | "en", string[]> = {
+  de: ["Startseite", "Die Wohnungen", "Die Region", "Gästebewertungen", "Kontakt"],
+  en: ["Home", "The Apartments", "The Region", "Guest Reviews", "Contact"],
+};
+const PREVIEW_NAV_CTA: Record<"de" | "en", string> = { de: "Anfragen", en: "Enquire" };
 
 const resetButtonClass =
   "inline-flex items-center gap-1.5 px-4 py-2.5 border border-line text-ink-soft font-sans text-[0.72rem] tracking-[0.08em] uppercase rounded-[2px] hover:text-forest hover:border-forest transition-colors";
@@ -406,6 +415,10 @@ export default function HomePreviewEditor({
     });
   }
 
+  function openPaletteEditor() {
+    setActiveEditor({ kind: "palette", colors, hasOverride: themeOverride });
+  }
+
   function applyPalette(p: ThemeColors) {
     setColors(p);
     setThemeOverride(true);
@@ -559,121 +572,6 @@ export default function HomePreviewEditor({
         </div>
       </div>
 
-      {/* Branding */}
-      <div className="bg-white border border-line rounded-[2px] p-6 mb-8">
-        <h2 className="text-[1.15rem] mb-4">Branding (Navbar)</h2>
-        <div className="flex flex-wrap gap-8">
-          <button type="button" onClick={() => openImageEditor("logo")} className="group text-left cursor-pointer">
-            <span className="relative block w-[72px] h-[72px] rounded-full overflow-hidden border border-line bg-bg-soft">
-              <Image src={logoImage} alt="" fill sizes="72px" className="object-cover" />
-              <span className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors" />
-            </span>
-            <span className="block mt-2 text-[0.72rem] tracking-[0.06em] uppercase text-ink-soft group-hover:text-forest transition-colors">
-              Logo ändern
-            </span>
-          </button>
-          <button type="button" onClick={() => openImageEditor("logoText")} className="group text-left cursor-pointer">
-            <span className="relative block w-[220px] h-[68px] rounded-[2px] overflow-hidden border border-line bg-bg-soft">
-              <Image
-                src={logoTextImage}
-                alt=""
-                fill
-                sizes="220px"
-                className={logoTextIsDefault ? "object-cover opacity-30" : "object-contain"}
-              />
-              <span className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors" />
-            </span>
-            <span className="block mt-2 text-[0.72rem] tracking-[0.06em] uppercase text-ink-soft group-hover:text-forest transition-colors">
-              Logo-Schriftzug ändern
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {/* Farbpalette */}
-      <div className="bg-white border border-line rounded-[2px] p-6 mb-8">
-        <h2 className="text-[1.15rem] mb-1">Farbpalette</h2>
-        <p className="text-[0.85rem] text-ink-soft mb-4">
-          Steuert das Erscheinungsbild der <strong>gesamten Website</strong>. Ein Klick auf ein Template übernimmt
-          es sofort in der Vorschau — sichtbar auf der Website erst nach „Veröffentlichen&rdquo;.
-        </p>
-        <div className="grid grid-cols-5 max-[760px]:grid-cols-3 max-[480px]:grid-cols-2 gap-3 mb-6">
-          {PALETTE_TEMPLATES.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => applyPalette(p)}
-              className="group text-left border border-line rounded-[2px] overflow-hidden hover:border-gold transition-colors cursor-pointer"
-            >
-              <div className="flex h-9">
-                <span style={{ background: p.primary }} className="flex-1" />
-                <span style={{ background: p.accent }} className="flex-1" />
-                <span style={{ background: p.background }} className="flex-1 border-l border-line/40" />
-              </div>
-              <span className="block px-2 py-1.5 text-[0.7rem] text-ink-soft group-hover:text-forest transition-colors">
-                {p.name}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        <details className="group">
-          <summary className="cursor-pointer text-[0.78rem] tracking-[0.06em] uppercase text-ink-soft hover:text-forest transition-colors select-none">
-            Eigene Farben (erweitert)
-          </summary>
-          <div className="grid grid-cols-4 max-[640px]:grid-cols-2 gap-4 mt-4 mb-5">
-            <div>
-              <span className="block text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft mb-1.5">Primärfarbe</span>
-              <input
-                type="color"
-                value={colors.primary}
-                onChange={(e) => setColors((c) => ({ ...c, primary: e.target.value }))}
-                className="w-full h-11 border border-line rounded-[2px] cursor-pointer"
-              />
-            </div>
-            <div>
-              <span className="block text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft mb-1.5">
-                Primär (dunkel/Hover)
-              </span>
-              <input
-                type="color"
-                value={colors.primaryDark}
-                onChange={(e) => setColors((c) => ({ ...c, primaryDark: e.target.value }))}
-                className="w-full h-11 border border-line rounded-[2px] cursor-pointer"
-              />
-            </div>
-            <div>
-              <span className="block text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft mb-1.5">Akzentfarbe</span>
-              <input
-                type="color"
-                value={colors.accent}
-                onChange={(e) => setColors((c) => ({ ...c, accent: e.target.value }))}
-                className="w-full h-11 border border-line rounded-[2px] cursor-pointer"
-              />
-            </div>
-            <div>
-              <span className="block text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft mb-1.5">Hintergrund</span>
-              <input
-                type="color"
-                value={colors.background}
-                onChange={(e) => setColors((c) => ({ ...c, background: e.target.value }))}
-                className="w-full h-11 border border-line rounded-[2px] cursor-pointer"
-              />
-            </div>
-          </div>
-          <button type="button" onClick={() => applyPalette(colors)} className={saveButtonClass}>
-            Eigene Farben übernehmen
-          </button>
-        </details>
-
-        {themeOverride && (
-          <button type="button" onClick={resetColors} className={resetButtonClass + " mt-5"}>
-            <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
-            Auf Standardfarben zurücksetzen
-          </button>
-        )}
-      </div>
-
       {/* Buttons */}
       <div className="bg-white border border-line rounded-[2px] p-6 mb-8">
         <h2 className="text-[1.15rem] mb-1">Buttons</h2>
@@ -820,6 +718,68 @@ export default function HomePreviewEditor({
         </div>
 
         <div style={previewThemeStyle} data-button-anim={buttonStyle.animation ?? undefined} className="bg-bg">
+          {/* Navbar */}
+          <div
+            className="flex items-center justify-between gap-4 px-8 py-3.5 border-b border-line bg-bg/95 cursor-pointer"
+            onClick={openPaletteEditor}
+            title="Farbpalette bearbeiten"
+          >
+            <div className="flex items-center gap-3.5 min-w-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openImageEditor("logo");
+                }}
+                className="group relative block w-[46px] h-[46px] rounded-full overflow-hidden flex-none cursor-pointer"
+                title="Logo ändern"
+              >
+                <Image src={logoImage} alt="" fill sizes="46px" className="object-cover" />
+                <span className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openImageEditor("logoText");
+                }}
+                className="group relative block w-[170px] h-[34px] flex-none cursor-pointer"
+                title="Logo-Schriftzug ändern"
+              >
+                {logoTextIsDefault ? (
+                  <span className="block">
+                    <span className="block font-serif text-[1.25rem] tracking-[0.12em] text-forest leading-none whitespace-nowrap">
+                      AUSZEIT
+                    </span>
+                    <span className="block text-[0.56rem] leading-[1.15] tracking-[0.14em] uppercase text-gold whitespace-nowrap">
+                      Ferienwohnung
+                      <br />
+                      an der Mosel
+                    </span>
+                  </span>
+                ) : (
+                  <Image src={logoTextImage} alt="" fill sizes="170px" className="object-contain object-left" />
+                )}
+                <span className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+              </button>
+            </div>
+            <nav className="flex items-center gap-[26px] max-[820px]:hidden">
+              {PREVIEW_NAV_LABELS[previewLocale].map((label, i) => (
+                <span
+                  key={label}
+                  className={`text-[0.76rem] tracking-[0.1em] uppercase pb-1 border-b ${
+                    i === 0 ? "border-gold text-forest" : "border-transparent text-ink"
+                  }`}
+                >
+                  {label}
+                </span>
+              ))}
+            </nav>
+            <span className={`${BUTTON_BASE_CLASS} ${BUTTON_VARIANT_CLASS.primary} flex-none`} style={BUTTON_SHAPE_STYLE}>
+              {PREVIEW_NAV_CTA[previewLocale]}
+            </span>
+          </div>
+
           {/* Hero */}
           <section className="relative min-h-[64vh] flex items-end overflow-hidden">
             <div className="absolute inset-0 cursor-pointer group" onClick={() => openImageEditor("hero")}>
@@ -1053,6 +1013,21 @@ export default function HomePreviewEditor({
           onClose={() => setActiveEditor(null)}
           onUpload={handleUploadImage}
           onReset={handleResetImage}
+        />
+      )}
+      {activeEditor?.kind === "palette" && (
+        <PaletteEditPopup
+          editor={activeEditor}
+          saving={isPending}
+          onClose={() => setActiveEditor(null)}
+          onApply={(p) => {
+            applyPalette(p);
+            setActiveEditor(null);
+          }}
+          onReset={() => {
+            resetColors();
+            setActiveEditor(null);
+          }}
         />
       )}
     </div>

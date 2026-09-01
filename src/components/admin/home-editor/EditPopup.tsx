@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { X, RotateCcw, Upload, Bold, Italic, Underline, Crop } from "lucide-react";
 import Cropper, { type Area, type Point } from "react-easy-crop";
 import { FONT_OPTIONS } from "@/lib/fonts";
+import { PALETTE_TEMPLATES, type ThemeColors } from "./palettes";
 
 export type TextEditor = {
   kind: "text";
@@ -39,7 +40,13 @@ export type ImageEditor = {
   aspectRatio: number;
 };
 
-export type ActiveEditor = TextEditor | ImageEditor | null;
+export type PaletteEditor = {
+  kind: "palette";
+  colors: ThemeColors;
+  hasOverride: boolean;
+};
+
+export type ActiveEditor = TextEditor | ImageEditor | PaletteEditor | null;
 
 const inputClass =
   "w-full px-3 py-[11px] border border-line rounded-[2px] font-sans text-[0.92rem] bg-bg text-ink focus:outline-2 focus:outline-gold focus:outline-offset-1";
@@ -419,6 +426,125 @@ export function ImageEditPopup({
             </div>
           </>
         )}
+      </div>
+    </Modal>
+  );
+}
+
+const colorInputClass = "w-full h-11 border border-line rounded-[2px] cursor-pointer";
+
+export function PaletteEditPopup({
+  editor,
+  saving,
+  onClose,
+  onApply,
+  onReset,
+}: {
+  editor: PaletteEditor;
+  saving: boolean;
+  onClose: () => void;
+  onApply: (colors: ThemeColors) => void;
+  onReset: () => void;
+}) {
+  const [colors, setColors] = useState<ThemeColors>(editor.colors);
+  const [showCustom, setShowCustom] = useState(false);
+
+  return (
+    <Modal onClose={onClose}>
+      <ModalHeader title="Farbpalette" onClose={onClose} />
+      <div className="p-6">
+        <p className="text-[0.85rem] text-ink-soft mb-4">
+          Steuert das Erscheinungsbild der <strong>gesamten Website</strong>. Ein Klick auf ein Template übernimmt
+          es sofort in der Vorschau — sichtbar auf der Website erst nach „Veröffentlichen&rdquo;.
+        </p>
+        <div className="grid grid-cols-3 max-[420px]:grid-cols-2 gap-3 mb-5">
+          {PALETTE_TEMPLATES.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              disabled={saving}
+              onClick={() => {
+                setColors(p);
+                onApply(p);
+              }}
+              className="group text-left border border-line rounded-[2px] overflow-hidden hover:border-gold transition-colors cursor-pointer"
+            >
+              <div className="flex h-9">
+                <span style={{ background: p.primary }} className="flex-1" />
+                <span style={{ background: p.accent }} className="flex-1" />
+                <span style={{ background: p.background }} className="flex-1 border-l border-line/40" />
+              </div>
+              <span className="block px-2 py-1.5 text-[0.7rem] text-ink-soft group-hover:text-forest transition-colors">
+                {p.name}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowCustom((v) => !v)}
+          className="text-[0.78rem] tracking-[0.06em] uppercase text-ink-soft hover:text-forest transition-colors select-none cursor-pointer"
+        >
+          Eigene Farben (erweitert)
+        </button>
+        {showCustom && (
+          <div className="grid grid-cols-2 gap-4 mt-4 mb-5">
+            <div>
+              <span className={labelClass}>Primärfarbe</span>
+              <input
+                type="color"
+                value={colors.primary}
+                onChange={(e) => setColors((c) => ({ ...c, primary: e.target.value }))}
+                className={colorInputClass}
+              />
+            </div>
+            <div>
+              <span className={labelClass}>Primär (dunkel/Hover)</span>
+              <input
+                type="color"
+                value={colors.primaryDark}
+                onChange={(e) => setColors((c) => ({ ...c, primaryDark: e.target.value }))}
+                className={colorInputClass}
+              />
+            </div>
+            <div>
+              <span className={labelClass}>Akzentfarbe</span>
+              <input
+                type="color"
+                value={colors.accent}
+                onChange={(e) => setColors((c) => ({ ...c, accent: e.target.value }))}
+                className={colorInputClass}
+              />
+            </div>
+            <div>
+              <span className={labelClass}>Hintergrund</span>
+              <input
+                type="color"
+                value={colors.background}
+                onChange={(e) => setColors((c) => ({ ...c, background: e.target.value }))}
+                className={colorInputClass}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 mt-6 flex-wrap">
+          {showCustom && (
+            <button type="button" disabled={saving} onClick={() => onApply(colors)} className={saveButtonClass}>
+              {saving ? "Speichert…" : "Eigene Farben übernehmen"}
+            </button>
+          )}
+          {editor.hasOverride && (
+            <button type="button" disabled={saving} onClick={onReset} className={resetButtonClass}>
+              <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
+              Auf Standardfarben zurücksetzen
+            </button>
+          )}
+          <button type="button" onClick={onClose} className={resetButtonClass}>
+            Schließen
+          </button>
+        </div>
       </div>
     </Modal>
   );
