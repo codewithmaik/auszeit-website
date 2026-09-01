@@ -17,9 +17,9 @@ Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwisc
 **Umsetzung in 5 Phasen** (jede Phase: eigener Commit + Push + Devnotes-Update):
 1. Entwurf/Veröffentlichen/Zurück-Infrastruktur — **erledigt, committed (`b8e56b9`), gepusht.**
 2. Text-Erweiterungen (Fett/Kursiv/Unterstrichen + Schriftart pro Feld) — **erledigt, committed (`04e0381`), gepusht.** Neue Datei `src/lib/fonts.ts` mit 6 kuratierten Google Fonts (Inter, Lora, Merriweather, Montserrat, Nunito, Raleway; alle OFL-lizenziert, via `next/font/google` selbst gehostet — DSGVO-unbedenklich, siehe Kommentar in der Datei). Dropdown im `TextEditPopup`, Anwendung in `Editable` (Admin) + `styleFor()` (öffentliche Seite).
-3. Bildzuschnitt — offen.
-4. Globale Button-Gestaltung — offen.
-5. End-to-End-Check + Devnotes-Abschluss — offen.
+3. Bildzuschnitt — **erledigt, committed (`33983e6`), gepusht.** Neue Abhängigkeit `react-easy-crop` (MIT); `ImageEditPopup` zeigt nach Dateiauswahl einen Zuschnitt-Schritt mit festem Seitenverhältnis (Hero 16:9, Wohlfühl 4:3, Logo 1:1 rund, Logo-Schriftzug 3:1), Ergebnis wird clientseitig auf Canvas gerendert und als fertig zugeschnittene Datei hochgeladen.
+4. Globale Button-Gestaltung — **erledigt, committed (`e8b2aa2`), gepusht.** Neue „Buttons"-Sektion im Editor (Randdicke, Button-/Rahmenfarbe, Border-Radius, 10 CSS-Hover-Animationen aus neuer Datei `src/lib/button-animations.ts`). Technik: CSS-Variablen (`--button-bg`/`--button-border-color`/`--button-border-width`/`--button-radius`) + ein `data-button-anim`-Attribut, dessen Regeln (`[data-button-anim="x"] .btn:hover` in `globals.css`) automatisch auf jedes Element mit der neuen `.btn`-Marker-Klasse wirken (`Button.tsx`) — dadurch musste **keine** bestehende Verwendungsstelle von `Button.tsx` (Header, Footer, Formulare, Hero-CTA auf der öffentlichen Seite, die den `Button` bereits wiederverwendet) angefasst werden. Farb-Overrides gelten bewusst nur für die markenfarben-basierten Varianten „primary"/„outline"; die weiße „outline-light"-Variante (dunkle Hero-/Fotohintergründe) bleibt unverändert, um die Lesbarkeit über Fotos nicht zu gefährden — falls das anders gewünscht ist, bitte Bescheid geben.
+5. End-to-End-Check + Devnotes-Abschluss — **noch offen, blockiert auf Browser-Login** (s. „Was noch offen ist" unten).
 
 **Phase 1 im Detail** (Commit `b8e56b9`):
 - Neue `siteSettings`-Spalten (`src/db/schema.ts`, per `db:push` bereits gegen die Dev-DB ausgeführt): `designDraft` (jsonb, kompletter Entwurfs-Snapshot), `designDraftHistory` (jsonb-Array, Ringpuffer für „Zurück", Cap 20 Einträge), plus `buttonBorderWidth`/`buttonColor`/`buttonBorderColor`/`buttonBorderRadius`/`buttonAnimation` (Spalten für Phase 4 schon angelegt, aktuell ungenutzt/immer `null`).
@@ -32,11 +32,13 @@ Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwisc
 
 ## Was noch offen ist (aktuelle Session)
 
-1. Browser-Login für den End-to-End-Test klären (s. o.).
-2. Phase 2 fertigstellen: kuratierte, DSGVO-unbedenkliche Google-Fonts-Liste (`src/lib/fonts.ts`, via `next/font/google` wie die bestehenden `Playfair_Display`/`Jost`), Font-Dropdown im `TextEditPopup`, Anwendung in `Editable` + `styleFor()`.
-3. Phase 3: Bildzuschnitt (`react-easy-crop`, neue Abhängigkeit) für alle vier Bild-Slots (Hero 16:9, Wohlfühl 4:3, Logo 1:1 rund, Logo-Schriftzug 3:1).
-4. Phase 4: globale Button-Gestaltung (CSS-Variablen in `layout.tsx`/`globals.css`, `Button.tsx`-Umbau, Hero-CTAs auf gemeinsame Button-Hilfsfunktion umstellen, 10 CSS-Hover-Animationen, neue „Buttons"-Sektion im Editor).
-5. Phase 5: End-to-End-Check im Browser, Devnotes-Abschluss.
+Phasen 1–4 sind alle committed und gepusht (`b8e56b9`, `04e0381`, `33983e6`, `e8b2aa2`). `npx tsc --noEmit` und `npx eslint` sind nach jeder Phase über alle geänderten Dateien sauber durchgelaufen, der Dev-Server (`localhost:3002`) kompiliert ohne Fehler. Es bleibt nur noch **Phase 5**, die eigentliche Browser-Verifikation:
+
+1. **Browser-Login klären** — der `node -e "bcrypt.hashSync(...)"`-Befehl, um kurzzeitig ein Test-Passwort in `ADMIN_PASSWORD_HASH` zu setzen (wie in einer früheren Session gemacht, danach exakt zurückgesetzt), wurde vom Auto-Mode-Classifier als sensible Credential-Operation blockiert — es wurde nicht versucht, das zu umgehen. Um den Klick-Weg testen zu können, entweder:
+   - der User loggt sich selbst einmal unter `/admin/login` oder `/bierp4a4/login` ein, danach kann mit der bereits authentifizierten Chrome-Session weitergemacht werden, oder
+   - der User erlaubt den bcrypt-Befehl explizit für diese Session.
+2. Nach erfolgreichem Login, kompletter Klick-Test gemäß Plan (`~/.claude/plans/squishy-coalescing-scroll.md`, Abschnitt „Verifikation"): Text mit Fett/Kursiv/Schriftart bearbeiten → Vorschau live beim Tippen → zweiter Tab mit der öffentlichen Seite bleibt unverändert, bis „Veröffentlichen" geklickt wird → danach sichtbar. Bild-Upload mit Zuschnitt (alle 4 Slots). Button-Stil + Animation setzen → veröffentlichen → auf `/de` prüfen. „Zurück" nach mehreren Änderungen (mehrfach nutzbar). „Entwurf verwerfen".
+3. Danach: Devnotes-Abschluss für diese Session, ggf. `feature/admin-design-editor` mit dem User besprechen (Merge nach `main`? Bislang läuft Production direkt vom Branch, s. „Was noch offen ist" weiter unten in den älteren Sessions).
 
 ## Session: Startseite als Live-Vorschau-Editor + Farbpaletten-Templates
 
