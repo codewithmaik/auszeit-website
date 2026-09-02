@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { LogOut, LayoutDashboard, Home, Settings, Palette } from "lucide-react";
-import { signOut } from "@/auth";
+import { LogOut, LayoutDashboard, Home, Settings, Palette, Inbox } from "lucide-react";
+import { auth, signOut } from "@/auth";
 
 export const metadata = { title: { template: "%s — Admin", default: "Admin" } };
 
@@ -9,7 +9,10 @@ async function logoutAction() {
   await signOut({ redirectTo: "/admin/login" });
 }
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
+  const isDeveloper = session?.user?.role === "developer";
+
   return (
     <div className="min-h-screen flex flex-col bg-bg-soft">
       <header className="bg-forest text-white">
@@ -26,10 +29,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Home className="w-4 h-4" strokeWidth={1.5} />
               Wohnungen
             </Link>
-            <Link href="/admin/design" className="flex items-center gap-1.5 hover:text-gold transition-colors">
-              <Palette className="w-4 h-4" strokeWidth={1.5} />
-              Design
+            <Link href="/admin/posteingang" className="flex items-center gap-1.5 hover:text-gold transition-colors">
+              <Inbox className="w-4 h-4" strokeWidth={1.5} />
+              Posteingang
             </Link>
+            {isDeveloper && (
+              <Link href="/admin/design" className="flex items-center gap-1.5 hover:text-gold transition-colors">
+                <Palette className="w-4 h-4" strokeWidth={1.5} />
+                Design
+              </Link>
+            )}
             <Link href="/admin/einstellungen" className="flex items-center gap-1.5 hover:text-gold transition-colors">
               <Settings className="w-4 h-4" strokeWidth={1.5} />
               Einstellungen

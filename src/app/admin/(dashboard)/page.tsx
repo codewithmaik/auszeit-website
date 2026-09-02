@@ -1,9 +1,13 @@
 import Link from "next/link";
-import { Home, Palette, RotateCcw, Settings } from "lucide-react";
+import { Home, Inbox, Palette, RotateCcw, Settings } from "lucide-react";
 import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
+import { auth } from "@/auth";
 import { resetToFactorySettings } from "./actions";
 
-export default function AdminHomePage() {
+export default async function AdminHomePage() {
+  const session = await auth();
+  const isDeveloper = session?.user?.role === "developer";
+
   return (
     <div>
       <h1 className="text-[1.8rem] mb-2">Übersicht</h1>
@@ -22,15 +26,28 @@ export default function AdminHomePage() {
         </Link>
 
         <Link
-          href="/admin/design"
+          href="/admin/posteingang"
           className="group bg-white border border-line rounded-[2px] p-6 hover:border-gold transition-colors"
         >
-          <Palette className="w-6 h-6 text-gold mb-3" strokeWidth={1.5} />
-          <h2 className="text-[1.1rem] mb-1 group-hover:text-gold transition-colors">Design</h2>
+          <Inbox className="w-6 h-6 text-gold mb-3" strokeWidth={1.5} />
+          <h2 className="text-[1.1rem] mb-1 group-hover:text-gold transition-colors">Posteingang</h2>
           <p className="text-[0.9rem] text-ink-soft m-0">
-            Farbpalette, Logo und alle Startseiten-Bilder und -Texte pflegen.
+            Buchungsanfragen bearbeiten und den Verfügbarkeitskalender pflegen.
           </p>
         </Link>
+
+        {isDeveloper && (
+          <Link
+            href="/admin/design"
+            className="group bg-white border border-line rounded-[2px] p-6 hover:border-gold transition-colors"
+          >
+            <Palette className="w-6 h-6 text-gold mb-3" strokeWidth={1.5} />
+            <h2 className="text-[1.1rem] mb-1 group-hover:text-gold transition-colors">Design</h2>
+            <p className="text-[0.9rem] text-ink-soft m-0">
+              Farbpalette, Logo und alle Startseiten-Bilder und -Texte pflegen.
+            </p>
+          </Link>
+        )}
 
         <Link
           href="/admin/einstellungen"

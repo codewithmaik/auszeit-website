@@ -37,6 +37,9 @@ export default auth((req) => {
     if (isLoginPage && req.auth) {
       return NextResponse.redirect(new URL("/admin", req.nextUrl.origin));
     }
+    if (req.auth && pathname.startsWith("/admin/design") && req.auth.user?.role !== "developer") {
+      return NextResponse.redirect(new URL("/admin", req.nextUrl.origin));
+    }
     return NextResponse.next();
   }
 
