@@ -32,6 +32,10 @@ export type HomeTextStyleOverride = {
   italic?: boolean;
   underline?: boolean;
   fontFamily?: string;
+  /** Unitless CSS line-height, z. B. "1.4". */
+  lineHeight?: string;
+  /** CSS letter-spacing inkl. Einheit, z. B. "0.02em". */
+  letterSpacing?: string;
 };
 export type HomeTextStyles = Record<string, HomeTextStyleOverride>;
 

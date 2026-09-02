@@ -279,6 +279,8 @@ function parseHomeContent(formData: FormData, locale: "de" | "en"): HomeContent 
 // ---------- Startseiten-Textstile (Schriftgröße/-farbe je Feld) ----------
 
 const FONT_SIZE_RE = /^\d+(\.\d+)?rem$/;
+const LINE_HEIGHT_RE = /^\d+(\.\d+)?$/;
+const LETTER_SPACING_RE = /^-?\d+(\.\d+)?em$/;
 
 function sanitizeHomeTextStyles(styles: HomeTextStyles): HomeTextStyles {
   const clean: HomeTextStyles = {};
@@ -296,6 +298,12 @@ function sanitizeHomeTextStyles(styles: HomeTextStyles): HomeTextStyles {
     if (typeof override.underline === "boolean") entry.underline = override.underline;
     if (typeof override.fontFamily === "string" && isValidFontKey(override.fontFamily)) {
       entry.fontFamily = override.fontFamily;
+    }
+    if (typeof override.lineHeight === "string" && LINE_HEIGHT_RE.test(override.lineHeight)) {
+      entry.lineHeight = override.lineHeight;
+    }
+    if (typeof override.letterSpacing === "string" && LETTER_SPACING_RE.test(override.letterSpacing)) {
+      entry.letterSpacing = override.letterSpacing;
     }
     if (Object.keys(entry).length > 0) clean[path] = entry;
   }

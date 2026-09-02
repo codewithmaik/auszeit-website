@@ -49,6 +49,8 @@ import {
   buildHomeContentFormData,
   buildFooterContentFormData,
   buildNavLabelsFormData,
+  DEFAULT_LINE_HEIGHT,
+  DEFAULT_LETTER_SPACING,
   type TextRole,
 } from "./fields";
 import { DEFAULT_COLORS, type ThemeColors } from "./palettes";
@@ -112,6 +114,8 @@ function Editable({
     if (override?.underline) style.textDecoration = "underline";
     const family = fontFamilyFor(override?.fontFamily);
     if (family) style.fontFamily = family;
+    if (override?.lineHeight) style.lineHeight = override.lineHeight;
+    if (override?.letterSpacing) style.letterSpacing = override.letterSpacing;
   }
   return (
     <Tag className={`${className} ${editableClass}`} style={style} onClick={() => onEdit(id)}>
@@ -325,6 +329,8 @@ export default function HomePreviewEditor({
         italic: false,
         underline: false,
         fontFamily: "",
+        lineHeight: DEFAULT_LINE_HEIGHT,
+        letterSpacing: DEFAULT_LETTER_SPACING,
         defaultRem: 1,
         defaultColor: "#000000",
         hasOverride: false,
@@ -347,6 +353,8 @@ export default function HomePreviewEditor({
         italic: false,
         underline: false,
         fontFamily: "",
+        lineHeight: DEFAULT_LINE_HEIGHT,
+        letterSpacing: DEFAULT_LETTER_SPACING,
         defaultRem: 1,
         defaultColor: "#ffffff",
         hasOverride: false,
@@ -371,6 +379,8 @@ export default function HomePreviewEditor({
       italic: Boolean(override?.italic),
       underline: Boolean(override?.underline),
       fontFamily: override?.fontFamily ?? "",
+      lineHeight: override?.lineHeight ? parseFloat(override.lineHeight) : DEFAULT_LINE_HEIGHT,
+      letterSpacing: override?.letterSpacing ? parseFloat(override.letterSpacing) : DEFAULT_LETTER_SPACING,
       defaultRem: field.defaultRem ?? 1,
       defaultColor,
       hasOverride: Boolean(
@@ -379,7 +389,9 @@ export default function HomePreviewEditor({
           override?.bold ||
           override?.italic ||
           override?.underline ||
-          override?.fontFamily,
+          override?.fontFamily ||
+          override?.lineHeight ||
+          override?.letterSpacing,
       ),
     });
   }
@@ -393,6 +405,8 @@ export default function HomePreviewEditor({
     italic: boolean;
     underline: boolean;
     fontFamily: string | null;
+    lineHeight: number | null;
+    letterSpacing: number | null;
   }) {
     if (!activeEditor || activeEditor.kind !== "text") return;
     const id = activeEditor.id;
@@ -429,7 +443,14 @@ export default function HomePreviewEditor({
     const newEn = field.set(contentEn, values.en);
     const newStyles = { ...styles };
     const hasAnyOverride =
-      values.fontRem !== null || values.color !== null || values.bold || values.italic || values.underline || values.fontFamily;
+      values.fontRem !== null ||
+      values.color !== null ||
+      values.bold ||
+      values.italic ||
+      values.underline ||
+      values.fontFamily ||
+      values.lineHeight !== null ||
+      values.letterSpacing !== null;
     if (hasAnyOverride) {
       newStyles[id] = {
         ...(values.fontRem !== null ? { fontSize: `${values.fontRem}rem` } : {}),
@@ -438,6 +459,8 @@ export default function HomePreviewEditor({
         ...(values.italic ? { italic: true } : {}),
         ...(values.underline ? { underline: true } : {}),
         ...(values.fontFamily ? { fontFamily: values.fontFamily } : {}),
+        ...(values.lineHeight !== null ? { lineHeight: `${values.lineHeight}` } : {}),
+        ...(values.letterSpacing !== null ? { letterSpacing: `${values.letterSpacing}em` } : {}),
       };
     } else {
       delete newStyles[id];

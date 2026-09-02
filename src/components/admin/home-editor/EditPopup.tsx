@@ -8,6 +8,7 @@ import { BUTTON_BASE_CLASS, BUTTON_VARIANT_CLASS, BUTTON_SHAPE_STYLE } from "@/c
 import { BUTTON_ANIMATION_OPTIONS } from "@/lib/button-animations";
 import type { ButtonStyleOverride } from "@/db/home-content";
 import { PALETTE_TEMPLATES, type ThemeColors } from "./palettes";
+import { DEFAULT_LINE_HEIGHT, DEFAULT_LETTER_SPACING } from "./fields";
 
 export type TextEditor = {
   kind: "text";
@@ -23,6 +24,8 @@ export type TextEditor = {
   italic: boolean;
   underline: boolean;
   fontFamily: string;
+  lineHeight: number;
+  letterSpacing: number;
   defaultRem: number;
   defaultColor: string;
   hasOverride: boolean;
@@ -125,6 +128,8 @@ export function TextEditPopup({
     italic: boolean;
     underline: boolean;
     fontFamily: string | null;
+    lineHeight: number | null;
+    letterSpacing: number | null;
   }) => void;
 }) {
   const [de, setDe] = useState(editor.de);
@@ -135,6 +140,8 @@ export function TextEditPopup({
   const [italic, setItalic] = useState(editor.italic);
   const [underline, setUnderline] = useState(editor.underline);
   const [fontFamily, setFontFamily] = useState(editor.fontFamily);
+  const [lineHeight, setLineHeight] = useState(editor.lineHeight);
+  const [letterSpacing, setLetterSpacing] = useState(editor.letterSpacing);
   const [styleTouched, setStyleTouched] = useState(editor.hasOverride);
 
   return (
@@ -203,6 +210,8 @@ export function TextEditPopup({
                     setItalic(false);
                     setUnderline(false);
                     setFontFamily("");
+                    setLineHeight(DEFAULT_LINE_HEIGHT);
+                    setLetterSpacing(DEFAULT_LETTER_SPACING);
                     setStyleTouched(false);
                   }}
                   className={resetButtonClass}
@@ -254,6 +263,44 @@ export function TextEditPopup({
                 ))}
               </select>
             </div>
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={labelClass + " mb-0"}>Zeilenhöhe</label>
+                  <span className="text-[0.75rem] text-ink-soft">{lineHeight.toFixed(2)}</span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={2.2}
+                  step={0.05}
+                  value={lineHeight}
+                  onChange={(e) => {
+                    setLineHeight(Number(e.target.value));
+                    setStyleTouched(true);
+                  }}
+                  className="w-full accent-gold cursor-pointer"
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={labelClass + " mb-0"}>Laufweite</label>
+                  <span className="text-[0.75rem] text-ink-soft">{letterSpacing.toFixed(2)}em</span>
+                </div>
+                <input
+                  type="range"
+                  min={-0.05}
+                  max={0.3}
+                  step={0.01}
+                  value={letterSpacing}
+                  onChange={(e) => {
+                    setLetterSpacing(Number(e.target.value));
+                    setStyleTouched(true);
+                  }}
+                  className="w-full accent-gold cursor-pointer"
+                />
+              </div>
+            </div>
           </div>
         )}
 
@@ -271,6 +318,9 @@ export function TextEditPopup({
                 italic: editor.styleable && italic,
                 underline: editor.styleable && underline,
                 fontFamily: editor.styleable && styleTouched && fontFamily ? fontFamily : null,
+                lineHeight: editor.styleable && styleTouched && lineHeight !== DEFAULT_LINE_HEIGHT ? lineHeight : null,
+                letterSpacing:
+                  editor.styleable && styleTouched && letterSpacing !== DEFAULT_LETTER_SPACING ? letterSpacing : null,
               })
             }
             className={saveButtonClass}

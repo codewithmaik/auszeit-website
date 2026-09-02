@@ -4,6 +4,13 @@ import type { HomeContent, FooterContent, NavLabels } from "@/db/home-content";
 // Farbwähler erscheint, solange kein individueller Override gesetzt ist.
 export type TextRole = "forest" | "gold" | "white" | "ink-soft";
 
+// Basiswerte für die Zeilenhöhe-/Laufweite-Regler im TextEditPopup (und im
+// ausklappbaren Textstil-Bereich des ButtonEditPopup) — kein Feld-spezifischer
+// Default wie bei defaultRem/defaultColor, da Zeilenhöhe/Laufweite unabhängig
+// vom Textfeld denselben sinnvollen Ausgangspunkt haben.
+export const DEFAULT_LINE_HEIGHT = 1.5;
+export const DEFAULT_LETTER_SPACING = 0;
+
 export type FieldDef = {
   label: string;
   get: (c: HomeContent) => string;

@@ -28,6 +28,8 @@ function styleFor(styles: HomeTextStyles | null | undefined, id: string): React.
     ...(override.italic && { fontStyle: "italic" }),
     ...(override.underline && { textDecoration: "underline" }),
     ...(family && { fontFamily: family }),
+    ...(override.lineHeight && { lineHeight: override.lineHeight }),
+    ...(override.letterSpacing && { letterSpacing: override.letterSpacing }),
   };
 }
 
