@@ -13,6 +13,7 @@ import type {
   ButtonId,
   DesignDraft,
   LogoMode,
+  IconOverrides,
 } from "@/db/home-content";
 import { BUTTON_IDS } from "@/db/home-content";
 import { ICONS as BRAND_ICON_SRC } from "@/components/BrandIcon";
@@ -44,6 +45,12 @@ import {
   saveLogoMode,
   saveHomeHeroAnimation,
   saveHomeWohlfuehlAnimation,
+  uploadFeatureIcon,
+  resetFeatureIcon,
+  uploadStepIcon,
+  resetStepIcon,
+  uploadTrustIcon,
+  resetTrustIcon,
   publishDesign,
   discardDesignDraft,
   undoDesignDraft,
@@ -166,6 +173,9 @@ type Props = {
   initialButtonStyle: ButtonStyleOverride;
   initialButtonStyles: ButtonStyles;
   initialButtonsLinked: boolean;
+  initialFeatureIconOverrides: IconOverrides;
+  initialStepIconOverrides: IconOverrides;
+  initialTrustIconOverrides: IconOverrides;
   hasDraft: boolean;
   draftHistoryCount: number;
 };
@@ -215,6 +225,9 @@ export default function HomePreviewEditor({
   initialButtonStyle,
   initialButtonStyles,
   initialButtonsLinked,
+  initialFeatureIconOverrides,
+  initialStepIconOverrides,
+  initialTrustIconOverrides,
   hasDraft,
   draftHistoryCount,
 }: Props) {
@@ -245,6 +258,9 @@ export default function HomePreviewEditor({
   const [buttonStyle, setButtonStyle] = useState<ButtonStyleOverride>(initialButtonStyle);
   const [buttonStyles, setButtonStyles] = useState<ButtonStyles>(initialButtonStyles);
   const [buttonsLinked, setButtonsLinked] = useState(initialButtonsLinked);
+  const [featureIconOverrides, setFeatureIconOverrides] = useState<IconOverrides>(initialFeatureIconOverrides);
+  const [stepIconOverrides, setStepIconOverrides] = useState<IconOverrides>(initialStepIconOverrides);
+  const [trustIconOverrides, setTrustIconOverrides] = useState<IconOverrides>(initialTrustIconOverrides);
   const [previewLocale, setPreviewLocale] = useState<"de" | "en">("de");
   const [activeEditor, setActiveEditor] = useState<ActiveEditor>(null);
   const [draftExists, setDraftExists] = useState(hasDraft);
@@ -344,6 +360,9 @@ export default function HomePreviewEditor({
     });
     setButtonStyles(next.buttonStyles ?? {});
     setButtonsLinked(next.buttonsLinked);
+    setFeatureIconOverrides(next.featureIconOverrides ?? {});
+    setStepIconOverrides(next.stepIconOverrides ?? {});
+    setTrustIconOverrides(next.trustIconOverrides ?? {});
   }
 
   function openTextEditor(id: string) {
@@ -573,12 +592,48 @@ export default function HomePreviewEditor({
     });
   }
 
+  // Icon-Editor — "ähnlich wie Bilder" editierbar, reines Upload/Reset über
+  // dieselbe ImageEditPopup-Komponente wie Hero-/Wohlfühl-Bild etc., aber mit
+  // synthetischer id "icon:<group>:<index>" statt eines festen ImageId-Werts
+  // (s. Branch in handleUploadImage/handleResetImage unten).
+  function openIconEditor(group: "feature" | "step" | "trust", index: number, label: string, currentSrc: string) {
+    const overrides = group === "feature" ? featureIconOverrides : group === "step" ? stepIconOverrides : trustIconOverrides;
+    setActiveEditor({
+      kind: "image",
+      id: `icon:${group}:${index}`,
+      label,
+      hint: "Eigenes Icon hochladen (quadratisch). Ohne Upload bleibt das Standard-Icon sichtbar.",
+      currentSrc,
+      isDefault: !overrides[index],
+      previewAspectClassName: "aspect-square",
+      round: false,
+      aspectRatio: 1,
+    });
+  }
+
   function handleUploadImage(file: File) {
     if (!activeEditor || activeEditor.kind !== "image") return;
-    const id = activeEditor.id as ImageId;
+    const rawId = activeEditor.id;
     const fd = new FormData();
     fd.set("file", file);
     setActiveEditor(null);
+    if (rawId.startsWith("icon:")) {
+      const [, group, indexStr] = rawId.split(":");
+      const index = Number(indexStr);
+      startTransition(async () => {
+        const uploader =
+          group === "feature" ? uploadFeatureIcon : group === "step" ? uploadStepIcon : uploadTrustIcon;
+        const result = await uploader(index, fd);
+        if (result?.url) {
+          const setter =
+            group === "feature" ? setFeatureIconOverrides : group === "step" ? setStepIconOverrides : setTrustIconOverrides;
+          setter((prev) => ({ ...prev, [index]: result.url }));
+          markDraftChanged();
+        }
+      });
+      return;
+    }
+    const id = rawId as ImageId;
     startTransition(async () => {
       const uploaders: Record<ImageId, (fd: FormData) => Promise<{ url: string } | undefined>> = {
         hero: uploadHomeHeroImage,
@@ -608,8 +663,26 @@ export default function HomePreviewEditor({
 
   function handleResetImage() {
     if (!activeEditor || activeEditor.kind !== "image") return;
-    const id = activeEditor.id as ImageId;
+    const rawId = activeEditor.id;
     setActiveEditor(null);
+    if (rawId.startsWith("icon:")) {
+      const [, group, indexStr] = rawId.split(":");
+      const index = Number(indexStr);
+      startTransition(async () => {
+        const resetter = group === "feature" ? resetFeatureIcon : group === "step" ? resetStepIcon : resetTrustIcon;
+        await resetter(index);
+        const setter =
+          group === "feature" ? setFeatureIconOverrides : group === "step" ? setStepIconOverrides : setTrustIconOverrides;
+        setter((prev) => {
+          const next = { ...prev };
+          delete next[index];
+          return next;
+        });
+        markDraftChanged();
+      });
+      return;
+    }
+    const id = rawId as ImageId;
     startTransition(async () => {
       const resetters: Record<ImageId, () => Promise<void>> = {
         hero: resetHomeHeroImage,
@@ -1104,21 +1177,39 @@ export default function HomePreviewEditor({
             <div className="max-w-[1180px] mx-auto px-8 grid grid-cols-4 max-[900px]:grid-cols-2 max-[560px]:grid-cols-1 gap-[30px]">
               {content.features.map((f, i) => (
                 <div key={f.key} className="flex gap-3.5 items-start">
-                  <span className="relative block w-12 h-12 rounded-full overflow-hidden border-2 border-khaki flex-none">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={BRAND_ICON_SRC[FEATURE_ICONS[f.key]]}
-                      alt=""
-                      style={{
-                        position: "absolute",
-                        maxWidth: "none",
-                        width: FEATURE_ICON_FRAME[f.key].size,
-                        height: FEATURE_ICON_FRAME[f.key].size,
-                        left: FEATURE_ICON_FRAME[f.key].left,
-                        top: FEATURE_ICON_FRAME[f.key].top,
-                      }}
-                    />
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openIconEditor(
+                        "feature",
+                        i,
+                        `Icon „${f.title}"`,
+                        featureIconOverrides[i] ?? BRAND_ICON_SRC[FEATURE_ICONS[f.key]],
+                      )
+                    }
+                    className="group relative block w-12 h-12 rounded-full overflow-hidden border-2 border-khaki flex-none cursor-pointer"
+                    title="Icon ändern"
+                  >
+                    {featureIconOverrides[i] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={featureIconOverrides[i]} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={BRAND_ICON_SRC[FEATURE_ICONS[f.key]]}
+                        alt=""
+                        style={{
+                          position: "absolute",
+                          maxWidth: "none",
+                          width: FEATURE_ICON_FRAME[f.key].size,
+                          height: FEATURE_ICON_FRAME[f.key].size,
+                          left: FEATURE_ICON_FRAME[f.key].left,
+                          top: FEATURE_ICON_FRAME[f.key].top,
+                        }}
+                      />
+                    )}
+                    <span className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                  </button>
                   <div>
                     <Editable styles={styles} onEdit={openTextEditor}
                       id={`features.${i}.title`}
@@ -1157,9 +1248,20 @@ export default function HomePreviewEditor({
                   const Icon = STEP_ICONS[i];
                   return (
                     <div key={i} className="text-center px-4">
-                      <span className="inline-flex w-14 h-14 rounded-full bg-bg-soft border border-line items-center justify-center text-forest mb-4">
-                        <Icon className="w-6 h-6" strokeWidth={1.5} />
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => openIconEditor("step", i, `Icon „${s.title}"`, stepIconOverrides[i] ?? "")}
+                        className="group relative inline-flex w-14 h-14 rounded-full bg-bg-soft border border-line items-center justify-center text-forest mb-4 overflow-hidden cursor-pointer"
+                        title="Icon ändern"
+                      >
+                        {stepIconOverrides[i] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={stepIconOverrides[i]} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <Icon className="w-6 h-6" strokeWidth={1.5} />
+                        )}
+                        <span className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                      </button>
                       <Editable styles={styles} onEdit={openTextEditor} id={`steps.${i}.title`} as="h3" className="text-[1.05rem]">
                         {s.title}
                       </Editable>
@@ -1255,7 +1357,20 @@ export default function HomePreviewEditor({
                 const Icon = TRUST_ICONS[i];
                 return (
                   <div key={i} className="flex gap-3 items-start text-white">
-                    <Icon className="w-5 h-5 text-gold flex-none mt-0.5" strokeWidth={1.5} />
+                    <button
+                      type="button"
+                      onClick={() => openIconEditor("trust", i, `Icon „${item.title}"`, trustIconOverrides[i] ?? "")}
+                      className="group relative flex-none w-5 h-5 mt-0.5 rounded-[2px] overflow-hidden cursor-pointer"
+                      title="Icon ändern"
+                    >
+                      {trustIconOverrides[i] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={trustIconOverrides[i]} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <Icon className="w-5 h-5 text-gold" strokeWidth={1.5} />
+                      )}
+                      <span className="absolute inset-0 bg-white/0 group-hover:bg-white/20 transition-colors" />
+                    </button>
                     <div>
                       <Editable styles={styles} onEdit={openTextEditor}
                         id={`trust.${i}.title`}

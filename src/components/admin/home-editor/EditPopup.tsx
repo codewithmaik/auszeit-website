@@ -469,10 +469,14 @@ export function ImageEditPopup({
         ) : !objectUrl ? (
           <>
             <div
-              className={`relative w-full ${editor.previewAspectClassName ?? "aspect-video"} bg-bg-soft border border-line rounded-[2px] overflow-hidden mb-4 ${editor.round ? "max-w-[160px] mx-auto rounded-full" : ""}`}
+              className={`relative w-full ${editor.previewAspectClassName ?? "aspect-video"} bg-bg-soft border border-line rounded-[2px] overflow-hidden mb-4 flex items-center justify-center ${editor.round ? "max-w-[160px] mx-auto rounded-full" : ""}`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={editor.currentSrc} alt="" className="w-full h-full object-cover" />
+              {editor.currentSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={editor.currentSrc} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-[0.7rem] uppercase tracking-[0.05em] text-ink-soft">Standard-Icon</span>
+              )}
             </div>
             {editor.animationOptions && (
               <div className="mb-5">

@@ -8,6 +8,7 @@ import type {
   ButtonStyles,
   DesignDraft,
   LogoMode,
+  IconOverrides,
 } from "./home-content";
 
 export const siteSettings = pgTable("site_settings", {
@@ -81,6 +82,12 @@ export const siteSettings = pgTable("site_settings", {
   // Button-IDs UND in den Default-Stil (siehe saveButtonEdit-Action).
   buttonStyles: jsonb("button_styles").$type<ButtonStyles>(),
   buttonsLinked: boolean("buttons_linked").notNull().default(false),
+
+  // Icon-Overrides für Feature-Kacheln/Schritte/Vertrauensleiste (Index ->
+  // hochgeladene Bild-URL). null/fehlender Eintrag = Standard-Icon.
+  featureIconOverrides: jsonb("feature_icon_overrides").$type<IconOverrides>(),
+  stepIconOverrides: jsonb("step_icon_overrides").$type<IconOverrides>(),
+  trustIconOverrides: jsonb("trust_icon_overrides").$type<IconOverrides>(),
 
   // Entwurf/Veröffentlichen-Workflow: `designDraft` hält den kompletten, noch
   // nicht veröffentlichten Bearbeitungsstand aller obigen Design-Felder (siehe

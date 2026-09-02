@@ -108,6 +108,12 @@ export type ButtonStyleOverride = {
 };
 export type ButtonStyles = Partial<Record<ButtonId, ButtonStyleOverride>>;
 
+// Icon-Overrides für Feature-Kacheln/Schritte/Vertrauensleiste — Index (0-
+// basiert, s. FEATURE_KEYS/STEP_ICONS/TRUST_ICONS in src/lib/home-icons.ts)
+// zu hochgeladener Bild-URL. Fehlender Eintrag = Standard-Icon (BrandIcon-PNG
+// bzw. Lucide-Icon) bleibt sichtbar. Sprachunabhängig, wie die Theme-Farben.
+export type IconOverrides = Record<number, string>;
+
 // Vollständiger, noch nicht veröffentlichter Bearbeitungsstand des Design-Menüs
 // — spiegelt 1:1 die entwurfsfähigen Spalten aus siteSettings (src/db/schema.ts).
 // null bei einem Feld = "auf Standard zurücksetzen", nicht "unverändert" — ein
@@ -141,6 +147,9 @@ export type DesignDraft = {
   buttonAnimation: string | null;
   buttonStyles: ButtonStyles | null;
   buttonsLinked: boolean;
+  featureIconOverrides: IconOverrides | null;
+  stepIconOverrides: IconOverrides | null;
+  trustIconOverrides: IconOverrides | null;
 };
 
 // Baut den DesignDraft-Snapshot aus dem aktuell *veröffentlichten* Zustand
@@ -175,6 +184,9 @@ export function publishedDesignSnapshot(settings: DesignDraft): DesignDraft {
     buttonAnimation: settings.buttonAnimation,
     buttonStyles: settings.buttonStyles,
     buttonsLinked: settings.buttonsLinked,
+    featureIconOverrides: settings.featureIconOverrides,
+    stepIconOverrides: settings.stepIconOverrides,
+    trustIconOverrides: settings.trustIconOverrides,
   };
 }
 

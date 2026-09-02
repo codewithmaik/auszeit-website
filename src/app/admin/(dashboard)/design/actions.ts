@@ -18,6 +18,7 @@ import {
   type ButtonStyleOverride,
   type ButtonStyles,
   type DesignDraft,
+  type IconOverrides,
 } from "@/db/home-content";
 import { BUSINESS } from "@/lib/site";
 import { isValidFontKey } from "@/lib/fonts";
@@ -512,4 +513,67 @@ export async function resetButtonStyleForId(buttonId: string) {
   const nextStyles = { ...currentDraft.buttonStyles };
   delete nextStyles[buttonId];
   await saveDesignDraft({ buttonStyles: nextStyles, buttonsLinked: false });
+}
+
+// ---------- Icon-Overrides (Feature-Kacheln/Schritte/Vertrauensleiste) ----------
+//
+// "ähnlich wie Bilder" editierbar — gleicher Upload-Mechanismus wie die
+// Branding-/Startseiten-Bilder oben, aber der Zielwert ist ein Eintrag in
+// einer Index->URL-Map statt einer einzelnen Spalte. Kein Blob-Aufräumen
+// beim Ersetzen/Veröffentlichen (anders als bei den 4 Einzelbild-Feldern) —
+// bewusste Vereinfachung für diese Session, da Icon-Uploads seltener
+// vorkommen als Textänderungen; verwaiste Blobs sind ein reiner
+// Speicherkosten-Nebeneffekt, kein Funktionsfehler.
+
+type IconGroup = "feature" | "step" | "trust";
+
+function iconOverridesField(group: IconGroup): "featureIconOverrides" | "stepIconOverrides" | "trustIconOverrides" {
+  return group === "feature" ? "featureIconOverrides" : group === "step" ? "stepIconOverrides" : "trustIconOverrides";
+}
+
+async function uploadIconOverride(
+  group: IconGroup,
+  index: number,
+  formData: FormData,
+): Promise<{ url: string } | undefined> {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return;
+
+  const blob = await put(`icons/${group}-${index}-${Date.now()}-${file.name}`, file, { access: "public" });
+  const field = iconOverridesField(group);
+  const row = await getRow();
+  const currentDraft = row.designDraft ?? publishedDesignSnapshot(row);
+  const nextOverrides: IconOverrides = { ...currentDraft[field], [index]: blob.url };
+  await saveDesignDraft({ [field]: nextOverrides });
+  return { url: blob.url };
+}
+
+async function resetIconOverride(group: IconGroup, index: number) {
+  const field = iconOverridesField(group);
+  const row = await getRow();
+  const currentDraft = row.designDraft ?? publishedDesignSnapshot(row);
+  const nextOverrides: IconOverrides = { ...currentDraft[field] };
+  delete nextOverrides[index];
+  await saveDesignDraft({ [field]: nextOverrides });
+}
+
+export async function uploadFeatureIcon(index: number, formData: FormData) {
+  return uploadIconOverride("feature", index, formData);
+}
+export async function resetFeatureIcon(index: number) {
+  await resetIconOverride("feature", index);
+}
+
+export async function uploadStepIcon(index: number, formData: FormData) {
+  return uploadIconOverride("step", index, formData);
+}
+export async function resetStepIcon(index: number) {
+  await resetIconOverride("step", index);
+}
+
+export async function uploadTrustIcon(index: number, formData: FormData) {
+  return uploadIconOverride("trust", index, formData);
+}
+export async function resetTrustIcon(index: number) {
+  await resetIconOverride("trust", index);
 }

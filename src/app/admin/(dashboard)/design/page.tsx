@@ -108,6 +108,9 @@ export default async function AdminDesignPage() {
         }}
         initialButtonStyles={draft.buttonStyles ?? {}}
         initialButtonsLinked={draft.buttonsLinked}
+        initialFeatureIconOverrides={draft.featureIconOverrides ?? {}}
+        initialStepIconOverrides={draft.stepIconOverrides ?? {}}
+        initialTrustIconOverrides={draft.trustIconOverrides ?? {}}
         hasDraft={hasDraft}
         draftHistoryCount={draftHistoryCount}
       />

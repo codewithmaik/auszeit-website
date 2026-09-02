@@ -92,14 +92,18 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
           {t.features.map((f, i) => (
             <Reveal key={f.key} delay={i * 80} className="flex gap-3.5 items-start">
               <span className="relative block w-12 h-12 rounded-full overflow-hidden border-2 border-khaki flex-none">
-                <Image
-                  src={BRAND_ICON_SRC[FEATURE_ICONS[f.key]]}
-                  alt=""
-                  width={FEATURE_ICON_FRAME[f.key].size}
-                  height={FEATURE_ICON_FRAME[f.key].size}
-                  className="absolute max-w-none"
-                  style={{ left: FEATURE_ICON_FRAME[f.key].left, top: FEATURE_ICON_FRAME[f.key].top }}
-                />
+                {settings.featureIconOverrides?.[i] ? (
+                  <Image src={settings.featureIconOverrides[i]} alt="" fill sizes="48px" className="object-cover" />
+                ) : (
+                  <Image
+                    src={BRAND_ICON_SRC[FEATURE_ICONS[f.key]]}
+                    alt=""
+                    width={FEATURE_ICON_FRAME[f.key].size}
+                    height={FEATURE_ICON_FRAME[f.key].size}
+                    className="absolute max-w-none"
+                    style={{ left: FEATURE_ICON_FRAME[f.key].left, top: FEATURE_ICON_FRAME[f.key].top }}
+                  />
+                )}
               </span>
               <div>
                 <h3
@@ -129,10 +133,15 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
           <div className="grid grid-cols-3 max-[860px]:grid-cols-1 gap-8">
             {t.steps.map((s, i) => {
               const Icon = STEP_ICONS[i];
+              const iconOverride = settings.stepIconOverrides?.[i];
               return (
                 <Reveal key={s.title} delay={i * 100} className="text-center px-4">
-                  <span className="inline-flex w-14 h-14 rounded-full bg-bg-soft border border-line items-center justify-center text-forest mb-4">
-                    <Icon className="w-6 h-6" strokeWidth={1.5} />
+                  <span className="relative inline-flex w-14 h-14 rounded-full bg-bg-soft border border-line items-center justify-center text-forest mb-4 overflow-hidden">
+                    {iconOverride ? (
+                      <Image src={iconOverride} alt="" fill sizes="56px" className="object-cover" />
+                    ) : (
+                      <Icon className="w-6 h-6" strokeWidth={1.5} />
+                    )}
                   </span>
                   <h3 className="text-[1.05rem]" style={styleFor(styles, `steps.${i}.title`)}>
                     {s.title}
@@ -208,9 +217,16 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
         <div className="max-w-[1180px] mx-auto px-8 grid grid-cols-4 max-[900px]:grid-cols-2 max-[560px]:grid-cols-1 gap-[30px]">
           {t.trust.map((item, i) => {
             const Icon = TRUST_ICONS[i];
+            const iconOverride = settings.trustIconOverrides?.[i];
             return (
               <Reveal key={item.title} delay={i * 80} className="flex gap-3 items-start text-white">
-                <Icon className="w-5 h-5 text-gold flex-none" strokeWidth={1.5} />
+                {iconOverride ? (
+                  <span className="relative w-5 h-5 flex-none overflow-hidden rounded-[2px]">
+                    <Image src={iconOverride} alt="" fill sizes="20px" className="object-cover" />
+                  </span>
+                ) : (
+                  <Icon className="w-5 h-5 text-gold flex-none" strokeWidth={1.5} />
+                )}
                 <div>
                   <h3
                     className="text-white font-sans text-[0.82rem] tracking-[0.08em] uppercase mb-1"

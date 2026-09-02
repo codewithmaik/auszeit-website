@@ -9,6 +9,7 @@ import type {
   ButtonStyles,
   DesignDraft,
   LogoMode,
+  IconOverrides,
 } from "./home-content";
 import { BUSINESS } from "@/lib/site";
 
@@ -48,6 +49,9 @@ const DEFAULT_SETTINGS = {
   buttonAnimation: null as string | null,
   buttonStyles: null as ButtonStyles | null,
   buttonsLinked: false,
+  featureIconOverrides: null as IconOverrides | null,
+  stepIconOverrides: null as IconOverrides | null,
+  trustIconOverrides: null as IconOverrides | null,
   designDraft: null as DesignDraft | null,
   designDraftHistory: null as DesignDraft[] | null,
 };
