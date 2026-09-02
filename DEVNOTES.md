@@ -4,8 +4,8 @@
 
 ## Aktueller Stand
 
-**Branch:** `feature/admin-design-editor` — gepusht nach `origin` (GitHub `codewithmaik/auszeit-website-11`), **nicht** nach `main` gemerged. Working tree sauber (bis auf absichtlich ungetrackte `.agents/`, `.claude/`, `auszeit-apartments/`, `skills-lock.json`, s. u.).
-**Production:** läuft über `auszeit-mosel.vercel.app` — **das ist die einzige gültige Domain für dieses Projekt**, alle anderen `.vercel.app`-Aliase (`auszeit-website-11.vercel.app`, `auszeit-mosel-codewithmaik.vercel.app`) werden nach jedem Deploy wieder entfernt (s. „Domain-Aufräumen" unten, inkl. **wichtigem Hinweis für jeden künftigen Deploy**).
+**Branch:** `feature/admin-design-editor` — gepusht nach `origin` (GitHub `codewithmaik/auszeit-website-11`), **nicht** nach `main` gemerged (Production läuft weiterhin bewusst direkt vom Branch-Deploy, wie in allen früheren Sessions). Working tree sauber (bis auf absichtlich ungetrackte `.agents/`, `.claude/`, `auszeit-apartments/`, `skills-lock.json`, s. u.).
+**Production:** läuft über `auszeit-mosel.vercel.app` — **das ist die einzige gültige Domain für dieses Projekt**, alle anderen `.vercel.app`-Aliase (`auszeit-website-11.vercel.app`, `auszeit-mosel-codewithmaik.vercel.app`) werden nach jedem Deploy wieder entfernt (s. „Domain-Aufräumen" unten, inkl. **wichtigem Hinweis für jeden künftigen Deploy**). Die komplette „Design-Editor Runde 3"-Session (11 Erweiterungen, siehe unten) ist seit `2026-09-03` live deployed (Deployment `dpl_5KBFYLr6zZSpDnxRD38QyeaKrcr6`).
 
 Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwischen committed (`9bdeec9`, `4eeda79`, `28f74cd`) und deployed — der frühere Hinweis „noch nicht committed" in dieser Datei war veraltet.
 
@@ -39,11 +39,12 @@ Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwisc
 
 `ADMIN_PASSWORD_HASH` nach Testende exakt auf den Original-Wert zurückgesetzt (Diff gegen vorherigen Backup identisch), Dev-Server (Port 3210) gestoppt, Chrome-Tab geschlossen.
 
+**Phase 9 — Deploy nach Production — erledigt (User-Auftrag: „commit push und deploy").** Stand war zu dem Zeitpunkt bereits vollständig committed/gepusht (nichts Offenes). `npm run build` lokal sauber. `npx vercel whoami` → `codingmaikel-6994`, `npx vercel teams ls` bestätigt Team `codewithmaik` verfügbar — Projekt bereits korrekt unter `codewithmaik`/`auszeit-mosel` verlinkt (`.vercel/project.json`). `vercel --prod --scope codewithmaik --yes` → Deployment `dpl_5KBFYLr6zZSpDnxRD38QyeaKrcr6` (`auszeit-mosel-aufr7j8mc-codewithmaik.vercel.app`). Domain-Aufräumen wie in „Standing Instructions" beschrieben durchgeführt: `vercel alias set` auf `auszeit-mosel.vercel.app`, die beiden automatisch angelegten Nebenaliase (`auszeit-website-11.vercel.app`, `auszeit-mosel-codewithmaik.vercel.app`) per `vercel alias rm` entfernt. Verifiziert per `curl`: `auszeit-mosel.vercel.app/de` → `200`, beide Nebenaliase → `404`, `/de/wohnung` → `200`, `/admin/design` → `307` (Redirect zu Login, kein Hinweis auf fehlende Spalten in der Production-DB — die 9 neuen `siteSettings`-Spalten sind also über dieselbe Neon-DB bereits nutzbar). Kein Merge nach `main` (war nicht Teil des Auftrags, Production läuft wie in allen früheren Sessions direkt vom Branch-Deploy).
+
 **Noch offen (nächste Session sollte hiermit weitermachen):**
-1. `feature/admin-design-editor` weiterhin nicht nach `main` gemerged, Production läuft unverändert direkt vom Branch-Deploy.
-2. Kein Deploy nach `vercel --prod` in dieser Session — noch nicht mit dem User abgestimmt, ob/wann gewünscht.
-3. 9 neue `siteSettings`-Spalten diese Session (`navLabelsDe/En`, `logoTextScale`, `logoMode`, `homeHeroAnimation`, `homeWohlfuehlAnimation`, `featureIconOverrides`, `stepIconOverrides`, `trustIconOverrides`) — alle per `db:push` gegen die Dev-DB angelegt, noch nicht gegen Production (passiert automatisch beim nächsten `vercel --prod`-Deploy dieses Projekts, da dieselbe Neon-DB genutzt wird — trotzdem vor dem nächsten Prod-Deploy nochmal bewusst gegenprüfen).
-4. Nicht im Klicktest abgedeckt: Zuschnitt-Flow für den Kombi-Logo-Upload selbst (5:1-Seitenverhältnis nie tatsächlich mit einer Datei durchgespielt, nur die Popup-Konfiguration verifiziert), Logo-Schriftzug-Größenregler (Slider-Interaktion nicht getestet, nur Code-Review), Reset-Button beim Größenregler.
+1. `feature/admin-design-editor` weiterhin nicht nach `main` gemerged — bewusst, Production läuft direkt vom Branch-Deploy (s. o.).
+2. Nicht im Klicktest abgedeckt (vor dem Deploy auch nicht nachgeholt): Zuschnitt-Flow für den Kombi-Logo-Upload selbst (5:1-Seitenverhältnis nie tatsächlich mit einer Datei durchgespielt, nur die Popup-Konfiguration verifiziert), Logo-Schriftzug-Größenregler (Slider-Interaktion nicht getestet, nur Code-Review), Reset-Button beim Größenregler. Sollte bei nächster Gelegenheit im Browser nachgeholt werden — idealerweise jetzt direkt auf Production oder erneut per temporärem Test-Passwort.
+3. Icon-Overrides räumen beim Ersetzen/Veröffentlichen keine alten Blobs auf (bewusste Vereinfachung, s. Phase 6) — bei häufiger Icon-Nutzung ggf. später nachrüsten.
 
 ## Session: Design-Editor Runde 2 — Entwurf-Absicherung, Navbar/Footer im Preview, individuelle Buttons (laufend)
 
