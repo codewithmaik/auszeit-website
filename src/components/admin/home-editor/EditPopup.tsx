@@ -392,6 +392,15 @@ export function ImageEditPopup({
   function commitScale() {
     editor.scale?.onChange(scaleValue);
   }
+  // Lokaler Spiegel des Animations-Werts — der `editor`-Prop selbst wird nach
+  // einem Klick NICHT neu gebaut (der Parent ruft dafür nicht erneut
+  // openImageEditor auf), ohne diesen lokalen State würde die Gold-Markierung
+  // nach der Auswahl fälschlich auf der vorherigen Karte hängen bleiben.
+  const [animValue, setAnimValue] = useState(editor.animationOptions?.value ?? null);
+  function selectAnimation(key: string | null) {
+    setAnimValue(key);
+    editor.animationOptions?.onChange(key);
+  }
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
@@ -441,7 +450,18 @@ export function ImageEditPopup({
         <button
           key={mode}
           type="button"
-          onClick={() => editor.logoMode!.onChange(mode)}
+          onClick={() => {
+            // Schließt das Popup nach dem Umschalten, statt live weiter
+            // offen zu bleiben: previewAspectClassName/aspectRatio/round/
+            // combinedNotice/scale sind im `editor`-Objekt beim Öffnen fest
+            // aus dem damaligen logoMode berechnet (openImageEditor in
+            // HomePreviewEditor.tsx) und würden sonst falsch stehen bleiben,
+            // bis das Popup neu geöffnet wird.
+            if (editor.logoMode!.value !== mode) {
+              editor.logoMode!.onChange(mode);
+              onClose();
+            }
+          }}
           aria-pressed={editor.logoMode!.value === mode}
           className={`px-3 py-2 text-[0.72rem] tracking-[0.04em] uppercase border rounded-[2px] cursor-pointer transition-colors ${
             editor.logoMode!.value === mode
@@ -484,9 +504,9 @@ export function ImageEditPopup({
                 <div className="grid grid-cols-2 gap-2.5">
                   <button
                     type="button"
-                    onClick={() => editor.animationOptions!.onChange(null)}
+                    onClick={() => selectAnimation(null)}
                     className={`text-left border rounded-[2px] p-2.5 transition-colors cursor-pointer ${
-                      editor.animationOptions.value === null ? "border-gold" : "border-line hover:border-gold"
+                      animValue === null ? "border-gold" : "border-line hover:border-gold"
                     }`}
                   >
                     <span className="block text-[0.78rem] text-ink">Keine Animation</span>
@@ -496,9 +516,9 @@ export function ImageEditPopup({
                     <button
                       key={a.key}
                       type="button"
-                      onClick={() => editor.animationOptions!.onChange(a.key)}
+                      onClick={() => selectAnimation(a.key)}
                       className={`text-left border rounded-[2px] p-2.5 transition-colors cursor-pointer ${
-                        editor.animationOptions!.value === a.key ? "border-gold" : "border-line hover:border-gold"
+                        animValue === a.key ? "border-gold" : "border-line hover:border-gold"
                       }`}
                     >
                       <span className="block text-[0.78rem] text-ink">{a.label}</span>
