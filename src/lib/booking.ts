@@ -28,3 +28,9 @@ export const STATUS_BADGE_CLASS: Record<BookingRequestStatus, string> = {
   abgelehnt: "bg-[#a13c2f]/10 text-[#a13c2f]",
   archiviert: "bg-ink-soft/10 text-ink-soft",
 };
+
+/** "2026-09-20" -> "20.09.2026" */
+export function formatDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-");
+  return `${day}.${month}.${year}`;
+}
