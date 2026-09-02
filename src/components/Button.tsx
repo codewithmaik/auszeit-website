@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import type { ButtonStyleOverride } from "@/db/home-content";
+import { fontFamilyFor } from "@/lib/fonts";
 
 type ButtonProps = {
   href: string;
@@ -23,17 +24,20 @@ const base = BUTTON_BASE_CLASS;
 
 // Randdicke/-radius und (falls im Design-Editor gesetzt) Button-/Rahmenfarbe
 // kommen aus CSS-Variablen auf <html> (src/app/layout.tsx) — ohne Override
-// entsprechen die Fallbacks exakt dem bisherigen festen Look. Die
-// Farb-Overrides gelten bewusst nur für "primary"/"outline" (beide ohnehin
-// markenfarben-basiert); "outline-light" bleibt an sein festes Weiß auf
-// dunklem Hero-/Fotohintergrund gebunden, damit Overrides dort nicht die
-// Lesbarkeit über Fotos gefährden.
+// entsprechen die Fallbacks exakt dem bisherigen festen Look. "outline-light"
+// (heller Button auf dunklem Hero-/Fotohintergrund) liest Hintergrund/Rahmen
+// jetzt ebenfalls aus --button-bg/--button-border-color, mit dem bisherigen
+// Weiß/Transparent als Fallback — ohne aktiven Override also exakt der
+// bisherige Look. Der Hover-Zustand bleibt bewusst fest (weißer Hintergrund,
+// Waldgrün-Text), damit der Button über Fotos immer einen klaren,
+// kontrastreichen Hover-Zustand behält, unabhängig vom gewählten Ruhe-Stil.
 export const BUTTON_VARIANT_CLASS: Record<NonNullable<ButtonProps["variant"]>, string> = {
   primary:
     "bg-[var(--button-bg,var(--color-forest))] text-white border-[color:var(--button-border-color,transparent)] hover:brightness-90",
   outline:
     "bg-transparent text-[var(--button-bg,var(--color-forest))] border-[color:var(--button-border-color,var(--button-bg,var(--color-forest)))] hover:bg-[var(--button-bg,var(--color-forest))] hover:text-white",
-  "outline-light": "bg-transparent text-white border-white/80 hover:bg-white hover:text-forest",
+  "outline-light":
+    "bg-[var(--button-bg,transparent)] text-white border-[color:var(--button-border-color,rgba(255,255,255,0.8))] hover:bg-white hover:text-forest",
 };
 const variants = BUTTON_VARIANT_CLASS;
 
@@ -56,6 +60,12 @@ export default function Button({
         ...(styleOverride.color && { "--button-bg": styleOverride.color }),
         ...(styleOverride.borderColor && { "--button-border-color": styleOverride.borderColor }),
         ...(styleOverride.borderRadius && { "--button-radius": styleOverride.borderRadius }),
+        ...(styleOverride.bold && { fontWeight: 700 }),
+        ...(styleOverride.italic && { fontStyle: "italic" }),
+        ...(styleOverride.underline && { textDecoration: "underline" }),
+        ...(fontFamilyFor(styleOverride.fontFamily) && { fontFamily: fontFamilyFor(styleOverride.fontFamily) }),
+        ...(styleOverride.lineHeight && { lineHeight: styleOverride.lineHeight }),
+        ...(styleOverride.letterSpacing && { letterSpacing: styleOverride.letterSpacing }),
       } as CSSProperties)
     : {};
   return (

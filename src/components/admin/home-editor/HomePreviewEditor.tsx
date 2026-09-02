@@ -248,11 +248,23 @@ export default function HomePreviewEditor({
     const color = override?.color ?? buttonStyle.color;
     const borderColor = override?.borderColor ?? buttonStyle.borderColor;
     const borderRadius = override?.borderRadius ?? buttonStyle.borderRadius;
+    const bold = override?.bold ?? buttonStyle.bold;
+    const italic = override?.italic ?? buttonStyle.italic;
+    const underline = override?.underline ?? buttonStyle.underline;
+    const fontFamily = fontFamilyFor(override?.fontFamily ?? buttonStyle.fontFamily);
+    const lineHeight = override?.lineHeight ?? buttonStyle.lineHeight;
+    const letterSpacing = override?.letterSpacing ?? buttonStyle.letterSpacing;
     return {
       ...(borderWidth && { "--button-border-width": borderWidth }),
       ...(color && { "--button-bg": color }),
       ...(borderColor && { "--button-border-color": borderColor }),
       ...(borderRadius && { "--button-radius": borderRadius }),
+      ...(bold && { fontWeight: 700 }),
+      ...(italic && { fontStyle: "italic" }),
+      ...(underline && { textDecoration: "underline" }),
+      ...(fontFamily && { fontFamily }),
+      ...(lineHeight && { lineHeight }),
+      ...(letterSpacing && { letterSpacing }),
     } as CSSProperties;
   }
   function buttonAnimationAttr(id: ButtonId): string | undefined {
@@ -658,6 +670,12 @@ export default function HomePreviewEditor({
       if (values.style.borderColor) fd.set("borderColor", values.style.borderColor);
       if (values.style.borderRadius) fd.set("borderRadius", values.style.borderRadius);
       if (values.style.animation) fd.set("animation", values.style.animation);
+      if (values.style.bold) fd.set("bold", "true");
+      if (values.style.italic) fd.set("italic", "true");
+      if (values.style.underline) fd.set("underline", "true");
+      if (values.style.fontFamily) fd.set("fontFamily", values.style.fontFamily);
+      if (values.style.lineHeight) fd.set("lineHeight", values.style.lineHeight);
+      if (values.style.letterSpacing) fd.set("letterSpacing", values.style.letterSpacing);
       await saveButtonEdit(fd);
     });
   }

@@ -396,6 +396,31 @@ export async function resetNavLabels() {
 // der der Default-Stil noch geändert werden kann, seit die frühere globale
 // "Buttons"-Sektion durch die Popups pro Button ersetzt wurde.
 
+function readOptionalBoolean(formData: FormData, name: string): boolean | undefined {
+  return str(formData, name) === "true" ? true : undefined;
+}
+
+function readFontFamily(formData: FormData, name: string): string | undefined {
+  const raw = str(formData, name);
+  if (!raw) return undefined;
+  if (!isValidFontKey(raw)) throw new Error(`Ungültige Schriftart für "${name}".`);
+  return raw;
+}
+
+function readLineHeight(formData: FormData, name: string): string | undefined {
+  const raw = str(formData, name);
+  if (!raw) return undefined;
+  if (!LINE_HEIGHT_RE.test(raw)) throw new Error(`Ungültige Zeilenhöhe für "${name}".`);
+  return raw;
+}
+
+function readLetterSpacing(formData: FormData, name: string): string | undefined {
+  const raw = str(formData, name);
+  if (!raw) return undefined;
+  if (!LETTER_SPACING_RE.test(raw)) throw new Error(`Ungültige Laufweite für "${name}".`);
+  return raw;
+}
+
 function readButtonStyle(formData: FormData): ButtonStyleOverride {
   return {
     borderWidth: readCssLength(formData, "borderWidth"),
@@ -403,6 +428,12 @@ function readButtonStyle(formData: FormData): ButtonStyleOverride {
     borderColor: readHex(formData, "borderColor"),
     borderRadius: readCssLength(formData, "borderRadius"),
     animation: readAnimationKey(formData, "animation"),
+    bold: readOptionalBoolean(formData, "bold"),
+    italic: readOptionalBoolean(formData, "italic"),
+    underline: readOptionalBoolean(formData, "underline"),
+    fontFamily: readFontFamily(formData, "fontFamily"),
+    lineHeight: readLineHeight(formData, "lineHeight"),
+    letterSpacing: readLetterSpacing(formData, "letterSpacing"),
   };
 }
 

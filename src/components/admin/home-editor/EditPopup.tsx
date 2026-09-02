@@ -623,6 +623,12 @@ type ButtonLocalState = {
   borderRadius: string;
   animation: string | null;
   linked: boolean;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  fontFamily: string;
+  lineHeight: number;
+  letterSpacing: number;
 };
 
 export function ButtonEditPopup({
@@ -649,9 +655,18 @@ export function ButtonEditPopup({
     borderRadius: editor.style.borderRadius ?? "2px",
     animation: editor.style.animation,
     linked: editor.linked,
+    bold: editor.style.bold ?? false,
+    italic: editor.style.italic ?? false,
+    underline: editor.style.underline ?? false,
+    fontFamily: editor.style.fontFamily ?? "",
+    lineHeight: editor.style.lineHeight ? parseFloat(editor.style.lineHeight) : DEFAULT_LINE_HEIGHT,
+    letterSpacing: editor.style.letterSpacing ? parseFloat(editor.style.letterSpacing) : DEFAULT_LETTER_SPACING,
   };
   const [state, setState] = useState<ButtonLocalState>(initial);
   const [history, setHistory] = useState<ButtonLocalState[]>([]);
+  const [showTextStyle, setShowTextStyle] = useState(
+    Boolean(editor.style.bold || editor.style.italic || editor.style.underline || editor.style.fontFamily || editor.style.lineHeight || editor.style.letterSpacing),
+  );
 
   function update(patch: Partial<ButtonLocalState>) {
     setHistory((h) => [state, ...h].slice(0, 20));
@@ -741,6 +756,86 @@ export function ButtonEditPopup({
           </div>
         </div>
 
+        <button
+          type="button"
+          onClick={() => setShowTextStyle((v) => !v)}
+          className="text-[0.78rem] tracking-[0.06em] uppercase text-ink-soft hover:text-forest transition-colors select-none cursor-pointer mb-4 block"
+        >
+          Textstil (Schriftschnitt, Schriftart, Zeilenhöhe, Laufweite) {showTextStyle ? "▲" : "▼"}
+        </button>
+        {showTextStyle && (
+          <div className="border border-line rounded-[2px] p-4 mb-5">
+            <div className="flex items-center gap-2 mb-4">
+              <label className={labelClass + " mb-0 mr-1"}>Schriftschnitt</label>
+              {[
+                { key: "bold" as const, Icon: Bold, active: state.bold, title: "Fett" },
+                { key: "italic" as const, Icon: Italic, active: state.italic, title: "Kursiv" },
+                { key: "underline" as const, Icon: Underline, active: state.underline, title: "Unterstrichen" },
+              ].map(({ key, Icon, active, title }) => (
+                <button
+                  key={key}
+                  type="button"
+                  title={title}
+                  aria-pressed={active}
+                  onClick={() => update({ [key]: !active })}
+                  className={`inline-flex items-center justify-center w-9 h-9 border rounded-[2px] cursor-pointer transition-colors ${
+                    active ? "bg-forest text-white border-forest" : "border-line text-ink-soft hover:text-forest hover:border-forest"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" strokeWidth={2} />
+                </button>
+              ))}
+            </div>
+            <div className="mb-4">
+              <label className={labelClass}>Schriftart</label>
+              <select
+                value={state.fontFamily}
+                onChange={(e) => update({ fontFamily: e.target.value })}
+                className={inputClass}
+              >
+                <option value="">Standard (Website-Schrift)</option>
+                {FONT_OPTIONS.map((f) => (
+                  <option key={f.key} value={f.key}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={labelClass + " mb-0"}>Zeilenhöhe</label>
+                  <span className="text-[0.75rem] text-ink-soft">{state.lineHeight.toFixed(2)}</span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={2.2}
+                  step={0.05}
+                  value={state.lineHeight}
+                  onChange={(e) => update({ lineHeight: Number(e.target.value) })}
+                  className="w-full accent-gold cursor-pointer"
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={labelClass + " mb-0"}>Laufweite</label>
+                  <span className="text-[0.75rem] text-ink-soft">{state.letterSpacing.toFixed(2)}em</span>
+                </div>
+                <input
+                  type="range"
+                  min={-0.05}
+                  max={0.3}
+                  step={0.01}
+                  value={state.letterSpacing}
+                  onChange={(e) => update({ letterSpacing: Number(e.target.value) })}
+                  className="w-full accent-gold cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         <span className={labelClass}>Hover-Animation</span>
         <div className="grid grid-cols-4 max-[420px]:grid-cols-3 gap-2.5 mb-5">
           {BUTTON_ANIMATION_OPTIONS.map((a) => (
@@ -788,6 +883,12 @@ export function ButtonEditPopup({
                   borderColor: state.borderColor,
                   borderRadius: state.borderRadius,
                   animation: state.animation,
+                  ...(state.bold ? { bold: true } : {}),
+                  ...(state.italic ? { italic: true } : {}),
+                  ...(state.underline ? { underline: true } : {}),
+                  ...(state.fontFamily ? { fontFamily: state.fontFamily } : {}),
+                  ...(state.lineHeight !== DEFAULT_LINE_HEIGHT ? { lineHeight: `${state.lineHeight}` } : {}),
+                  ...(state.letterSpacing !== DEFAULT_LETTER_SPACING ? { letterSpacing: `${state.letterSpacing}em` } : {}),
                 },
                 linked: state.linked,
               })

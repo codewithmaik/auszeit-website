@@ -83,6 +83,19 @@ export type ButtonStyleOverride = {
   borderColor: string | null;
   borderRadius: string | null;
   animation: string | null;
+  // Textstil-Erweiterung (ausklappbarer Bereich im ButtonEditPopup) — optional
+  // statt string|null wie oben, damit ältere Objekte mit nur den 5 Feldern
+  // oben (z. B. der sitewide Default-Stil aus den sitewide buttonBorderWidth/
+  // .../-Spalten) ohne Änderung weiter gültig bleiben. undefined = kein
+  // Override, identisch zu false/"" beim Anwenden.
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  fontFamily?: string;
+  /** Unitless CSS line-height, z. B. "1.4". */
+  lineHeight?: string;
+  /** CSS letter-spacing inkl. Einheit, z. B. "0.02em". */
+  letterSpacing?: string;
 };
 export type ButtonStyles = Partial<Record<ButtonId, ButtonStyleOverride>>;
 
