@@ -32,6 +32,8 @@ const DEFAULT_SETTINGS = {
   themeBackground: null as string | null,
   homeHeroImageUrl: null as string | null,
   homeWohlfuehlImageUrl: null as string | null,
+  homeHeroAnimation: null as string | null,
+  homeWohlfuehlAnimation: null as string | null,
   homeContentDe: null as HomeContent | null,
   homeContentEn: null as HomeContent | null,
   homeTextStyles: null as HomeTextStyles | null,

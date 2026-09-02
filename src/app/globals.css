@@ -226,3 +226,71 @@ html {
 .btn[data-button-anim="spacing"]:hover {
   letter-spacing: 0.24em;
 }
+
+/* Hintergrundbild-Animationen (Design-Editor, Hero-/Wohlfühl-Bild). Aktiviert
+   über data-bg-anim="<key>" direkt auf dem <img>-Element (auch das von
+   next/image gerenderte <img>, da Image/Photo beliebige data-*-Attribute an
+   das zugrundeliegende <img> durchreicht) — reines CSS, transform-origin
+   center. Ohne data-bg-anim bleibt ein Bild komplett unanimiert (Default). */
+img[data-bg-anim="zoom-hold"] {
+  animation: bg-anim-zoom-hold 18s ease-out forwards;
+}
+@keyframes bg-anim-zoom-hold {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.1);
+  }
+}
+
+img[data-bg-anim="pan-horizontal"] {
+  animation: bg-anim-pan-horizontal 24s ease-in-out forwards;
+}
+@keyframes bg-anim-pan-horizontal {
+  0% {
+    transform: scale(1.08) translateX(-1.5%);
+  }
+  100% {
+    transform: scale(1.14) translateX(1.5%);
+  }
+}
+
+img[data-bg-anim="pan-vertical"] {
+  animation: bg-anim-pan-vertical 22s ease-in-out forwards;
+}
+@keyframes bg-anim-pan-vertical {
+  0% {
+    transform: scale(1.06) translateY(2%);
+  }
+  100% {
+    transform: scale(1.12) translateY(-2%);
+  }
+}
+
+img[data-bg-anim="breathe"] {
+  animation: bg-anim-breathe 12s ease-in-out infinite;
+}
+@keyframes bg-anim-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+img[data-bg-anim="soft-reveal"] {
+  animation: bg-anim-soft-reveal 2.5s ease-out forwards;
+}
+@keyframes bg-anim-soft-reveal {
+  0% {
+    transform: scale(1.06);
+    filter: blur(14px);
+  }
+  100% {
+    transform: scale(1);
+    filter: blur(0);
+  }
+}

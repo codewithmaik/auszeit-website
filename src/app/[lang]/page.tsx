@@ -42,6 +42,8 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
   const t = homeOverride ?? dict.home;
   const heroImageSrc = settings.homeHeroImageUrl || "/images/hero-mosel.jpg";
   const wohlfuehlImageSrc = settings.homeWohlfuehlImageUrl || "/images/wohnzimmer-balkon.jpg";
+  const heroAnimation = settings.homeHeroAnimation;
+  const wohlfuehlAnimation = settings.homeWohlfuehlAnimation;
   const styles = settings.homeTextStyles;
 
   return (
@@ -53,7 +55,8 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
           fill
           priority
           sizes="100vw"
-          className="object-cover scale-[1.18] origin-bottom"
+          data-bg-anim={heroAnimation ?? undefined}
+          className={`object-cover ${heroAnimation ? "" : "scale-[1.18] origin-bottom"}`}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-black/10 to-transparent" />
@@ -176,6 +179,7 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
                 alt="Wohnzimmer mit Balkon"
                 fill
                 sizes="(max-width: 980px) 100vw, 360px"
+                data-bg-anim={wohlfuehlAnimation ?? undefined}
                 className="object-cover"
               />
             </div>

@@ -125,6 +125,8 @@ export type DesignDraft = {
   themeBackground: string | null;
   homeHeroImageUrl: string | null;
   homeWohlfuehlImageUrl: string | null;
+  homeHeroAnimation: string | null;
+  homeWohlfuehlAnimation: string | null;
   homeContentDe: HomeContent | null;
   homeContentEn: HomeContent | null;
   homeTextStyles: HomeTextStyles | null;
@@ -157,6 +159,8 @@ export function publishedDesignSnapshot(settings: DesignDraft): DesignDraft {
     themeBackground: settings.themeBackground,
     homeHeroImageUrl: settings.homeHeroImageUrl,
     homeWohlfuehlImageUrl: settings.homeWohlfuehlImageUrl,
+    homeHeroAnimation: settings.homeHeroAnimation,
+    homeWohlfuehlAnimation: settings.homeWohlfuehlAnimation,
     homeContentDe: settings.homeContentDe,
     homeContentEn: settings.homeContentEn,
     homeTextStyles: settings.homeTextStyles,

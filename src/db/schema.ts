@@ -39,6 +39,10 @@ export const siteSettings = pgTable("site_settings", {
   // Startseiten-Bilder
   homeHeroImageUrl: text("home_hero_image_url"),
   homeWohlfuehlImageUrl: text("home_wohlfuehl_image_url"),
+  // Ausgewählte Hintergrundbild-Animation (Key aus IMAGE_ANIMATION_OPTIONS,
+  // src/lib/image-animations.ts). null = kein Animations-Effekt.
+  homeHeroAnimation: text("home_hero_animation"),
+  homeWohlfuehlAnimation: text("home_wohlfuehl_animation"),
 
   // Startseiten-Texte je Sprache, komplettes Objekt (Struktur siehe HomeContent).
   // null = Dictionary-Default wird verwendet.

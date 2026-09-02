@@ -79,9 +79,11 @@ export default async function AdminDesignPage() {
         initialHeroImage={draft.homeHeroImageUrl || defaultHeroImage}
         defaultHeroImage={defaultHeroImage}
         isHeroDefault={!draft.homeHeroImageUrl}
+        initialHeroAnimation={draft.homeHeroAnimation}
         initialWohlfuehlImage={draft.homeWohlfuehlImageUrl || defaultWohlfuehlImage}
         defaultWohlfuehlImage={defaultWohlfuehlImage}
         isWohlfuehlDefault={!draft.homeWohlfuehlImageUrl}
+        initialWohlfuehlAnimation={draft.homeWohlfuehlAnimation}
         initialLogoImage={draft.logoImageUrl || DEFAULT_LOGO_IMAGE}
         isLogoDefault={!draft.logoImageUrl}
         initialLogoTextImage={draft.logoTextImageUrl || DEFAULT_LOGO_IMAGE}

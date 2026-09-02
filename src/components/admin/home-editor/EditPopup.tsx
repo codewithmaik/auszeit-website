@@ -6,6 +6,7 @@ import Cropper, { type Area, type Point } from "react-easy-crop";
 import { FONT_OPTIONS } from "@/lib/fonts";
 import { BUTTON_BASE_CLASS, BUTTON_VARIANT_CLASS, BUTTON_SHAPE_STYLE } from "@/components/Button";
 import { BUTTON_ANIMATION_OPTIONS } from "@/lib/button-animations";
+import { IMAGE_ANIMATION_OPTIONS } from "@/lib/image-animations";
 import type { ButtonStyleOverride, LogoMode } from "@/db/home-content";
 import { PALETTE_TEMPLATES, type ThemeColors } from "./palettes";
 import { DEFAULT_LINE_HEIGHT, DEFAULT_LETTER_SPACING } from "./fields";
@@ -53,6 +54,8 @@ export type ImageEditor = {
   /** Nur Logo-Schriftzug im Kombi-Modus: Hinweistext statt normaler
    *  Upload-UI (der Upload läuft dann über den Logo-Slot). */
   combinedNotice?: string;
+  /** Nur Hero-/Wohlfühl-Bild: Auswahl einer der 5 Hintergrundbild-Animationen. */
+  animationOptions?: { value: string | null; onChange: (key: string | null) => void };
 };
 
 export type PaletteEditor = {
@@ -471,6 +474,36 @@ export function ImageEditPopup({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={editor.currentSrc} alt="" className="w-full h-full object-cover" />
             </div>
+            {editor.animationOptions && (
+              <div className="mb-5">
+                <label className={labelClass}>Animation</label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => editor.animationOptions!.onChange(null)}
+                    className={`text-left border rounded-[2px] p-2.5 transition-colors cursor-pointer ${
+                      editor.animationOptions.value === null ? "border-gold" : "border-line hover:border-gold"
+                    }`}
+                  >
+                    <span className="block text-[0.78rem] text-ink">Keine Animation</span>
+                    <span className="block text-[0.68rem] text-ink-soft mt-0.5">Statisches Bild (Standard).</span>
+                  </button>
+                  {IMAGE_ANIMATION_OPTIONS.map((a) => (
+                    <button
+                      key={a.key}
+                      type="button"
+                      onClick={() => editor.animationOptions!.onChange(a.key)}
+                      className={`text-left border rounded-[2px] p-2.5 transition-colors cursor-pointer ${
+                        editor.animationOptions!.value === a.key ? "border-gold" : "border-line hover:border-gold"
+                      }`}
+                    >
+                      <span className="block text-[0.78rem] text-ink">{a.label}</span>
+                      <span className="block text-[0.68rem] text-ink-soft mt-0.5">{a.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {editor.scale && (
               <div className="mb-5">
                 <div className="flex items-center justify-between mb-1.5">

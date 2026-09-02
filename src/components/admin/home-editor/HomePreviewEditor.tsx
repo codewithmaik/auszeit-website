@@ -42,6 +42,8 @@ import {
   saveLogoTextScale,
   resetLogoTextScale,
   saveLogoMode,
+  saveHomeHeroAnimation,
+  saveHomeWohlfuehlAnimation,
   publishDesign,
   discardDesignDraft,
   undoDesignDraft,
@@ -148,9 +150,11 @@ type Props = {
   initialHeroImage: string;
   defaultHeroImage: string;
   isHeroDefault: boolean;
+  initialHeroAnimation: string | null;
   initialWohlfuehlImage: string;
   defaultWohlfuehlImage: string;
   isWohlfuehlDefault: boolean;
+  initialWohlfuehlAnimation: string | null;
   initialLogoImage: string;
   isLogoDefault: boolean;
   initialLogoTextImage: string;
@@ -195,9 +199,11 @@ export default function HomePreviewEditor({
   initialHeroImage,
   defaultHeroImage,
   isHeroDefault,
+  initialHeroAnimation,
   initialWohlfuehlImage,
   defaultWohlfuehlImage,
   isWohlfuehlDefault,
+  initialWohlfuehlAnimation,
   initialLogoImage,
   isLogoDefault,
   initialLogoTextImage,
@@ -224,8 +230,10 @@ export default function HomePreviewEditor({
   const [navOverride, setNavOverride] = useState(hasNavOverride);
   const [heroImage, setHeroImage] = useState(initialHeroImage);
   const [heroIsDefault, setHeroIsDefault] = useState(isHeroDefault);
+  const [heroAnimation, setHeroAnimation] = useState(initialHeroAnimation);
   const [wohlfuehlImage, setWohlfuehlImage] = useState(initialWohlfuehlImage);
   const [wohlfuehlIsDefault, setWohlfuehlIsDefault] = useState(isWohlfuehlDefault);
+  const [wohlfuehlAnimation, setWohlfuehlAnimation] = useState(initialWohlfuehlAnimation);
   const [logoImage, setLogoImage] = useState(initialLogoImage);
   const [logoIsDefault, setLogoIsDefault] = useState(isLogoDefault);
   const [logoTextImage, setLogoTextImage] = useState(initialLogoTextImage);
@@ -310,8 +318,10 @@ export default function HomePreviewEditor({
     setNavOverride(Boolean(next.navLabelsDe || next.navLabelsEn));
     setHeroImage(next.homeHeroImageUrl || defaultHeroImage);
     setHeroIsDefault(!next.homeHeroImageUrl);
+    setHeroAnimation(next.homeHeroAnimation);
     setWohlfuehlImage(next.homeWohlfuehlImageUrl || defaultWohlfuehlImage);
     setWohlfuehlIsDefault(!next.homeWohlfuehlImageUrl);
+    setWohlfuehlAnimation(next.homeWohlfuehlAnimation);
     setLogoImage(next.logoImageUrl || DEFAULT_LOGO_IMAGE);
     setLogoIsDefault(!next.logoImageUrl);
     setLogoTextImage(next.logoTextImageUrl || DEFAULT_LOGO_IMAGE);
@@ -554,6 +564,12 @@ export default function HomePreviewEditor({
         id === "logoText" && logoMode === "combined"
           ? 'Kombi-Modus aktiv: Logo und Schriftzug sind ein gemeinsames Bild. Hochladen/Zuschneiden erfolgt über den Logo-Slot links in der Navbar — hier oben auf „Wie bisher (getrennt)" umschalten, um wieder einen eigenen Schriftzug zu setzen.'
           : undefined,
+      animationOptions:
+        id === "hero"
+          ? { value: heroAnimation, onChange: handleHeroAnimationChange }
+          : id === "wohlfuehl"
+            ? { value: wohlfuehlAnimation, onChange: handleWohlfuehlAnimationChange }
+            : undefined,
     });
   }
 
@@ -640,6 +656,22 @@ export default function HomePreviewEditor({
     markDraftChanged();
     startTransition(async () => {
       await saveLogoMode(mode);
+    });
+  }
+
+  function handleHeroAnimationChange(key: string | null) {
+    setHeroAnimation(key);
+    markDraftChanged();
+    startTransition(async () => {
+      await saveHomeHeroAnimation(key);
+    });
+  }
+
+  function handleWohlfuehlAnimationChange(key: string | null) {
+    setWohlfuehlAnimation(key);
+    markDraftChanged();
+    startTransition(async () => {
+      await saveHomeWohlfuehlAnimation(key);
     });
   }
 
@@ -1018,7 +1050,12 @@ export default function HomePreviewEditor({
           <section className="relative min-h-[64vh] flex items-end overflow-hidden">
             <div className="absolute inset-0 cursor-pointer group" onClick={() => openImageEditor("hero")}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={heroImage} alt="" className="w-full h-full object-cover scale-[1.18] origin-bottom" />
+              <img
+                src={heroImage}
+                alt=""
+                data-bg-anim={heroAnimation ?? undefined}
+                className={`w-full h-full object-cover ${heroAnimation ? "" : "scale-[1.18] origin-bottom"}`}
+              />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                 <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-[0.7rem] uppercase tracking-[0.08em] bg-black/60 px-3 py-1.5 rounded-[2px]">
                   Bild ändern
@@ -1178,7 +1215,12 @@ export default function HomePreviewEditor({
                   onClick={() => openImageEditor("wohlfuehl")}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={wohlfuehlImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  <img
+                    src={wohlfuehlImage}
+                    alt=""
+                    data-bg-anim={wohlfuehlAnimation ?? undefined}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors flex items-center justify-center">
                     <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-[0.7rem] uppercase tracking-[0.08em] bg-black/60 px-3 py-1.5 rounded-[2px]">
                       Bild ändern

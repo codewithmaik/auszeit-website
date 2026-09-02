@@ -22,6 +22,7 @@ import {
 import { BUSINESS } from "@/lib/site";
 import { isValidFontKey } from "@/lib/fonts";
 import { isValidButtonAnimation } from "@/lib/button-animations";
+import { isValidImageAnimation } from "@/lib/image-animations";
 
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 const DRAFT_HISTORY_CAP = 20;
@@ -202,6 +203,22 @@ export async function uploadHomeWohlfuehlImage(formData: FormData) {
 }
 export async function resetHomeWohlfuehlImage() {
   await resetDraftImage("homeWohlfuehlImageUrl");
+}
+
+// ---------- Hintergrundbild-Animationen ----------
+
+function readImageAnimationKey(key: string | null): string | null {
+  if (key === null) return null;
+  if (!isValidImageAnimation(key)) throw new Error(`Ungültige Bild-Animation "${key}".`);
+  return key;
+}
+
+export async function saveHomeHeroAnimation(key: string | null) {
+  await saveDesignDraft({ homeHeroAnimation: readImageAnimationKey(key) });
+}
+
+export async function saveHomeWohlfuehlAnimation(key: string | null) {
+  await saveDesignDraft({ homeWohlfuehlAnimation: readImageAnimationKey(key) });
 }
 
 // ---------- Farbpalette ----------
