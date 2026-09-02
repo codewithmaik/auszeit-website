@@ -7,7 +7,7 @@ import { useState } from "react";
 import { Heart, Menu, X } from "lucide-react";
 import { localeHref, swapLocale, type Locale } from "@/lib/i18n";
 import type { Dictionary } from "@/dictionaries";
-import type { ButtonStyleOverride } from "@/db/home-content";
+import type { ButtonStyleOverride, NavLabels } from "@/db/home-content";
 import Button from "@/components/Button";
 
 export default function Header({
@@ -16,23 +16,25 @@ export default function Header({
   logoImageUrl,
   logoTextImageUrl,
   navCtaStyle,
+  navLabels,
 }: {
   locale: Locale;
   dict: Dictionary;
   logoImageUrl?: string | null;
   logoTextImageUrl?: string | null;
   navCtaStyle?: ButtonStyleOverride | null;
+  navLabels?: NavLabels | null;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const isAdmin = pathname.startsWith("/admin");
 
   const navLinks = [
-    { href: localeHref(locale, "/"), label: dict.nav.home },
-    { href: localeHref(locale, "/wohnung"), label: dict.nav.wohnung },
-    { href: localeHref(locale, "/region"), label: dict.nav.region },
-    { href: localeHref(locale, "/bewertungen"), label: dict.nav.bewertungen },
-    { href: localeHref(locale, "/kontakt"), label: dict.nav.kontakt },
+    { href: localeHref(locale, "/"), label: navLabels?.home ?? dict.nav.home },
+    { href: localeHref(locale, "/wohnung"), label: navLabels?.wohnung ?? dict.nav.wohnung },
+    { href: localeHref(locale, "/region"), label: navLabels?.region ?? dict.nav.region },
+    { href: localeHref(locale, "/bewertungen"), label: navLabels?.bewertungen ?? dict.nav.bewertungen },
+    { href: localeHref(locale, "/kontakt"), label: navLabels?.kontakt ?? dict.nav.kontakt },
   ];
 
   function switchLanguage() {

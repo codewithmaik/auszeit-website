@@ -35,14 +35,30 @@ export type HomeTextStyleOverride = {
 };
 export type HomeTextStyles = Record<string, HomeTextStyleOverride>;
 
+// Editierbare Navbar-Link-Texte je Sprache (Ziel-Routen bleiben fest, nur die
+// sichtbaren Labels sind editierbar) — geteilt zwischen Header (Navbar) und
+// Footer (Navigations-Spalte), die dieselben fünf Links duplizieren.
+export type NavLabels = {
+  home: string;
+  wohnung: string;
+  region: string;
+  bewertungen: string;
+  kontakt: string;
+};
+
 // Editierbare Footer-Texte je Sprache (Tagline, Spalten-Überschriften,
-// Copyright-Suffix). Kontaktdaten bleiben in "Einstellungen" verwaltet,
-// Legal-Link-Labels (Impressum/Datenschutz/Cookie/Credit) bleiben fest.
+// Copyright-Suffix, Markenname, Legal-Link-Labels). Kontaktdaten bleiben in
+// "Einstellungen" verwaltet, die Credit-Zeile ("codewithmaik & ...") bleibt
+// als externe Zuschreibung fest.
 export type FooterContent = {
   tagline: string;
   navHeading: string;
   kontaktHeading: string;
   copyrightSuffix: string;
+  brandName: string;
+  legalImpressum: string;
+  legalDatenschutz: string;
+  legalCookie: string;
 };
 
 // Individuelle Button-Gestaltung: nur die im Design-Preview sichtbaren
@@ -85,6 +101,8 @@ export type DesignDraft = {
   homeTextStyles: HomeTextStyles | null;
   footerContentDe: FooterContent | null;
   footerContentEn: FooterContent | null;
+  navLabelsDe: NavLabels | null;
+  navLabelsEn: NavLabels | null;
   buttonBorderWidth: string | null;
   buttonColor: string | null;
   buttonBorderColor: string | null;
@@ -113,6 +131,8 @@ export function publishedDesignSnapshot(settings: DesignDraft): DesignDraft {
     homeTextStyles: settings.homeTextStyles,
     footerContentDe: settings.footerContentDe,
     footerContentEn: settings.footerContentEn,
+    navLabelsDe: settings.navLabelsDe,
+    navLabelsEn: settings.navLabelsEn,
     buttonBorderWidth: settings.buttonBorderWidth,
     buttonColor: settings.buttonColor,
     buttonBorderColor: settings.buttonBorderColor,

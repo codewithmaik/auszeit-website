@@ -1,4 +1,4 @@
-import type { HomeContent, FooterContent } from "@/db/home-content";
+import type { HomeContent, FooterContent, NavLabels } from "@/db/home-content";
 
 // Farbrolle eines Textfelds — bestimmt, welche Theme-Farbe als Ausgangswert im
 // Farbwähler erscheint, solange kein individueller Override gesetzt ist.
@@ -215,11 +215,49 @@ export const FOOTER_FIELDS: Record<string, FooterFieldDef> = {
   "footer.navHeading": footerField("navHeading", '„Navigation"-Überschrift'),
   "footer.kontaktHeading": footerField("kontaktHeading", '„Kontakt"-Überschrift'),
   "footer.copyrightSuffix": footerField("copyrightSuffix", "Copyright-Suffix"),
+  "footer.brandName": footerField("brandName", "Markenname"),
+  "footer.legalImpressum": footerField("legalImpressum", 'Link-Label „Impressum"'),
+  "footer.legalDatenschutz": footerField("legalDatenschutz", 'Link-Label „Datenschutz"'),
+  "footer.legalCookie": footerField("legalCookie", 'Link-Label „Cookie-Einstellungen"'),
 };
 
 export function buildFooterContentFormData(de: FooterContent, en: FooterContent): FormData {
   const fd = new FormData();
   for (const [path, field] of Object.entries(FOOTER_FIELDS)) {
+    fd.set(`de.${path}`, field.get(de));
+    fd.set(`en.${path}`, field.get(en));
+  }
+  return fd;
+}
+
+// Navbar-Link-Texte — eigene, kleine Registry (analog FOOTER_FIELDS), geteilt
+// zwischen Popup-Öffnen in der Navbar UND der Footer-Navigationsspalte der
+// Vorschau (dieselben fünf Links erscheinen an beiden Stellen).
+export type NavFieldDef = {
+  label: string;
+  get: (c: NavLabels) => string;
+  set: (c: NavLabels, value: string) => NavLabels;
+};
+
+function navField(key: keyof NavLabels, label: string): NavFieldDef {
+  return {
+    label,
+    get: (c) => c[key],
+    set: (c, v) => ({ ...c, [key]: v }),
+  };
+}
+
+export const NAV_FIELDS: Record<string, NavFieldDef> = {
+  "nav.home": navField("home", 'Navbar-Link „Startseite"'),
+  "nav.wohnung": navField("wohnung", 'Navbar-Link „Die Wohnungen"'),
+  "nav.region": navField("region", 'Navbar-Link „Die Region"'),
+  "nav.bewertungen": navField("bewertungen", 'Navbar-Link „Gästebewertungen"'),
+  "nav.kontakt": navField("kontakt", 'Navbar-Link „Kontakt"'),
+};
+
+export function buildNavLabelsFormData(de: NavLabels, en: NavLabels): FormData {
+  const fd = new FormData();
+  for (const [path, field] of Object.entries(NAV_FIELDS)) {
     fd.set(`de.${path}`, field.get(de));
     fd.set(`en.${path}`, field.get(en));
   }

@@ -1,7 +1,7 @@
 import { asc } from "drizzle-orm";
 import { db, isDatabaseConfigured } from "./client";
 import { apartments, apartmentImages, type Apartment, type ApartmentImage } from "./schema";
-import type { HomeContent, HomeTextStyles, FooterContent, ButtonStyles, DesignDraft } from "./home-content";
+import type { HomeContent, HomeTextStyles, FooterContent, NavLabels, ButtonStyles, DesignDraft } from "./home-content";
 import { BUSINESS } from "@/lib/site";
 
 export type ApartmentWithImages = Apartment & { images: ApartmentImage[] };
@@ -27,6 +27,8 @@ const DEFAULT_SETTINGS = {
   homeTextStyles: null as HomeTextStyles | null,
   footerContentDe: null as FooterContent | null,
   footerContentEn: null as FooterContent | null,
+  navLabelsDe: null as NavLabels | null,
+  navLabelsEn: null as NavLabels | null,
   buttonBorderWidth: null as string | null,
   buttonColor: null as string | null,
   buttonBorderColor: null as string | null,

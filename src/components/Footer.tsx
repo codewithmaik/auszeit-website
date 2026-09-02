@@ -8,14 +8,22 @@ import CookieSettingsLink from "@/components/cookies/CookieSettingsLink";
 export default async function Footer({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const settings = await getSiteSettings();
   const footerOverride = locale === "de" ? settings.footerContentDe : settings.footerContentEn;
-  const t = footerOverride ?? dict.footer;
+  const tagline = footerOverride?.tagline ?? dict.footer.tagline;
+  const navHeading = footerOverride?.navHeading ?? dict.footer.navHeading;
+  const kontaktHeading = footerOverride?.kontaktHeading ?? dict.footer.kontaktHeading;
+  const copyrightSuffix = footerOverride?.copyrightSuffix ?? dict.footer.copyrightSuffix;
+  const brandName = footerOverride?.brandName ?? "AUSZEIT";
+  const legalImpressum = footerOverride?.legalImpressum ?? dict.footer.impressum;
+  const legalDatenschutz = footerOverride?.legalDatenschutz ?? dict.footer.datenschutz;
+  const legalCookie = footerOverride?.legalCookie ?? dict.footer.cookieSettings;
 
+  const navLabelsOverride = locale === "de" ? settings.navLabelsDe : settings.navLabelsEn;
   const navLinks = [
-    { href: localeHref(locale, "/"), label: dict.nav.home },
-    { href: localeHref(locale, "/wohnung"), label: dict.nav.wohnung },
-    { href: localeHref(locale, "/region"), label: dict.nav.region },
-    { href: localeHref(locale, "/bewertungen"), label: dict.nav.bewertungen },
-    { href: localeHref(locale, "/kontakt"), label: dict.nav.kontakt },
+    { href: localeHref(locale, "/"), label: navLabelsOverride?.home ?? dict.nav.home },
+    { href: localeHref(locale, "/wohnung"), label: navLabelsOverride?.wohnung ?? dict.nav.wohnung },
+    { href: localeHref(locale, "/region"), label: navLabelsOverride?.region ?? dict.nav.region },
+    { href: localeHref(locale, "/bewertungen"), label: navLabelsOverride?.bewertungen ?? dict.nav.bewertungen },
+    { href: localeHref(locale, "/kontakt"), label: navLabelsOverride?.kontakt ?? dict.nav.kontakt },
   ];
 
   return (
@@ -23,12 +31,12 @@ export default async function Footer({ locale, dict }: { locale: Locale; dict: D
       <div className="max-w-[1180px] mx-auto px-8">
         <div className="grid grid-cols-[1.4fr_1fr_1fr] max-[860px]:grid-cols-1 gap-10 pb-[34px] border-b border-white/14">
           <div>
-            <span className="font-serif text-white text-[1.3rem] tracking-[0.1em]">AUSZEIT</span>
-            <p className="text-white/65 text-[0.88rem] mt-2.5 max-w-[320px]">{t.tagline}</p>
+            <span className="font-serif text-white text-[1.3rem] tracking-[0.1em]">{brandName}</span>
+            <p className="text-white/65 text-[0.88rem] mt-2.5 max-w-[320px]">{tagline}</p>
           </div>
           <div>
             <h4 className="text-white font-sans text-[0.78rem] tracking-[0.12em] uppercase mb-3.5">
-              {t.navHeading}
+              {navHeading}
             </h4>
             <div className="grid grid-cols-2 gap-x-4">
               {navLinks.map((link) => (
@@ -44,7 +52,7 @@ export default async function Footer({ locale, dict }: { locale: Locale; dict: D
           </div>
           <div>
             <h4 className="text-white font-sans text-[0.78rem] tracking-[0.12em] uppercase mb-3.5">
-              {t.kontaktHeading}
+              {kontaktHeading}
             </h4>
             <p className="text-white/68 text-[0.88rem] mb-2">{settings.contactAddress}</p>
             <p className="text-white/68 text-[0.88rem] mb-2">{settings.contactPhone}</p>
@@ -53,18 +61,18 @@ export default async function Footer({ locale, dict }: { locale: Locale; dict: D
         </div>
         <div className="flex justify-between flex-wrap gap-2.5 pt-5 text-[0.78rem] text-white/50">
           <span>
-            © {new Date().getFullYear()} {t.copyrightSuffix}
+            © {new Date().getFullYear()} {copyrightSuffix}
           </span>
           <span className="flex flex-wrap gap-x-2">
             <Link href={localeHref(locale, "/impressum")} className="hover:text-gold">
-              {dict.footer.impressum}
+              {legalImpressum}
             </Link>
             <span>·</span>
             <Link href={localeHref(locale, "/datenschutz")} className="hover:text-gold">
-              {dict.footer.datenschutz}
+              {legalDatenschutz}
             </Link>
             <span>·</span>
-            <CookieSettingsLink label={dict.footer.cookieSettings} />
+            <CookieSettingsLink label={legalCookie} />
           </span>
         </div>
         <div className="pt-5 mt-2 border-t border-white/10 text-center text-[0.72rem] tracking-[0.03em] text-white/40">

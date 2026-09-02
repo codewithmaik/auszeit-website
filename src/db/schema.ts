@@ -1,6 +1,6 @@
 import { pgTable, serial, text, integer, timestamp, jsonb, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import type { HomeContent, HomeTextStyles, FooterContent, ButtonStyles, DesignDraft } from "./home-content";
+import type { HomeContent, HomeTextStyles, FooterContent, NavLabels, ButtonStyles, DesignDraft } from "./home-content";
 
 export const siteSettings = pgTable("site_settings", {
   id: serial("id").primaryKey(),
@@ -41,6 +41,12 @@ export const siteSettings = pgTable("site_settings", {
   // Copyright-Suffix). null = Dictionary-Default (dict.footer) wird verwendet.
   footerContentDe: jsonb("footer_content_de").$type<FooterContent>(),
   footerContentEn: jsonb("footer_content_en").$type<FooterContent>(),
+
+  // Editierbare Navbar-Link-Texte je Sprache (geteilt zwischen Header und
+  // Footer-Navigationsspalte). null = Dictionary-Default (dict.nav) wird
+  // verwendet.
+  navLabelsDe: jsonb("nav_labels_de").$type<NavLabels>(),
+  navLabelsEn: jsonb("nav_labels_en").$type<NavLabels>(),
 
   // Default-Button-Stil — Fallback für alle Buttons, die keinen individuellen
   // Override haben (buttonStyles unten), inkl. aller Buttons außerhalb des

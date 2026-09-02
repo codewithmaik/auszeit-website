@@ -13,6 +13,7 @@ import {
   type HomeContent,
   type HomeTextStyles,
   type FooterContent,
+  type NavLabels,
   type ButtonStyleOverride,
   type ButtonStyles,
   type DesignDraft,
@@ -328,6 +329,10 @@ function parseFooterContent(formData: FormData, locale: "de" | "en"): FooterCont
     navHeading: field("footer.navHeading"),
     kontaktHeading: field("footer.kontaktHeading"),
     copyrightSuffix: field("footer.copyrightSuffix"),
+    brandName: field("footer.brandName"),
+    legalImpressum: field("footer.legalImpressum"),
+    legalDatenschutz: field("footer.legalDatenschutz"),
+    legalCookie: field("footer.legalCookie"),
   };
 }
 
@@ -340,6 +345,34 @@ export async function saveFooterContent(formData: FormData) {
 
 export async function resetFooterContent() {
   await saveDesignDraft({ footerContentDe: null, footerContentEn: null });
+}
+
+// ---------- Navbar-Link-Texte ----------
+//
+// Nur die fünf sichtbaren Labels sind editierbar, die Ziel-Routen bleiben
+// fest (s. NAV_FIELDS in fields.ts). Geteilt zwischen Header (Navbar) und
+// Footer (Navigations-Spalte).
+
+function parseNavLabels(formData: FormData, locale: "de" | "en"): NavLabels {
+  const field = (path: string) => str(formData, `${locale}.${path}`);
+  return {
+    home: field("nav.home"),
+    wohnung: field("nav.wohnung"),
+    region: field("nav.region"),
+    bewertungen: field("nav.bewertungen"),
+    kontakt: field("nav.kontakt"),
+  };
+}
+
+export async function saveNavLabels(formData: FormData) {
+  await saveDesignDraft({
+    navLabelsDe: parseNavLabels(formData, "de"),
+    navLabelsEn: parseNavLabels(formData, "en"),
+  });
+}
+
+export async function resetNavLabels() {
+  await saveDesignDraft({ navLabelsDe: null, navLabelsEn: null });
 }
 
 // ---------- Individuelle Button-Gestaltung ----------

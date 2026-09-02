@@ -7,6 +7,7 @@ import type {
   HomeContent,
   HomeTextStyles,
   FooterContent,
+  NavLabels,
   ButtonStyleOverride,
   ButtonStyles,
   ButtonId,
@@ -35,29 +36,38 @@ import {
   resetButtonStyleForId,
   saveFooterContent,
   resetFooterContent,
+  saveNavLabels,
+  resetNavLabels,
   publishDesign,
   discardDesignDraft,
   undoDesignDraft,
 } from "@/app/admin/(dashboard)/design/actions";
-import { FIELDS, FOOTER_FIELDS, buildHomeContentFormData, buildFooterContentFormData, type TextRole } from "./fields";
+import {
+  FIELDS,
+  FOOTER_FIELDS,
+  NAV_FIELDS,
+  buildHomeContentFormData,
+  buildFooterContentFormData,
+  buildNavLabelsFormData,
+  type TextRole,
+} from "./fields";
 import { DEFAULT_COLORS, type ThemeColors } from "./palettes";
 import { TextEditPopup, ImageEditPopup, PaletteEditPopup, ButtonEditPopup, type ActiveEditor } from "./EditPopup";
 
-// Statische Nav-Labels für die dekorative Preview-Navbar (kein echtes Routing,
-// nicht editierbar — die Navbar-Links sind sitewide/dictionary-basiert und
-// bewusst nicht Teil des Design-Editors, siehe src/dictionaries/{de,en}.ts nav).
-const PREVIEW_NAV_LABELS: Record<"de" | "en", string[]> = {
-  de: ["Startseite", "Die Wohnungen", "Die Region", "Gästebewertungen", "Kontakt"],
-  en: ["Home", "The Apartments", "The Region", "Guest Reviews", "Contact"],
-};
+// Nav-CTA-Button-Label bleibt sitewide/dictionary-basiert und bewusst nicht
+// editierbar (siehe navbar.cta-Button-Popup, das ohne Textfeld öffnet) — nur
+// die fünf Navbar-LINKS (NAV_FIELDS) sind editierbar.
 const PREVIEW_NAV_CTA: Record<"de" | "en", string> = { de: "Anfragen", en: "Enquire" };
 
-// Feste Footer-Legal-Labels (Impressum/Datenschutz/Cookie/Credit) — bewusst
-// nicht editierbar, analog zu den Nav-Labels oben.
-const PREVIEW_FOOTER_LEGAL: Record<"de" | "en", { impressum: string; datenschutz: string; cookieSettings: string }> = {
-  de: { impressum: "Impressum", datenschutz: "Datenschutz", cookieSettings: "Cookie-Einstellungen" },
-  en: { impressum: "Legal Notice", datenschutz: "Privacy Policy", cookieSettings: "Cookie Settings" },
-};
+// Reihenfolge der fünf Navbar-Links (Ziel-Routen fest, nur Labels editierbar,
+// s. NAV_FIELDS in fields.ts) — geteilt zwischen Navbar- und Footer-Rendering.
+const NAV_LINK_ORDER: { id: string; key: keyof NavLabels }[] = [
+  { id: "nav.home", key: "home" },
+  { id: "nav.wohnung", key: "wohnung" },
+  { id: "nav.region", key: "region" },
+  { id: "nav.bewertungen", key: "bewertungen" },
+  { id: "nav.kontakt", key: "kontakt" },
+];
 
 const resetButtonClass =
   "inline-flex items-center gap-1.5 px-4 py-2.5 border border-line text-ink-soft font-sans text-[0.72rem] tracking-[0.08em] uppercase rounded-[2px] hover:text-forest hover:border-forest transition-colors";
@@ -122,6 +132,11 @@ type Props = {
   defaultFooterContentDe: FooterContent;
   defaultFooterContentEn: FooterContent;
   hasFooterOverride: boolean;
+  initialNavLabelsDe: NavLabels;
+  initialNavLabelsEn: NavLabels;
+  defaultNavLabelsDe: NavLabels;
+  defaultNavLabelsEn: NavLabels;
+  hasNavOverride: boolean;
   initialHeroImage: string;
   defaultHeroImage: string;
   isHeroDefault: boolean;
@@ -162,6 +177,11 @@ export default function HomePreviewEditor({
   defaultFooterContentDe,
   defaultFooterContentEn,
   hasFooterOverride,
+  initialNavLabelsDe,
+  initialNavLabelsEn,
+  defaultNavLabelsDe,
+  defaultNavLabelsEn,
+  hasNavOverride,
   initialHeroImage,
   defaultHeroImage,
   isHeroDefault,
@@ -187,6 +207,9 @@ export default function HomePreviewEditor({
   const [footerContentDe, setFooterContentDe] = useState(initialFooterContentDe);
   const [footerContentEn, setFooterContentEn] = useState(initialFooterContentEn);
   const [footerOverride, setFooterOverride] = useState(hasFooterOverride);
+  const [navLabelsDe, setNavLabelsDe] = useState(initialNavLabelsDe);
+  const [navLabelsEn, setNavLabelsEn] = useState(initialNavLabelsEn);
+  const [navOverride, setNavOverride] = useState(hasNavOverride);
   const [heroImage, setHeroImage] = useState(initialHeroImage);
   const [heroIsDefault, setHeroIsDefault] = useState(isHeroDefault);
   const [wohlfuehlImage, setWohlfuehlImage] = useState(initialWohlfuehlImage);
@@ -209,6 +232,7 @@ export default function HomePreviewEditor({
 
   const content = previewLocale === "de" ? contentDe : contentEn;
   const footerContent = previewLocale === "de" ? footerContentDe : footerContentEn;
+  const navLabels = previewLocale === "de" ? navLabelsDe : navLabelsEn;
   const hasStyleOverride = Object.keys(styles).length > 0;
 
   // Individueller Override eines Buttons, mit Fallback auf den Default-Stil
@@ -255,6 +279,9 @@ export default function HomePreviewEditor({
     setFooterContentDe(next.footerContentDe ?? defaultFooterContentDe);
     setFooterContentEn(next.footerContentEn ?? defaultFooterContentEn);
     setFooterOverride(Boolean(next.footerContentDe || next.footerContentEn));
+    setNavLabelsDe(next.navLabelsDe ?? defaultNavLabelsDe);
+    setNavLabelsEn(next.navLabelsEn ?? defaultNavLabelsEn);
+    setNavOverride(Boolean(next.navLabelsDe || next.navLabelsEn));
     setHeroImage(next.homeHeroImageUrl || defaultHeroImage);
     setHeroIsDefault(!next.homeHeroImageUrl);
     setWohlfuehlImage(next.homeWohlfuehlImageUrl || defaultWohlfuehlImage);
@@ -282,6 +309,28 @@ export default function HomePreviewEditor({
   }
 
   function openTextEditor(id: string) {
+    const navField = NAV_FIELDS[id];
+    if (navField) {
+      setActiveEditor({
+        kind: "text",
+        id,
+        label: navField.label,
+        multiline: false,
+        styleable: false,
+        de: navField.get(navLabelsDe),
+        en: navField.get(navLabelsEn),
+        fontRem: 1,
+        color: "#000000",
+        bold: false,
+        italic: false,
+        underline: false,
+        fontFamily: "",
+        defaultRem: 1,
+        defaultColor: "#000000",
+        hasOverride: false,
+      });
+      return;
+    }
     const footerField = FOOTER_FIELDS[id];
     if (footerField) {
       setActiveEditor({
@@ -347,6 +396,20 @@ export default function HomePreviewEditor({
   }) {
     if (!activeEditor || activeEditor.kind !== "text") return;
     const id = activeEditor.id;
+    const navField = NAV_FIELDS[id];
+    if (navField) {
+      const newNavDe = navField.set(navLabelsDe, values.de);
+      const newNavEn = navField.set(navLabelsEn, values.en);
+      setNavLabelsDe(newNavDe);
+      setNavLabelsEn(newNavEn);
+      setNavOverride(true);
+      setActiveEditor(null);
+      markDraftChanged();
+      startTransition(async () => {
+        await saveNavLabels(buildNavLabelsFormData(newNavDe, newNavEn));
+      });
+      return;
+    }
     const footerField = FOOTER_FIELDS[id];
     if (footerField) {
       const newFooterDe = footerField.set(footerContentDe, values.de);
@@ -618,6 +681,16 @@ export default function HomePreviewEditor({
     });
   }
 
+  function resetNavLabelsTexts() {
+    setNavLabelsDe(defaultNavLabelsDe);
+    setNavLabelsEn(defaultNavLabelsEn);
+    setNavOverride(false);
+    markDraftChanged();
+    startTransition(async () => {
+      await resetNavLabels();
+    });
+  }
+
   function handlePublish() {
     startTransition(async () => {
       await publishDesign();
@@ -748,6 +821,12 @@ export default function HomePreviewEditor({
                 Footer-Texte zurücksetzen
               </button>
             )}
+            {navOverride && (
+              <button type="button" onClick={resetNavLabelsTexts} className={resetButtonClass}>
+                <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
+                Navbar-Links zurücksetzen
+              </button>
+            )}
           </div>
         </div>
 
@@ -798,14 +877,18 @@ export default function HomePreviewEditor({
               </button>
             </div>
             <nav className="flex items-center gap-[26px] max-[820px]:hidden">
-              {PREVIEW_NAV_LABELS[previewLocale].map((label, i) => (
+              {NAV_LINK_ORDER.map(({ id, key }, i) => (
                 <span
-                  key={label}
-                  className={`text-[0.76rem] tracking-[0.1em] uppercase pb-1 border-b ${
+                  key={id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openTextEditor(id);
+                  }}
+                  className={`${editableClass} text-[0.76rem] tracking-[0.1em] uppercase pb-1 border-b ${
                     i === 0 ? "border-gold text-forest" : "border-transparent text-ink"
                   }`}
                 >
-                  {label}
+                  {navLabels[key]}
                 </span>
               ))}
             </nav>
@@ -1046,7 +1129,15 @@ export default function HomePreviewEditor({
             <div className="max-w-[1180px] mx-auto px-8">
               <div className="grid grid-cols-[1.4fr_1fr_1fr] max-[860px]:grid-cols-1 gap-8 pb-6 border-b border-white/14">
                 <div>
-                  <span className="font-serif text-white text-[1.15rem] tracking-[0.1em]">AUSZEIT</span>
+                  <Editable
+                    styles={styles}
+                    onEdit={openTextEditor}
+                    id="footer.brandName"
+                    as="span"
+                    className="font-serif text-white text-[1.15rem] tracking-[0.1em]"
+                  >
+                    {footerContent.brandName}
+                  </Editable>
                   <Editable
                     styles={styles}
                     onEdit={openTextEditor}
@@ -1068,9 +1159,13 @@ export default function HomePreviewEditor({
                     {footerContent.navHeading}
                   </Editable>
                   <div className="grid grid-cols-2 gap-x-4">
-                    {PREVIEW_NAV_LABELS[previewLocale].map((label) => (
-                      <span key={label} className="block text-white/68 text-[0.85rem] mb-1.5">
-                        {label}
+                    {NAV_LINK_ORDER.map(({ id, key }) => (
+                      <span
+                        key={id}
+                        onClick={() => openTextEditor(id)}
+                        className={`${editableClass} block text-white/68 text-[0.85rem] mb-1.5`}
+                      >
+                        {navLabels[key]}
                       </span>
                     ))}
                   </div>
@@ -1093,11 +1188,17 @@ export default function HomePreviewEditor({
                   © {new Date().getFullYear()} {footerContent.copyrightSuffix}
                 </Editable>
                 <span className="flex flex-wrap gap-x-2">
-                  <span>{PREVIEW_FOOTER_LEGAL[previewLocale].impressum}</span>
+                  <Editable styles={styles} onEdit={openTextEditor} id="footer.legalImpressum">
+                    {footerContent.legalImpressum}
+                  </Editable>
                   <span>·</span>
-                  <span>{PREVIEW_FOOTER_LEGAL[previewLocale].datenschutz}</span>
+                  <Editable styles={styles} onEdit={openTextEditor} id="footer.legalDatenschutz">
+                    {footerContent.legalDatenschutz}
+                  </Editable>
                   <span>·</span>
-                  <span>{PREVIEW_FOOTER_LEGAL[previewLocale].cookieSettings}</span>
+                  <Editable styles={styles} onEdit={openTextEditor} id="footer.legalCookie">
+                    {footerContent.legalCookie}
+                  </Editable>
                 </span>
               </div>
             </div>
