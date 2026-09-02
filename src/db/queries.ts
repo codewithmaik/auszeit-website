@@ -1,6 +1,15 @@
-import { asc } from "drizzle-orm";
+import { asc, desc } from "drizzle-orm";
 import { db, isDatabaseConfigured } from "./client";
-import { apartments, apartmentImages, type Apartment, type ApartmentImage } from "./schema";
+import {
+  apartments,
+  apartmentImages,
+  bookingRequests,
+  calendarDays,
+  type Apartment,
+  type ApartmentImage,
+  type BookingRequest,
+  type CalendarDay,
+} from "./schema";
 import type {
   HomeContent,
   HomeTextStyles,
@@ -96,5 +105,29 @@ export async function getSiteSettings() {
   } catch (error) {
     console.error("[db] getSiteSettings failed, falling back to defaults:", error);
     return DEFAULT_SETTINGS;
+  }
+}
+
+export async function getBookingRequests(): Promise<BookingRequest[]> {
+  if (!isDatabaseConfigured) return [];
+  try {
+    return await db.query.bookingRequests.findMany({
+      orderBy: [desc(bookingRequests.createdAt)],
+    });
+  } catch (error) {
+    console.error("[db] getBookingRequests failed, falling back to an empty list:", error);
+    return [];
+  }
+}
+
+export async function getCalendarDays(): Promise<CalendarDay[]> {
+  if (!isDatabaseConfigured) return [];
+  try {
+    return await db.query.calendarDays.findMany({
+      orderBy: [asc(calendarDays.date)],
+    });
+  } catch (error) {
+    console.error("[db] getCalendarDays failed, falling back to an empty list:", error);
+    return [];
   }
 }

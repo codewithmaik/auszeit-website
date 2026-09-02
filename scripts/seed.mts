@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
+import type { BookingRequestStatus } from "../src/db/schema";
 
 for (const file of [".env.local", ".env"]) {
   const filePath = path.resolve(process.cwd(), file);
@@ -9,8 +10,11 @@ for (const file of [".env.local", ".env"]) {
 }
 
 const { db } = await import("../src/db/client");
-const { apartments, apartmentImages, siteSettings } = await import("../src/db/schema");
+const { apartments, apartmentImages, siteSettings, bookingRequests, calendarDays } = await import(
+  "../src/db/schema"
+);
 const { BUSINESS } = await import("../src/lib/site");
+const { dateRange } = await import("../src/lib/booking");
 
 const UNITS = [
   {
@@ -85,6 +89,66 @@ const IMPRESSUM_PLACEHOLDER_EN = impressumEn(BUSINESS.telephone, BUSINESS.email)
 const DATENSCHUTZ_PLACEHOLDER = datenschutzDe();
 const DATENSCHUTZ_PLACEHOLDER_EN = datenschutzEn();
 
+// Dummy-Buchungsanfragen für den Posteingang — das Kontaktformular sendet
+// noch nicht produktiv, daher hier Beispieldaten für UI/UX-Zwecke.
+function inDays(n: number) {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().split("T")[0];
+}
+
+const DUMMY_REQUESTS: {
+  name: string;
+  email: string;
+  phone: string;
+  checkIn: string;
+  checkOut: string;
+  guests: string;
+  message: string;
+  status: BookingRequestStatus;
+}[] = [
+  {
+    name: "Familie Weber",
+    email: "weber.familie@example.com",
+    phone: "+49 151 23456789",
+    checkIn: inDays(17),
+    checkOut: inDays(21),
+    guests: "4 Gäste",
+    message: "Gibt es einen Kinderhochstuhl, den wir ausleihen könnten?",
+    status: "neu",
+  },
+  {
+    name: "Jonas Klein",
+    email: "jonas.klein@example.com",
+    phone: "+49 160 9988776",
+    checkIn: inDays(32),
+    checkOut: inDays(34),
+    guests: "2 Gäste",
+    message: "Wir würden gerne einen späten Check-in gegen 21 Uhr machen, ist das möglich?",
+    status: "neu",
+  },
+  {
+    name: "Familie Schneider",
+    email: "schneider@example.com",
+    phone: "+49 172 1122334",
+    checkIn: inDays(7),
+    checkOut: inDays(11),
+    guests: "3 Gäste",
+    message: "Wir freuen uns schon sehr auf den Aufenthalt!",
+    status: "gebucht",
+  },
+  {
+    name: "Michael Müller",
+    email: "m.mueller@example.com",
+    phone: "+49 176 5544332",
+    checkIn: inDays(12),
+    checkOut: inDays(14),
+    guests: "2 Gäste",
+    message: "Ist ein Haustier (kleiner Hund) erlaubt?",
+    status: "abgelehnt",
+  },
+];
+
 async function seed() {
   console.log("Seeding site_settings…");
   const existingSettings = await db.select().from(siteSettings).limit(1);
@@ -129,6 +193,31 @@ async function seed() {
         sortOrder: 0,
       });
       console.log(`  -> inserted ${unit.name}`);
+    }
+  }
+
+  console.log("Seeding booking_requests (Posteingang-Dummy-Daten)…");
+  const existingRequests = await db.select().from(bookingRequests).limit(1);
+  if (existingRequests.length > 0) {
+    console.log("  -> booking_requests already exist, skipping");
+  } else {
+    for (const req of DUMMY_REQUESTS) {
+      const [inserted] = await db.insert(bookingRequests).values(req).returning();
+      if (req.status === "gebucht") {
+        const days = dateRange(req.checkIn, req.checkOut);
+        await db.insert(calendarDays).values(
+          days.map((date) => ({
+            date,
+            guestName: req.name,
+            guestEmail: req.email,
+            guestPhone: req.phone,
+            guests: req.guests,
+            note: req.message,
+            bookingRequestId: inserted.id,
+          })),
+        );
+      }
+      console.log(`  -> inserted request from ${req.name} (${req.status})`);
     }
   }
 

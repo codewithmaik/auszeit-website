@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, jsonb, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, jsonb, boolean, date } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import type {
   HomeContent,
@@ -135,8 +135,58 @@ export const apartmentImagesRelations = relations(apartmentImages, ({ one }) => 
   }),
 }));
 
+// Posteingang: Buchungsanfragen aus dem Kontaktformular (aktuell noch mit
+// Dummy-Daten befüllt, da das Formular selbst noch nicht produktiv sendet).
+export const bookingRequests = pgTable("booking_requests", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone").notNull().default(""),
+  checkIn: date("check_in").notNull(),
+  checkOut: date("check_out").notNull(),
+  guests: text("guests").notNull().default(""),
+  message: text("message").notNull().default(""),
+  status: text("status").notNull().default("neu").$type<BookingRequestStatus>(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Ein einziger, seitenweiter Verfügbarkeitskalender (nicht pro Wohnung, das
+// Kontaktformular fragt keine Wohnung ab). Nur belegte Tage haben eine
+// Zeile — ein Tag ohne Eintrag gilt als frei.
+export const calendarDays = pgTable("calendar_days", {
+  id: serial("id").primaryKey(),
+  date: date("date").notNull().unique(),
+  guestName: text("guest_name"),
+  guestEmail: text("guest_email"),
+  guestPhone: text("guest_phone"),
+  guests: text("guests"),
+  note: text("note"),
+  bookingRequestId: integer("booking_request_id").references(() => bookingRequests.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const bookingRequestsRelations = relations(bookingRequests, ({ many }) => ({
+  calendarDays: many(calendarDays),
+}));
+
+export const calendarDaysRelations = relations(calendarDays, ({ one }) => ({
+  bookingRequest: one(bookingRequests, {
+    fields: [calendarDays.bookingRequestId],
+    references: [bookingRequests.id],
+  }),
+}));
+
+export type BookingRequestStatus = "neu" | "gebucht" | "abgelehnt" | "archiviert";
 export type SiteSettings = typeof siteSettings.$inferSelect;
 export type Apartment = typeof apartments.$inferSelect;
 export type ApartmentImage = typeof apartmentImages.$inferSelect;
 export type NewApartment = typeof apartments.$inferInsert;
 export type NewApartmentImage = typeof apartmentImages.$inferInsert;
+export type BookingRequest = typeof bookingRequests.$inferSelect;
+export type NewBookingRequest = typeof bookingRequests.$inferInsert;
+export type CalendarDay = typeof calendarDays.$inferSelect;
+export type NewCalendarDay = typeof calendarDays.$inferInsert;
