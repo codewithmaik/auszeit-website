@@ -6,7 +6,7 @@ import Cropper, { type Area, type Point } from "react-easy-crop";
 import { FONT_OPTIONS } from "@/lib/fonts";
 import { BUTTON_BASE_CLASS, BUTTON_VARIANT_CLASS, BUTTON_SHAPE_STYLE } from "@/components/Button";
 import { BUTTON_ANIMATION_OPTIONS } from "@/lib/button-animations";
-import type { ButtonStyleOverride } from "@/db/home-content";
+import type { ButtonStyleOverride, LogoMode } from "@/db/home-content";
 import { PALETTE_TEMPLATES, type ThemeColors } from "./palettes";
 import { DEFAULT_LINE_HEIGHT, DEFAULT_LETTER_SPACING } from "./fields";
 
@@ -44,6 +44,15 @@ export type ImageEditor = {
   round?: boolean;
   /** Breite/Höhe-Verhältnis für den Zuschnitt-Schritt, z. B. 16/9. */
   aspectRatio: number;
+  /** Nur Logo-Schriftzug: Größenfaktor-Regler (0.6–1.6), wirkt auf die
+   *  Anzeige, nicht den Upload/Zuschnitt. */
+  scale?: { value: number; onChange: (value: number) => void; onReset?: () => void };
+  /** Nur Logo/Logo-Schriftzug: Umschalter zwischen getrennten Slots und
+   *  einem einzigen Bild für beide — erscheint in beiden Popups. */
+  logoMode?: { value: LogoMode; onChange: (mode: LogoMode) => void };
+  /** Nur Logo-Schriftzug im Kombi-Modus: Hinweistext statt normaler
+   *  Upload-UI (der Upload läuft dann über den Logo-Slot). */
+  combinedNotice?: string;
 };
 
 export type PaletteEditor = {
@@ -373,6 +382,13 @@ export function ImageEditPopup({
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  // Lokaler Puffer für den Größe-Regler — committed erst bei Loslassen
+  // (onMouseUp/onTouchEnd/onKeyUp), nicht bei jedem Drag-Tick, damit nicht bei
+  // jedem Pixel Zwischenstand ein eigener Entwurfs-/History-Eintrag entsteht.
+  const [scaleValue, setScaleValue] = useState(editor.scale?.value ?? 1);
+  function commitScale() {
+    editor.scale?.onChange(scaleValue);
+  }
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
@@ -411,13 +427,43 @@ export function ImageEditPopup({
 
   const busy = saving || cropping;
 
+  const logoModeSwitch = editor.logoMode && (
+    <div className="flex items-center gap-2 mb-5">
+      {(
+        [
+          { mode: "separate" as const, label: "Wie bisher (getrennt)" },
+          { mode: "combined" as const, label: "Ein Bild für Logo & Schriftzug" },
+        ]
+      ).map(({ mode, label }) => (
+        <button
+          key={mode}
+          type="button"
+          onClick={() => editor.logoMode!.onChange(mode)}
+          aria-pressed={editor.logoMode!.value === mode}
+          className={`px-3 py-2 text-[0.72rem] tracking-[0.04em] uppercase border rounded-[2px] cursor-pointer transition-colors ${
+            editor.logoMode!.value === mode
+              ? "bg-forest text-white border-forest"
+              : "border-line text-ink-soft hover:text-forest hover:border-forest"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <Modal onClose={onClose}>
       <ModalHeader title={editor.label} onClose={onClose} />
       <div className="p-6">
         <p className="text-[0.85rem] text-ink-soft mb-4">{editor.hint}</p>
+        {logoModeSwitch}
 
-        {!objectUrl ? (
+        {editor.combinedNotice ? (
+          <p className="text-[0.85rem] text-ink-soft bg-bg-soft border border-line rounded-[2px] p-4">
+            {editor.combinedNotice}
+          </p>
+        ) : !objectUrl ? (
           <>
             <div
               className={`relative w-full ${editor.previewAspectClassName ?? "aspect-video"} bg-bg-soft border border-line rounded-[2px] overflow-hidden mb-4 ${editor.round ? "max-w-[160px] mx-auto rounded-full" : ""}`}
@@ -425,6 +471,39 @@ export function ImageEditPopup({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={editor.currentSrc} alt="" className="w-full h-full object-cover" />
             </div>
+            {editor.scale && (
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={labelClass + " mb-0"}>Größe</label>
+                  <span className="text-[0.75rem] text-ink-soft">{Math.round(scaleValue * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0.6}
+                  max={1.6}
+                  step={0.05}
+                  value={scaleValue}
+                  onChange={(e) => setScaleValue(Number(e.target.value))}
+                  onMouseUp={commitScale}
+                  onTouchEnd={commitScale}
+                  onKeyUp={commitScale}
+                  className="w-full accent-gold cursor-pointer"
+                />
+                {editor.scale.onReset && scaleValue !== 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScaleValue(1);
+                      editor.scale!.onReset!();
+                    }}
+                    className={resetButtonClass + " mt-2"}
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
+                    Standardgröße
+                  </button>
+                )}
+              </div>
+            )}
             <input
               type="file"
               accept="image/*"

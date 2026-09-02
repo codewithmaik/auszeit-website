@@ -1,5 +1,14 @@
 export const FEATURE_KEYS = ["lage", "wohnung", "erholung", "service"] as const;
 
+// "separate" = Logo (rundes Bild) und Logo-Schriftzug (Textbild/Fallback-Text)
+// wie bisher zwei unabhängige Slots. "combined" = ein einziges Bild
+// (logoImageUrl) ersetzt beide, logoTextImageUrl wird dabei ignoriert.
+export const LOGO_MODES = ["separate", "combined"] as const;
+export type LogoMode = (typeof LOGO_MODES)[number];
+export function isValidLogoMode(value: string): value is LogoMode {
+  return (LOGO_MODES as readonly string[]).includes(value);
+}
+
 export type HomeContent = {
   hero: {
     title1: string;
@@ -107,6 +116,9 @@ export type ButtonStyles = Partial<Record<ButtonId, ButtonStyleOverride>>;
 export type DesignDraft = {
   logoImageUrl: string | null;
   logoTextImageUrl: string | null;
+  /** Größenfaktor des Logo-Schriftzugs (0.6–1.6), null = Standardgröße (1). */
+  logoTextScale: string | null;
+  logoMode: LogoMode;
   themePrimary: string | null;
   themePrimaryDark: string | null;
   themeAccent: string | null;
@@ -137,6 +149,8 @@ export function publishedDesignSnapshot(settings: DesignDraft): DesignDraft {
   return {
     logoImageUrl: settings.logoImageUrl,
     logoTextImageUrl: settings.logoTextImageUrl,
+    logoTextScale: settings.logoTextScale,
+    logoMode: settings.logoMode,
     themePrimary: settings.themePrimary,
     themePrimaryDark: settings.themePrimaryDark,
     themeAccent: settings.themeAccent,

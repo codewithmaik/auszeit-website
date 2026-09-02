@@ -1,7 +1,15 @@
 import { asc } from "drizzle-orm";
 import { db, isDatabaseConfigured } from "./client";
 import { apartments, apartmentImages, type Apartment, type ApartmentImage } from "./schema";
-import type { HomeContent, HomeTextStyles, FooterContent, NavLabels, ButtonStyles, DesignDraft } from "./home-content";
+import type {
+  HomeContent,
+  HomeTextStyles,
+  FooterContent,
+  NavLabels,
+  ButtonStyles,
+  DesignDraft,
+  LogoMode,
+} from "./home-content";
 import { BUSINESS } from "@/lib/site";
 
 export type ApartmentWithImages = Apartment & { images: ApartmentImage[] };
@@ -16,6 +24,8 @@ const DEFAULT_SETTINGS = {
   datenschutzContentEn: "",
   logoImageUrl: null as string | null,
   logoTextImageUrl: null as string | null,
+  logoTextScale: null as string | null,
+  logoMode: "separate" as LogoMode,
   themePrimary: null as string | null,
   themePrimaryDark: null as string | null,
   themeAccent: null as string | null,

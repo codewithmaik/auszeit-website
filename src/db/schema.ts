@@ -1,6 +1,14 @@
 import { pgTable, serial, text, integer, timestamp, jsonb, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import type { HomeContent, HomeTextStyles, FooterContent, NavLabels, ButtonStyles, DesignDraft } from "./home-content";
+import type {
+  HomeContent,
+  HomeTextStyles,
+  FooterContent,
+  NavLabels,
+  ButtonStyles,
+  DesignDraft,
+  LogoMode,
+} from "./home-content";
 
 export const siteSettings = pgTable("site_settings", {
   id: serial("id").primaryKey(),
@@ -15,6 +23,11 @@ export const siteSettings = pgTable("site_settings", {
   // Navbar-Branding (Logo/Logo-Schriftzug als Bild-Upload)
   logoImageUrl: text("logo_image_url"),
   logoTextImageUrl: text("logo_text_image_url"),
+  // Größenfaktor des Logo-Schriftzugs (String einer Dezimalzahl 0.6–1.6),
+  // null = Standardgröße. "combined" = ein Bild (logoImageUrl) ersetzt Logo
+  // UND Schriftzug, logoTextImageUrl wird dann ignoriert.
+  logoTextScale: text("logo_text_scale"),
+  logoMode: text("logo_mode").notNull().default("separate").$type<LogoMode>(),
 
   // Sitewide Farbpalette — kuratierte Kernfarben, überschreiben die CSS-Variablen
   // aus globals.css. null = Standardfarbe aus dem Code.

@@ -7,7 +7,7 @@ import { useState } from "react";
 import { Heart, Menu, X } from "lucide-react";
 import { localeHref, swapLocale, type Locale } from "@/lib/i18n";
 import type { Dictionary } from "@/dictionaries";
-import type { ButtonStyleOverride, NavLabels } from "@/db/home-content";
+import type { ButtonStyleOverride, NavLabels, LogoMode } from "@/db/home-content";
 import Button from "@/components/Button";
 
 export default function Header({
@@ -15,6 +15,8 @@ export default function Header({
   dict,
   logoImageUrl,
   logoTextImageUrl,
+  logoTextScale,
+  logoMode,
   navCtaStyle,
   navLabels,
 }: {
@@ -22,6 +24,8 @@ export default function Header({
   dict: Dictionary;
   logoImageUrl?: string | null;
   logoTextImageUrl?: string | null;
+  logoTextScale?: string | null;
+  logoMode?: LogoMode;
   navCtaStyle?: ButtonStyleOverride | null;
   navLabels?: NavLabels | null;
 }) {
@@ -60,30 +64,50 @@ export default function Header({
           className="flex items-center gap-3.5 max-[560px]:gap-2 min-w-0"
           onClick={() => setOpen(false)}
         >
-          <span className="relative w-[46px] h-[46px] max-[560px]:w-8 max-[560px]:h-8 rounded-full overflow-hidden flex-none">
-            <Image src={logoImageUrl || "/images/logo.png"} alt="AUSZEIT Logo" fill sizes="46px" className="object-cover" />
-          </span>
-          {logoTextImageUrl ? (
-            <span className="relative block w-[170px] max-[560px]:w-[104px] h-[34px] max-[560px]:h-[22px] flex-none">
+          {logoMode === "combined" ? (
+            <span className="relative block w-[230px] max-[560px]:w-[140px] h-[46px] max-[560px]:h-8 flex-none">
               <Image
-                src={logoTextImageUrl}
+                src={logoImageUrl || "/images/logo.png"}
                 alt="AUSZEIT"
                 fill
-                sizes="180px"
+                sizes="230px"
                 className="object-contain object-left"
               />
             </span>
           ) : (
-            <span className="min-w-0">
-              <span className="block font-serif text-[1.25rem] max-[560px]:text-[0.85rem] tracking-[0.12em] max-[560px]:tracking-[0.06em] text-forest leading-none whitespace-nowrap">
-                AUSZEIT
+            <>
+              <span className="relative w-[46px] h-[46px] max-[560px]:w-8 max-[560px]:h-8 rounded-full overflow-hidden flex-none">
+                <Image src={logoImageUrl || "/images/logo.png"} alt="AUSZEIT Logo" fill sizes="46px" className="object-cover" />
               </span>
-              <span className="block text-[0.56rem] max-[560px]:text-[0.4rem] leading-[1.15] tracking-[0.14em] max-[560px]:tracking-[0.04em] uppercase text-gold whitespace-nowrap">
-                Ferienwohnung
-                <br />
-                an der Mosel
-              </span>
-            </span>
+              {logoTextImageUrl ? (
+                <span
+                  className="relative block w-[170px] max-[560px]:w-[104px] h-[34px] max-[560px]:h-[22px] flex-none"
+                  style={{ transform: `scale(${logoTextScale ? parseFloat(logoTextScale) : 1})`, transformOrigin: "left center" }}
+                >
+                  <Image
+                    src={logoTextImageUrl}
+                    alt="AUSZEIT"
+                    fill
+                    sizes="180px"
+                    className="object-contain object-left"
+                  />
+                </span>
+              ) : (
+                <span
+                  className="min-w-0"
+                  style={{ transform: `scale(${logoTextScale ? parseFloat(logoTextScale) : 1})`, transformOrigin: "left center" }}
+                >
+                  <span className="block font-serif text-[1.25rem] max-[560px]:text-[0.85rem] tracking-[0.12em] max-[560px]:tracking-[0.06em] text-forest leading-none whitespace-nowrap">
+                    AUSZEIT
+                  </span>
+                  <span className="block text-[0.56rem] max-[560px]:text-[0.4rem] leading-[1.15] tracking-[0.14em] max-[560px]:tracking-[0.04em] uppercase text-gold whitespace-nowrap">
+                    Ferienwohnung
+                    <br />
+                    an der Mosel
+                  </span>
+                </span>
+              )}
+            </>
           )}
         </Link>
 

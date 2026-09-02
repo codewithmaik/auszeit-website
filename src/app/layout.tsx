@@ -109,6 +109,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           dict={dict}
           logoImageUrl={settings.logoImageUrl}
           logoTextImageUrl={settings.logoTextImageUrl}
+          logoTextScale={settings.logoTextScale}
+          logoMode={settings.logoMode}
           navCtaStyle={settings.buttonStyles?.["navbar.cta"]}
           navLabels={locale === "de" ? settings.navLabelsDe : settings.navLabelsEn}
         />

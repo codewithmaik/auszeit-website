@@ -12,6 +12,7 @@ import type {
   ButtonStyles,
   ButtonId,
   DesignDraft,
+  LogoMode,
 } from "@/db/home-content";
 import { BUTTON_IDS } from "@/db/home-content";
 import { ICONS as BRAND_ICON_SRC } from "@/components/BrandIcon";
@@ -38,6 +39,9 @@ import {
   resetFooterContent,
   saveNavLabels,
   resetNavLabels,
+  saveLogoTextScale,
+  resetLogoTextScale,
+  saveLogoMode,
   publishDesign,
   discardDesignDraft,
   undoDesignDraft,
@@ -151,6 +155,8 @@ type Props = {
   isLogoDefault: boolean;
   initialLogoTextImage: string;
   isLogoTextDefault: boolean;
+  initialLogoTextScale: number;
+  initialLogoMode: LogoMode;
   initialColors: ThemeColors;
   hasThemeOverride: boolean;
   initialButtonStyle: ButtonStyleOverride;
@@ -196,6 +202,8 @@ export default function HomePreviewEditor({
   isLogoDefault,
   initialLogoTextImage,
   isLogoTextDefault,
+  initialLogoTextScale,
+  initialLogoMode,
   initialColors,
   hasThemeOverride,
   initialButtonStyle,
@@ -222,6 +230,8 @@ export default function HomePreviewEditor({
   const [logoIsDefault, setLogoIsDefault] = useState(isLogoDefault);
   const [logoTextImage, setLogoTextImage] = useState(initialLogoTextImage);
   const [logoTextIsDefault, setLogoTextIsDefault] = useState(isLogoTextDefault);
+  const [logoTextScale, setLogoTextScale] = useState(initialLogoTextScale);
+  const [logoMode, setLogoMode] = useState<LogoMode>(initialLogoMode);
   const [colors, setColors] = useState<ThemeColors>(initialColors);
   const [themeOverride, setThemeOverride] = useState(hasThemeOverride);
   const [buttonStyle, setButtonStyle] = useState<ButtonStyleOverride>(initialButtonStyle);
@@ -306,6 +316,8 @@ export default function HomePreviewEditor({
     setLogoIsDefault(!next.logoImageUrl);
     setLogoTextImage(next.logoTextImageUrl || DEFAULT_LOGO_IMAGE);
     setLogoTextIsDefault(!next.logoTextImageUrl);
+    setLogoTextScale(next.logoTextScale ? parseFloat(next.logoTextScale) : 1);
+    setLogoMode(next.logoMode);
     setColors({
       primary: next.themePrimary ?? DEFAULT_COLORS.primary,
       primaryDark: next.themePrimaryDark ?? DEFAULT_COLORS.primaryDark,
@@ -519,16 +531,29 @@ export default function HomePreviewEditor({
       },
     };
     const c = config[id];
+    const isLogoSlot = id === "logo" || id === "logoText";
+    const isCombinedLogo = id === "logo" && logoMode === "combined";
     setActiveEditor({
       kind: "image",
       id,
-      label: c.label,
-      hint: c.hint,
+      label: isCombinedLogo ? "Logo & Schriftzug" : c.label,
+      hint: isCombinedLogo
+        ? "Ein Bild für Logo und Schriftzug zusammen — breites Querformat (Logo-Icon + Schriftzug in einer Datei) passt am besten."
+        : c.hint,
       currentSrc: c.currentSrc,
       isDefault: c.isDefault,
-      previewAspectClassName: id === "logo" ? "aspect-square" : id === "logoText" ? "aspect-[3/1]" : undefined,
-      round: id === "logo",
-      aspectRatio: id === "hero" ? 16 / 9 : id === "wohlfuehl" ? 4 / 3 : id === "logo" ? 1 : 3 / 1,
+      previewAspectClassName: isCombinedLogo ? "aspect-[5/1]" : id === "logo" ? "aspect-square" : id === "logoText" ? "aspect-[3/1]" : undefined,
+      round: id === "logo" && !isCombinedLogo,
+      aspectRatio: id === "hero" ? 16 / 9 : id === "wohlfuehl" ? 4 / 3 : id === "logo" ? (isCombinedLogo ? 5 / 1 : 1) : 3 / 1,
+      scale:
+        id === "logoText" && logoMode === "separate"
+          ? { value: logoTextScale, onChange: handleLogoTextScaleChange, onReset: handleLogoTextScaleReset }
+          : undefined,
+      logoMode: isLogoSlot ? { value: logoMode, onChange: handleLogoModeChange } : undefined,
+      combinedNotice:
+        id === "logoText" && logoMode === "combined"
+          ? 'Kombi-Modus aktiv: Logo und Schriftzug sind ein gemeinsames Bild. Hochladen/Zuschneiden erfolgt über den Logo-Slot links in der Navbar — hier oben auf „Wie bisher (getrennt)" umschalten, um wieder einen eigenen Schriftzug zu setzen.'
+          : undefined,
     });
   }
 
@@ -591,6 +616,30 @@ export default function HomePreviewEditor({
         setLogoTextIsDefault(true);
       }
       markDraftChanged();
+    });
+  }
+
+  function handleLogoTextScaleChange(value: number) {
+    setLogoTextScale(value);
+    markDraftChanged();
+    startTransition(async () => {
+      await saveLogoTextScale(value);
+    });
+  }
+
+  function handleLogoTextScaleReset() {
+    setLogoTextScale(1);
+    markDraftChanged();
+    startTransition(async () => {
+      await resetLogoTextScale();
+    });
+  }
+
+  function handleLogoModeChange(mode: LogoMode) {
+    setLogoMode(mode);
+    markDraftChanged();
+    startTransition(async () => {
+      await saveLogoMode(mode);
     });
   }
 
@@ -879,43 +928,61 @@ export default function HomePreviewEditor({
             title="Farbpalette bearbeiten"
           >
             <div className="flex items-center gap-3.5 min-w-0">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openImageEditor("logo");
-                }}
-                className="group relative block w-[46px] h-[46px] rounded-full overflow-hidden flex-none cursor-pointer"
-                title="Logo ändern"
-              >
-                <Image src={logoImage} alt="" fill sizes="46px" className="object-cover" />
-                <span className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors" />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openImageEditor("logoText");
-                }}
-                className="group relative block w-[170px] h-[34px] flex-none cursor-pointer"
-                title="Logo-Schriftzug ändern"
-              >
-                {logoTextIsDefault ? (
-                  <span className="block">
-                    <span className="block font-serif text-[1.25rem] tracking-[0.12em] text-forest leading-none whitespace-nowrap">
-                      AUSZEIT
-                    </span>
-                    <span className="block text-[0.56rem] leading-[1.15] tracking-[0.14em] uppercase text-gold whitespace-nowrap">
-                      Ferienwohnung
-                      <br />
-                      an der Mosel
-                    </span>
-                  </span>
-                ) : (
-                  <Image src={logoTextImage} alt="" fill sizes="170px" className="object-contain object-left" />
-                )}
-                <span className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-              </button>
+              {logoMode === "combined" ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openImageEditor("logo");
+                  }}
+                  className="group relative block w-[230px] h-[46px] flex-none cursor-pointer"
+                  title="Logo & Schriftzug ändern"
+                >
+                  <Image src={logoImage} alt="" fill sizes="230px" className="object-contain object-left" />
+                  <span className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openImageEditor("logo");
+                    }}
+                    className="group relative block w-[46px] h-[46px] rounded-full overflow-hidden flex-none cursor-pointer"
+                    title="Logo ändern"
+                  >
+                    <Image src={logoImage} alt="" fill sizes="46px" className="object-cover" />
+                    <span className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openImageEditor("logoText");
+                    }}
+                    className="group relative block w-[170px] h-[34px] flex-none cursor-pointer"
+                    style={{ transform: `scale(${logoTextScale})`, transformOrigin: "left center" }}
+                    title="Logo-Schriftzug ändern"
+                  >
+                    {logoTextIsDefault ? (
+                      <span className="block">
+                        <span className="block font-serif text-[1.25rem] tracking-[0.12em] text-forest leading-none whitespace-nowrap">
+                          AUSZEIT
+                        </span>
+                        <span className="block text-[0.56rem] leading-[1.15] tracking-[0.14em] uppercase text-gold whitespace-nowrap">
+                          Ferienwohnung
+                          <br />
+                          an der Mosel
+                        </span>
+                      </span>
+                    ) : (
+                      <Image src={logoTextImage} alt="" fill sizes="170px" className="object-contain object-left" />
+                    )}
+                    <span className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                  </button>
+                </>
+              )}
             </div>
             <nav className="flex items-center gap-[26px] max-[820px]:hidden">
               {NAV_LINK_ORDER.map(({ id, key }, i) => (

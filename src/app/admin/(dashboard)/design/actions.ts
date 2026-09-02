@@ -9,6 +9,7 @@ import {
   FEATURE_KEYS,
   BUTTON_IDS,
   isValidButtonId,
+  isValidLogoMode,
   publishedDesignSnapshot,
   type HomeContent,
   type HomeTextStyles,
@@ -169,6 +170,24 @@ export async function uploadLogoTextImage(formData: FormData) {
 }
 export async function resetLogoTextImage() {
   await resetDraftImage("logoTextImageUrl");
+}
+
+const LOGO_SCALE_RE = /^\d(\.\d+)?$/;
+
+export async function saveLogoTextScale(scale: number) {
+  const clamped = Math.min(1.6, Math.max(0.6, scale));
+  const raw = clamped.toFixed(2);
+  if (!LOGO_SCALE_RE.test(raw)) throw new Error("Ungültiger Wert für Logo-Schriftzug-Größe.");
+  await saveDesignDraft({ logoTextScale: raw });
+}
+
+export async function resetLogoTextScale() {
+  await saveDesignDraft({ logoTextScale: null });
+}
+
+export async function saveLogoMode(mode: string) {
+  if (!isValidLogoMode(mode)) throw new Error(`Ungültiger Logo-Modus "${mode}".`);
+  await saveDesignDraft({ logoMode: mode });
 }
 
 export async function uploadHomeHeroImage(formData: FormData) {

@@ -86,6 +86,8 @@ export default async function AdminDesignPage() {
         isLogoDefault={!draft.logoImageUrl}
         initialLogoTextImage={draft.logoTextImageUrl || DEFAULT_LOGO_IMAGE}
         isLogoTextDefault={!draft.logoTextImageUrl}
+        initialLogoTextScale={draft.logoTextScale ? parseFloat(draft.logoTextScale) : 1}
+        initialLogoMode={draft.logoMode}
         initialColors={{
           primary: draft.themePrimary ?? DEFAULT_COLORS.primary,
           primaryDark: draft.themePrimaryDark ?? DEFAULT_COLORS.primaryDark,
