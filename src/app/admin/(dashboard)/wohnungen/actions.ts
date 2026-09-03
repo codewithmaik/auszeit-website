@@ -118,6 +118,18 @@ export async function moveApartment(id: number, direction: "up" | "down") {
   revalidatePath("/admin/wohnungen");
 }
 
+export async function reorderApartments(orderedIds: number[]) {
+  // Sequenziell statt in einer Transaktion (neon-http Treiber unterstützt
+  // keine Transaktionen, s. moveApartment/moveApartmentImage) — jede Zeile
+  // bekommt ihren Index in der neuen Reihenfolge als sortOrder.
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db.update(apartments).set({ sortOrder: i }).where(eq(apartments.id, orderedIds[i]));
+  }
+
+  revalidatePath("/wohnung");
+  revalidatePath("/admin/wohnungen");
+}
+
 export async function uploadApartmentImage(apartmentId: number, formData: FormData) {
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return;
