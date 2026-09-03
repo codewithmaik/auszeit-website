@@ -38,12 +38,20 @@ export default async function EditApartmentPage({ params }: { params: Promise<{ 
 
       <form action={updateWithId} className="bg-white border border-line rounded-[2px] p-6 mb-8">
         <ApartmentFormFields apartment={apartment} />
-        <button
-          type="submit"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-forest text-white font-sans text-[0.78rem] tracking-[0.1em] uppercase rounded-[2px] hover:bg-forest-dark transition-colors"
-        >
-          Änderungen speichern
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="submit"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-forest text-white font-sans text-[0.78rem] tracking-[0.1em] uppercase rounded-[2px] hover:bg-forest-dark transition-colors"
+          >
+            Änderungen speichern
+          </button>
+          <button
+            type="reset"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-transparent text-ink-soft border border-line font-sans text-[0.78rem] tracking-[0.1em] uppercase rounded-[2px] hover:border-forest hover:text-forest transition-colors cursor-pointer"
+          >
+            Zurücksetzen
+          </button>
+        </div>
       </form>
 
       <div className="bg-white border border-line rounded-[2px] p-6 mb-8">
