@@ -9,6 +9,115 @@
 
 Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwischen committed (`9bdeec9`, `4eeda79`, `28f74cd`) und deployed — der frühere Hinweis „noch nicht committed" in dieser Datei war veraltet.
 
+## Session: Posteingang-Chat, E-Mail-Antworten, Rechnungssystem & Foto-Filter-Ausbau (2026-09-04)
+
+**Branch:** `feature/posteingang-chat-rechnung` (ausgehend von `feature/posteingang-wohnungskalender`).
+Plan: `~/.claude/plans/reflective-wishing-treasure.md`. Commits `341ad4d` (Datenmodell),
+`4c2dd54` (Kontaktformular), `ea27fef` (Chat/E-Mail/Status), `36613a4` (Rechnung + Foto-Filter).
+
+**Auftrag (11 Punkte):** volle Formular-Daten im Posteingang; Chatverlauf je Anfrage mit
+E-Mail-Antwort aus dem Panel; Status „In Bearbeitung"; neue Wohnung sofort im Posteingang-
+Kalender; Pflicht-Popup beim Buchen (Wohnung/Gäste/Zeitraum); Checkbox „Rechnung vorbereiten"
+mit ausklappbaren Kontakt-/Preis-Feldern; DIN-A4-Rechnungstemplate (rechtssicher, Preview);
+4 Aktionen (Anpassen/Entwurf/Absenden/Link teilen); Kalender aktualisiert erst nach Button,
+Kalendereintrag zeigt Rechnungsstatus + Link + PDF-Download; Foto-Filter-Bereich nach unten
++ 6 neue Templates.
+
+**Nutzerentscheidungen (per AskUserQuestion abgestimmt):**
+- E-Mail nur ausgehend über Resend (Vercel Marketplace). ⚠️ **Resend-Integration ist noch nicht
+  abgeschlossen** — User muss einmalig die Marketplace-Bedingungen bestätigen
+  (`https://vercel.com/codewithmaik/~/integrations/accept-terms/resend?source=cli`), dann
+  `vercel integration add resend/resend-email --no-claim`. Bis dahin: `RESEND_API_KEY` fehlt,
+  `src/lib/email.ts` loggt nur (`isEmailConfigured()` false), Feature ist voll gebaut.
+- Absender: Resend-Testdomain (`onboarding@resend.dev`) vorerst → `emailDeliveryLimited()` true,
+  Kundenmails werden protokolliert aber erst nach eigener verifizierter Domain zugestellt
+  (`EMAIL_FROM`-Env setzen). Admin-Benachrichtigung an `NOTIFY_EMAIL` (Fallback `contactEmail`).
+- USt: beide Modi (Kleinunternehmer §19 / Regelbesteuerung), umschaltbar unter
+  Einstellungen → „Rechnungsdaten" (`siteSettings.invoiceSettings` jsonb).
+- Ein Branch, phasenweise, ein Deploy am Ende.
+
+**Schema** (`src/db/schema.ts`, `npm run db:push` gegen die Neon-DB ausgeführt):
+- `booking_requests`: `locale`, `raw_payload` (jsonb), Status-Union um `in_bearbeitung` erweitert.
+- **`booking_messages`** (neu): Chatverlauf je Anfrage — `direction` (incoming/outgoing),
+  `channel` (form/email/note), `provider_message_id`, `created_by`. Erste Zeile jeder Anfrage =
+  Formular-Nachricht (channel „form").
+- **`invoices`** (neu): `invoice_number` (null bis finalisiert, unique), `status`
+  (entwurf/final), `token` (Share-Link, `crypto.randomUUID()` ohne Bindestriche), `data` jsonb
+  (**immutabler Snapshot**, Typ `InvoiceData`), `pdf_url`, `issued_at`.
+- `calendar_days.invoice_id` (FK → invoices) — in `writeBookingDays()` durchgereicht,
+  in `updateBooking()` erhalten.
+- `site_settings.invoice_settings` (jsonb, Typ `InvoiceSettings`).
+- **`drizzle.config.ts`** lädt jetzt selbst `.env.local` (`process.loadEnvFile`) — `npm run db:push`
+  braucht kein vorheriges `source .env.local` mehr.
+
+**Kernmodule:**
+- `src/lib/invoice.ts` — Typen + reine Helfer (`computeInvoiceTotals`, `buildInvoiceData`,
+  `resolveInvoiceSettings`, `buildNextInvoiceNumber`, `formatEuro`, …), keine React-/DB-Importe;
+  auch von `schema.ts` (nur Typen, `import type`) genutzt.
+- `src/lib/email.ts` — Resend-Wrapper, `"server-only"`, alle Aufrufe in try/catch (E-Mail-Fehler
+  scheitern nie die DB-Aktion).
+- `src/components/invoice/InvoiceDocument.tsx` — HTML/CSS-A4-Rechnung (Vorschau + öffentliche
+  Seite). `src/components/invoice/InvoicePdf.tsx` — `@react-pdf/renderer`-Zwilling (kein
+  Chromium). `render.tsx` (`renderInvoicePdf` → Buffer). `next.config.ts`:
+  `serverExternalPackages: ["@react-pdf/renderer"]`.
+
+**Server Actions:**
+- `src/app/[lang]/kontakt/actions.ts` `submitBookingRequest()` — Insert + erste booking_messages-
+  Zeile + `sendAdminNotification()`. `BookingForm.tsx` ruft das jetzt (Formspree/mailto entfernt),
+  neue `locale`-Prop, zweistufige Flip-UI unverändert.
+- `posteingang/actions.ts`: `sendThreadReply()` (Resend + Protokoll, `neu → in_bearbeitung`),
+  `logIncomingMessage()`, `confirmBookingWithInvoice(requestId, bookingData, invoiceInput, mode)`
+  mit `mode` = `draft` | `send` | `share` — schreibt Buchung + Kalender **nur** bei Button-Klick,
+  legt invoices-Zeile an, finalisiert (Nummer via `claimNextInvoiceNumber()` +
+  `invoiceNumberNextSeq++`, PDF → `@vercel/blob`), bei `send` E-Mail + booking_messages-Eintrag.
+  `confirmBooking` auf gemeinsamen `confirmRequestCore()` refaktoriert.
+- `einstellungen/actions.ts` `updateInvoiceSettings()` (neue Sektion in `einstellungen/page.tsx`).
+- `wohnungen/actions.ts`: `createApartment`/`updateApartment`/`deleteApartment` revalidieren
+  zusätzlich `/admin/posteingang`.
+
+**UI:** `Modal` hat `size`-Prop (md/lg/xl). `RequestList.tsx` → Karten kompakt + klickbar →
+`RequestThread.tsx` (Details, Transkript, Composer, Nachtragen, Status). „Als gebucht" →
+`ConfirmBooking.tsx` (3 Ansichten: Buchung → Rechnungsangaben → A4-Vorschau + 4 Buttons).
+`Kalender.tsx`: `InvoiceRow` in Edit-/Overview-Popup. `wohnungen/page.tsx`: `PhotoFilterPanel`
+unter das Grid. `photo-filters.ts` + `globals.css`: 6 neue Filter (12 gesamt) + Druck-CSS für
+`/[lang]/rechnung/[token]`.
+
+**Browser-E2E getestet (localhost:3000, Chrome, bestehende JWT-Session):**
+- Kontaktformular `/de/kontakt` abgeschickt → Anfrage #5 in DB mit `raw_payload`, locale, erste
+  booking_messages-Zeile; Admin-Benachrichtigung korrekt geloggt (RESEND fehlt).
+- Thread geöffnet → Details + Verlauf; Antwort gesendet → erscheint rechts im Verlauf, Status
+  automatisch `neu → in_bearbeitung`, Testdomain-Hinweis angezeigt.
+- „Als gebucht" **ohne** Rechnung → Status gebucht, 3 Kalendertage (Checkout exkl.), `invoice_id`
+  null.
+- „Als gebucht" **mit** „Rechnung vorbereiten" (Kleinunternehmer) → USt-Spalte ausgeblendet,
+  §19-Hinweis, Zwischensumme korrekt; „Vorschau anzeigen" → A4-Entwurf mit ENTWURF-Wasserzeichen;
+  „Link teilen" → Buchung + 3 Kalendertage mit `invoice_id`, invoice `final` `AZ-2026-0001`,
+  **PDF real in Vercel Blob** (react-pdf funktioniert auf dem Node-Runtime), `invoiceNumberNextSeq`
+  → 2. Öffentliche Seite `/de/rechnung/<token>` rendert die Rechnung (mit Druck-/PDF-Button),
+  PDF ist gültige 1-seitige A4 mit allen §14-Pflichtangaben. Kalender-Edit-Popup zeigt
+  „Rechnung AZ-2026-0001 · Ansehen · PDF".
+- Einstellungen → „Rechnungsdaten" gespeichert (Aussteller, Steuernummer, Bank, Nummernkreis).
+- Neue Wohnung unter `/admin/wohnungen/neu` angelegt → sofort im Posteingang-Kalender-Dropdown.
+- Foto-Filter-Panel steht unter den Wohnungs-Karten, 12 Templates + „Kein Filter", Swatch-
+  Vorschau je Filter sichtbar.
+- **Testdaten nach dem Test per Wegwerf-Skript entfernt** (Wohnung id 10, Anfrage #5 inkl.
+  messages/invoice/calendarDays, Blob-PDF, `invoiceNumberNextSeq` zurück auf 1). `npx tsc`,
+  `npx eslint` (nur die 2 vorbestehenden Fehler in MapEmbed/CookieConsent), `npm run build` sauber.
+
+**Bekannte Automatisierungs-Notiz:** Der Card-Flip in `BookingForm.tsx` (CSS 3D `rotateY`) rendert
+in Screenshots als leere Fläche (backface-visibility) — funktioniert real, per JS-DOM-Check
+verifiziert. React-controlled Checkboxen brauchen einen echten Klick (nicht `form_input`), sonst
+greift `onChange` nicht.
+
+**Offen / nächste Schritte:**
+1. **Resend-Integration abschließen** (User: Marketplace-Terms bestätigen, s. o.), dann
+   `RESEND_API_KEY` + `NOTIFY_EMAIL` in allen 3 Vercel-Env-Targets. Ohne das gehen keine echten
+   E-Mails raus (nur Log).
+2. **Eigene Absender-Domain verifizieren** (Resend DNS: SPF/DKIM), dann `EMAIL_FROM` auf
+   `AUSZEIT <info@auszeit-mosel.de>` setzen → erst dann Zustellung an Gäste.
+3. Optional später: 2-Wege-Inbound-E-Mail (Webhook), Logo-Upload für Rechnungen (aktuell nur
+   Logo-URL-Feld).
+
 ## Session: Posteingang — Wohnungskalender & Belegungs-Popups
 
 **Branch:** `feature/posteingang-wohnungskalender` (ausgehend von `feature/admin-design-editor`). Plan: `~/.claude/plans/tender-watching-acorn.md`.
