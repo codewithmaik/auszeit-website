@@ -1,15 +1,20 @@
-import { asc, desc } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { db, isDatabaseConfigured } from "./client";
 import {
   apartments,
   apartmentImages,
   bookingRequests,
+  bookingMessages,
   calendarDays,
+  invoices,
   type Apartment,
   type ApartmentImage,
   type BookingRequest,
+  type BookingMessage,
   type CalendarDay,
+  type Invoice,
 } from "./schema";
+import { resolveInvoiceSettings, type InvoiceSettings } from "@/lib/invoice";
 import type {
   HomeContent,
   HomeTextStyles,
@@ -63,6 +68,7 @@ const DEFAULT_SETTINGS = {
   trustIconOverrides: null as IconOverrides | null,
   apartmentPhotoFilter: null as string | null,
   apartmentPhotoFilterDraft: null as string | null,
+  invoiceSettings: null as InvoiceSettings | null,
   designDraft: null as DesignDraft | null,
   designDraftHistory: null as DesignDraft[] | null,
 };
@@ -132,4 +138,61 @@ export async function getCalendarDays(): Promise<CalendarDay[]> {
     console.error("[db] getCalendarDays failed, falling back to an empty list:", error);
     return [];
   }
+}
+
+export async function getBookingMessages(requestId: number): Promise<BookingMessage[]> {
+  if (!isDatabaseConfigured) return [];
+  try {
+    return await db.query.bookingMessages.findMany({
+      where: (m, { eq }) => eq(m.bookingRequestId, requestId),
+      orderBy: [asc(bookingMessages.createdAt)],
+    });
+  } catch (error) {
+    console.error(`[db] getBookingMessages(${requestId}) failed:`, error);
+    return [];
+  }
+}
+
+/** Alle Nachrichten aller Anfragen, gruppiert nach `bookingRequestId`. */
+export async function getAllBookingMessages(): Promise<Map<number, BookingMessage[]>> {
+  const map = new Map<number, BookingMessage[]>();
+  if (!isDatabaseConfigured) return map;
+  try {
+    const rows = await db.query.bookingMessages.findMany({
+      orderBy: [asc(bookingMessages.createdAt)],
+    });
+    for (const row of rows) {
+      const list = map.get(row.bookingRequestId);
+      if (list) list.push(row);
+      else map.set(row.bookingRequestId, [row]);
+    }
+  } catch (error) {
+    console.error("[db] getAllBookingMessages failed:", error);
+  }
+  return map;
+}
+
+export async function getInvoices(): Promise<Invoice[]> {
+  if (!isDatabaseConfigured) return [];
+  try {
+    return await db.query.invoices.findMany({ orderBy: [desc(invoices.createdAt)] });
+  } catch (error) {
+    console.error("[db] getInvoices failed, falling back to an empty list:", error);
+    return [];
+  }
+}
+
+export async function getInvoiceByToken(token: string): Promise<Invoice | undefined> {
+  if (!isDatabaseConfigured) return undefined;
+  try {
+    return await db.query.invoices.findFirst({ where: (i) => eq(i.token, token) });
+  } catch (error) {
+    console.error("[db] getInvoiceByToken failed:", error);
+    return undefined;
+  }
+}
+
+export async function getInvoiceSettings(): Promise<InvoiceSettings> {
+  const settings = await getSiteSettings();
+  return resolveInvoiceSettings(settings.invoiceSettings);
 }

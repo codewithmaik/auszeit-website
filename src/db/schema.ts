@@ -20,6 +20,7 @@ import type {
   LogoMode,
   IconOverrides,
 } from "./home-content";
+import type { InvoiceData, InvoiceSettings } from "../lib/invoice";
 
 export const siteSettings = pgTable("site_settings", {
   id: serial("id").primaryKey(),
@@ -110,6 +111,12 @@ export const siteSettings = pgTable("site_settings", {
   apartmentPhotoFilter: text("apartment_photo_filter"),
   apartmentPhotoFilterDraft: text("apartment_photo_filter_draft"),
 
+  // Aussteller-/Steuer-/Bankdaten + Nummernkreis für den Rechnungsgenerator
+  // (Posteingang → „Als gebucht" → „Rechnung vorbereiten"). Komplettes Objekt,
+  // Struktur siehe InvoiceSettings (src/lib/invoice.ts). null = Defaults aus
+  // BUSINESS (src/lib/site.ts) / Feldvorgaben.
+  invoiceSettings: jsonb("invoice_settings").$type<InvoiceSettings>(),
+
   // Entwurf/Veröffentlichen-Workflow: `designDraft` hält den kompletten, noch
   // nicht veröffentlichten Bearbeitungsstand aller obigen Design-Felder (siehe
   // DesignDraft-Typ). null = kein offener Entwurf, Admin-Vorschau zeigt den
@@ -168,11 +175,61 @@ export const bookingRequests = pgTable("booking_requests", {
   guests: text("guests").notNull().default(""),
   message: text("message").notNull().default(""),
   status: text("status").notNull().default("neu").$type<BookingRequestStatus>(),
+  // Sprache, in der das Kontaktformular abgeschickt wurde ("de" | "en").
+  locale: text("locale").notNull().default("de"),
+  // Kompletter Formular-Datensatz beim Absenden (alle Felder + Zeitpunkt),
+  // rohe Kopie für Nachvollziehbarkeit / spätere Felder.
+  rawPayload: jsonb("raw_payload").$type<Record<string, string>>(),
   // Beim Bestätigen gewählte Wohnung — für die Anzeige „Gebucht · Wohnung X"
   // in der Anfragenliste. null = noch keine Wohnung zugeordnet.
   apartmentId: integer("apartment_id").references(() => apartments.id, {
     onDelete: "set null",
   }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// E-Mail-/Notiz-Konversation je Buchungsanfrage (Posteingang → Anfrage öffnen
+// → Chatverlauf). Die erste Zeile jeder Anfrage ist die Formular-Nachricht
+// selbst (channel "form", direction "incoming"). Ausgehende Antworten werden
+// über Resend verschickt (src/lib/email.ts) und hier protokolliert.
+export const bookingMessages = pgTable("booking_messages", {
+  id: serial("id").primaryKey(),
+  bookingRequestId: integer("booking_request_id")
+    .notNull()
+    .references(() => bookingRequests.id, { onDelete: "cascade" }),
+  direction: text("direction").notNull().$type<"incoming" | "outgoing">(),
+  channel: text("channel").notNull().$type<"form" | "email" | "note">(),
+  fromName: text("from_name"),
+  fromEmail: text("from_email"),
+  toEmail: text("to_email"),
+  subject: text("subject"),
+  body: text("body").notNull().default(""),
+  // Resend-Message-ID bei ausgehenden E-Mails (null bei Notizen / Formular /
+  // fehlgeschlagenem Versand).
+  providerMessageId: text("provider_message_id"),
+  // Admin-Login, der die Nachricht ausgelöst hat (null bei Formular/eingehend).
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Rechnungen aus dem Buchungs-Popup. `data` ist ein immutabler Snapshot aller
+// Angaben zum Zeitpunkt des Speicherns (Aussteller, Empfänger, Positionen,
+// Steuermodus) — die Anzeige rechnet nie gegen die Live-Einstellungen.
+export const invoices = pgTable("invoices", {
+  id: serial("id").primaryKey(),
+  bookingRequestId: integer("booking_request_id").references(() => bookingRequests.id, {
+    onDelete: "set null",
+  }),
+  // null solange Entwurf; beim Finalisieren aus dem Nummernkreis vergeben.
+  invoiceNumber: text("invoice_number").unique(),
+  status: text("status").notNull().default("entwurf").$type<"entwurf" | "final">(),
+  // Öffentlicher Share-Token (crypto.randomUUID() ohne Bindestriche).
+  token: text("token").notNull().unique(),
+  data: jsonb("data").notNull().$type<InvoiceData>(),
+  // Blob-URL der generierten PDF (erst nach „Absenden"/„Link teilen").
+  pdfUrl: text("pdf_url"),
+  issuedAt: date("issued_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -203,6 +260,11 @@ export const calendarDays = pgTable(
     bookingRequestId: integer("booking_request_id").references(() => bookingRequests.id, {
       onDelete: "set null",
     }),
+    // Verknüpfte Rechnung (aus dem Buchungs-Popup mit „Rechnung vorbereiten").
+    // Für die „Rechnung erstellt"-Zeile im Kalender-Popup. null = keine Rechnung.
+    invoiceId: integer("invoice_id").references(() => invoices.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -211,9 +273,25 @@ export const calendarDays = pgTable(
 
 export const bookingRequestsRelations = relations(bookingRequests, ({ one, many }) => ({
   calendarDays: many(calendarDays),
+  messages: many(bookingMessages),
+  invoices: many(invoices),
   apartment: one(apartments, {
     fields: [bookingRequests.apartmentId],
     references: [apartments.id],
+  }),
+}));
+
+export const bookingMessagesRelations = relations(bookingMessages, ({ one }) => ({
+  bookingRequest: one(bookingRequests, {
+    fields: [bookingMessages.bookingRequestId],
+    references: [bookingRequests.id],
+  }),
+}));
+
+export const invoicesRelations = relations(invoices, ({ one }) => ({
+  bookingRequest: one(bookingRequests, {
+    fields: [invoices.bookingRequestId],
+    references: [bookingRequests.id],
   }),
 }));
 
@@ -226,9 +304,18 @@ export const calendarDaysRelations = relations(calendarDays, ({ one }) => ({
     fields: [calendarDays.apartmentId],
     references: [apartments.id],
   }),
+  invoice: one(invoices, {
+    fields: [calendarDays.invoiceId],
+    references: [invoices.id],
+  }),
 }));
 
-export type BookingRequestStatus = "neu" | "gebucht" | "abgelehnt" | "archiviert";
+export type BookingRequestStatus =
+  | "neu"
+  | "in_bearbeitung"
+  | "gebucht"
+  | "abgelehnt"
+  | "archiviert";
 export type SiteSettings = typeof siteSettings.$inferSelect;
 export type Apartment = typeof apartments.$inferSelect;
 export type ApartmentImage = typeof apartmentImages.$inferSelect;
@@ -238,3 +325,7 @@ export type BookingRequest = typeof bookingRequests.$inferSelect;
 export type NewBookingRequest = typeof bookingRequests.$inferInsert;
 export type CalendarDay = typeof calendarDays.$inferSelect;
 export type NewCalendarDay = typeof calendarDays.$inferInsert;
+export type BookingMessage = typeof bookingMessages.$inferSelect;
+export type NewBookingMessage = typeof bookingMessages.$inferInsert;
+export type Invoice = typeof invoices.$inferSelect;
+export type NewInvoice = typeof invoices.$inferInsert;

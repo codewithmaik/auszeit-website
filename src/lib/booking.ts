@@ -40,6 +40,7 @@ export function dateRange(checkIn: string, checkOut: string): string[] {
 
 export const STATUS_LABELS: Record<BookingRequestStatus, string> = {
   neu: "Neu",
+  in_bearbeitung: "In Bearbeitung",
   gebucht: "Gebucht",
   abgelehnt: "Abgelehnt",
   archiviert: "Archiviert",
@@ -47,6 +48,7 @@ export const STATUS_LABELS: Record<BookingRequestStatus, string> = {
 
 export const STATUS_BADGE_CLASS: Record<BookingRequestStatus, string> = {
   neu: "bg-gold/15 text-[#8a6a1a]",
+  in_bearbeitung: "bg-[#2f6f8a]/12 text-[#2f6f8a]",
   gebucht: "bg-forest/10 text-forest",
   abgelehnt: "bg-[#a13c2f]/10 text-[#a13c2f]",
   archiviert: "bg-ink-soft/10 text-ink-soft",
