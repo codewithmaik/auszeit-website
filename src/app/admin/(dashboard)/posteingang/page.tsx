@@ -3,25 +3,36 @@ import {
   getBookingRequests,
   getCalendarDays,
   getAllBookingMessages,
+  getInvoices,
+  getInvoiceSettings,
 } from "@/db/queries";
 import { emailDeliveryLimited } from "@/lib/email";
 import RequestList from "./RequestList";
-import Kalender from "./Kalender";
+import Kalender, { type CalendarInvoice } from "./Kalender";
 
 export const metadata = { title: "Posteingang" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminPosteingangPage() {
-  const [requests, calendarDays, apartments, messagesByRequest] = await Promise.all([
-    getBookingRequests(),
-    getCalendarDays(),
-    getApartments(),
-    getAllBookingMessages(),
-  ]);
+  const [requests, calendarDays, apartments, messagesByRequest, invoices, invoiceSettings] =
+    await Promise.all([
+      getBookingRequests(),
+      getCalendarDays(),
+      getApartments(),
+      getAllBookingMessages(),
+      getInvoices(),
+      getInvoiceSettings(),
+    ]);
 
   const apartmentOptions = apartments.map((a) => ({ id: a.id, name: a.name }));
   const messages = Object.fromEntries(messagesByRequest);
   const mailLimited = emailDeliveryLimited();
+  const invoicesById: Record<number, CalendarInvoice> = Object.fromEntries(
+    invoices.map((i) => [
+      i.id,
+      { id: i.id, token: i.token, status: i.status, pdfUrl: i.pdfUrl, invoiceNumber: i.invoiceNumber },
+    ]),
+  );
 
   return (
     <div>
@@ -45,6 +56,7 @@ export default async function AdminPosteingangPage() {
           apartments={apartmentOptions}
           messages={messages}
           mailLimited={mailLimited}
+          invoiceSettings={invoiceSettings}
         />
 
         <div className="bg-white border border-line rounded-[2px] p-5 sticky top-6 max-[900px]:static">
@@ -57,7 +69,7 @@ export default async function AdminPosteingangPage() {
               Noch keine Wohnungen angelegt — dafür bitte zuerst unter „Wohnungen&ldquo; eine anlegen.
             </p>
           ) : (
-            <Kalender days={calendarDays} apartments={apartmentOptions} />
+            <Kalender days={calendarDays} apartments={apartmentOptions} invoices={invoicesById} />
           )}
         </div>
       </div>

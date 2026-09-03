@@ -2,11 +2,30 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { put } from "@vercel/blob";
 import { auth } from "@/auth";
 import { db } from "@/db/client";
-import { bookingRequests, bookingMessages, calendarDays, type BookingRequestStatus } from "@/db/schema";
+import {
+  bookingRequests,
+  bookingMessages,
+  calendarDays,
+  invoices,
+  siteSettings,
+  type BookingRequestStatus,
+} from "@/db/schema";
 import { dateRange, type BookingFormData } from "@/lib/booking";
 import { sendCustomerEmail } from "@/lib/email";
+import {
+  buildInvoiceData,
+  buildNextInvoiceNumber,
+  computeInvoiceTotals,
+  formatEuro,
+  formatInvoiceDate,
+  resolveInvoiceSettings,
+  type InvoiceInput,
+} from "@/lib/invoice";
+import { renderInvoicePdf } from "@/components/invoice/render";
 
 export async function setRequestStatus(id: number, status: BookingRequestStatus) {
   if (status === "gebucht") throw new Error("Dafür bitte confirmBooking() verwenden.");
@@ -126,12 +145,13 @@ function normalizeGuestFields(data: BookingFormData) {
  */
 async function writeBookingDays(
   data: BookingFormData,
-  meta: { bookingGroupId: string; bookingRequestId: number | null },
+  meta: { bookingGroupId: string; bookingRequestId: number | null; invoiceId?: number | null },
 ) {
   const days = dateRange(data.checkIn, data.checkOut);
   if (days.length === 0) throw new Error("Der Zeitraum muss mindestens eine Nacht umfassen.");
 
   const guest = normalizeGuestFields(data);
+  const invoiceId = meta.invoiceId ?? null;
   await db
     .insert(calendarDays)
     .values(
@@ -142,6 +162,7 @@ async function writeBookingDays(
         checkOut: data.checkOut,
         bookingGroupId: meta.bookingGroupId,
         bookingRequestId: meta.bookingRequestId,
+        invoiceId,
         ...guest,
       })),
     )
@@ -152,6 +173,7 @@ async function writeBookingDays(
         checkOut: data.checkOut,
         bookingGroupId: meta.bookingGroupId,
         bookingRequestId: meta.bookingRequestId,
+        invoiceId,
         ...guest,
         updatedAt: new Date(),
       },
@@ -165,21 +187,24 @@ function assertValid(data: BookingFormData) {
 }
 
 /**
- * Buchungsanfrage bestätigen: Daten ggf. angepasst übernehmen, Wohnung zuordnen,
- * Kalendertage der Wohnung belegen und die Anfrage auf „gebucht" setzen.
+ * Kern des Anfrage-Bestätigens: Kalendertage belegen (optional mit Rechnungs-
+ * verknüpfung) und die Anfrage auf „gebucht" setzen. Gibt die `bookingGroupId`
+ * zurück.
  */
-export async function confirmBooking(id: number, data: BookingFormData) {
+async function confirmRequestCore(
+  id: number,
+  data: BookingFormData,
+  invoiceId: number | null,
+): Promise<string | null> {
   assertValid(data);
 
   const request = await db.query.bookingRequests.findFirst({
     where: (r, { eq }) => eq(r.id, id),
   });
-  if (!request || request.status === "gebucht") return;
+  if (!request || request.status === "gebucht") return null;
 
-  await writeBookingDays(data, {
-    bookingGroupId: crypto.randomUUID(),
-    bookingRequestId: id,
-  });
+  const bookingGroupId = crypto.randomUUID();
+  await writeBookingDays(data, { bookingGroupId, bookingRequestId: id, invoiceId });
 
   await db
     .update(bookingRequests)
@@ -197,6 +222,15 @@ export async function confirmBooking(id: number, data: BookingFormData) {
     })
     .where(eq(bookingRequests.id, id));
 
+  return bookingGroupId;
+}
+
+/**
+ * Buchungsanfrage bestätigen: Daten ggf. angepasst übernehmen, Wohnung zuordnen,
+ * Kalendertage der Wohnung belegen und die Anfrage auf „gebucht" setzen.
+ */
+export async function confirmBooking(id: number, data: BookingFormData) {
+  await confirmRequestCore(id, data, null);
   revalidatePath("/admin/posteingang");
 }
 
@@ -227,6 +261,7 @@ export async function updateBooking(bookingGroupId: string, data: BookingFormDat
   await writeBookingDays(data, {
     bookingGroupId,
     bookingRequestId: existing.bookingRequestId,
+    invoiceId: existing.invoiceId,
   });
 
   revalidatePath("/admin/posteingang");
@@ -252,4 +287,154 @@ export async function releaseBooking(bookingGroupId: string) {
   }
 
   revalidatePath("/admin/posteingang");
+}
+
+// --- Rechnung beim Bestätigen ---------------------------------------------------
+
+async function originFromHeaders(): Promise<string> {
+  const h = await headers();
+  const host = h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
+/** Fortlaufende Nummer vergeben + Zähler in den Einstellungen hochsetzen. */
+async function claimNextInvoiceNumber(): Promise<string> {
+  const row = await db.query.siteSettings.findFirst();
+  const resolved = resolveInvoiceSettings(row?.invoiceSettings ?? null);
+  const number = buildNextInvoiceNumber(resolved);
+  const nextSettings = { ...resolved, invoiceNumberNextSeq: resolved.invoiceNumberNextSeq + 1 };
+
+  if (row) {
+    await db
+      .update(siteSettings)
+      .set({ invoiceSettings: nextSettings, updatedAt: new Date() })
+      .where(eq(siteSettings.id, row.id));
+  } else {
+    await db.insert(siteSettings).values({
+      contactAddress: `${resolved.issuerAddressLine}, ${resolved.issuerZip} ${resolved.issuerCity}`,
+      contactPhone: resolved.issuerPhone,
+      contactEmail: resolved.issuerEmail,
+      invoiceSettings: nextSettings,
+    });
+  }
+  return number;
+}
+
+export type InvoiceFlowMode = "draft" | "send" | "share";
+
+export type InvoiceFlowResult =
+  | { ok: true; mode: InvoiceFlowMode; shareUrl: string; pdfUrl: string | null; delivered: boolean }
+  | { ok: false; error: string };
+
+/**
+ * „Als gebucht" MIT vorbereiteter Rechnung. Schreibt zuerst die Buchung
+ * (Kalendertage + Anfrage-Status), legt dann die Rechnung an:
+ * - draft: Entwurf, kein PDF, keine Nummer
+ * - send:  finalisiert (Nummer, Datum, PDF im Blob), E-Mail an den Gast
+ * - share: finalisiert (Nummer, Datum, PDF im Blob), gibt den Share-Link zurück
+ */
+export async function confirmBookingWithInvoice(
+  requestId: number,
+  bookingData: BookingFormData,
+  invoiceInput: InvoiceInput,
+  mode: InvoiceFlowMode,
+): Promise<InvoiceFlowResult> {
+  try {
+    assertValid(bookingData);
+    if (!invoiceInput.recipient.name.trim() || !invoiceInput.recipient.addressLine.trim()) {
+      return { ok: false, error: "Bitte Name und Anschrift des Rechnungsempfängers angeben." };
+    }
+    if (!invoiceInput.lineItems.some((l) => Number(l.unitPrice) > 0)) {
+      return { ok: false, error: "Bitte mindestens eine Position mit Preis angeben." };
+    }
+
+    const row = await db.query.siteSettings.findFirst();
+    const settings = resolveInvoiceSettings(row?.invoiceSettings ?? null);
+
+    const token = crypto.randomUUID().replace(/-/g, "");
+    let data = buildInvoiceData(invoiceInput, settings);
+    let invoiceNumber: string | null = null;
+    let issuedAt: string | null = null;
+    let pdfUrl: string | null = null;
+
+    if (mode !== "draft") {
+      invoiceNumber = await claimNextInvoiceNumber();
+      issuedAt = new Date().toISOString().split("T")[0];
+      data = { ...data, invoiceNumber, issueDate: issuedAt };
+      const buffer = await renderInvoicePdf(data);
+      const blob = await put(`invoices/${token}/${invoiceNumber}.pdf`, buffer, {
+        access: "public",
+        contentType: "application/pdf",
+      });
+      pdfUrl = blob.url;
+    }
+
+    const [invoice] = await db
+      .insert(invoices)
+      .values({
+        bookingRequestId: requestId,
+        invoiceNumber,
+        status: mode === "draft" ? "entwurf" : "final",
+        token,
+        data,
+        pdfUrl,
+        issuedAt,
+      })
+      .returning();
+
+    await confirmRequestCore(requestId, bookingData, invoice.id);
+
+    const origin = await originFromHeaders();
+    const shareUrl = `${origin}/de/rechnung/${token}`;
+
+    let delivered = false;
+    if (mode === "send") {
+      const request = await db.query.bookingRequests.findFirst({
+        where: (r, { eq }) => eq(r.id, requestId),
+      });
+      const totals = computeInvoiceTotals(data);
+      const to = invoiceInput.recipient.email || request?.email || "";
+      if (to) {
+        const body = [
+          `Sehr geehrte/r ${invoiceInput.recipient.name},`,
+          "",
+          `anbei erhalten Sie die Rechnung ${invoiceNumber} über ${formatEuro(totals.grossTotal)} für Ihren Aufenthalt vom ${formatInvoiceDate(data.servicePeriod.from)} bis ${formatInvoiceDate(data.servicePeriod.to)}.`,
+          "",
+          `Rechnung online ansehen: ${shareUrl}`,
+          pdfUrl ? `PDF: ${pdfUrl}` : "",
+          "",
+          "Mit freundlichen Grüßen",
+          settings.issuerName,
+        ]
+          .filter(Boolean)
+          .join("\n");
+        const res = await sendCustomerEmail({
+          to,
+          subject: `Ihre Rechnung ${invoiceNumber} — ${settings.issuerName}`,
+          body,
+          replyTo: settings.issuerEmail || undefined,
+        });
+        delivered = res.ok;
+        const admin = await currentAdminName();
+        await db.insert(bookingMessages).values({
+          bookingRequestId: requestId,
+          direction: "outgoing",
+          channel: "email",
+          fromName: admin ?? "AUSZEIT",
+          toEmail: to,
+          subject: `Ihre Rechnung ${invoiceNumber}`,
+          body,
+          providerMessageId: res.id ?? null,
+          createdBy: admin,
+        });
+      }
+    }
+
+    revalidatePath("/admin/posteingang");
+    return { ok: true, mode, shareUrl, pdfUrl, delivered };
+  } catch (err) {
+    console.error("[confirmBookingWithInvoice] failed:", err);
+    return { ok: false, error: err instanceof Error ? err.message : "Speichern fehlgeschlagen." };
+  }
 }

@@ -37,6 +37,36 @@ export const PHOTO_FILTER_OPTIONS: PhotoFilterOption[] = [
     label: "Weicher Nebel",
     css: "saturate(0.75) brightness(1.06) contrast(0.92)",
   },
+  {
+    key: "kraeftiges-azur",
+    label: "Kräftiges Azur",
+    css: "saturate(1.5) contrast(1.16) hue-rotate(-10deg) brightness(1.02)",
+  },
+  {
+    key: "goldene-stunde",
+    label: "Goldene Stunde",
+    css: "sepia(0.32) saturate(1.55) contrast(1.12) brightness(1.05) hue-rotate(-8deg)",
+  },
+  {
+    key: "smaragd-gold",
+    label: "Smaragd & Gold",
+    css: "saturate(1.45) contrast(1.14) hue-rotate(8deg) brightness(1.02)",
+  },
+  {
+    key: "terrakotta-glut",
+    label: "Terrakotta-Glut",
+    css: "sepia(0.4) saturate(1.7) contrast(1.15) hue-rotate(-14deg) brightness(1.02)",
+  },
+  {
+    key: "nordlicht-kuehl",
+    label: "Nordlicht Kühl",
+    css: "saturate(1.35) contrast(1.2) hue-rotate(6deg) brightness(1.03)",
+  },
+  {
+    key: "kino-teal-orange",
+    label: "Kino Teal & Orange",
+    css: "saturate(1.6) contrast(1.22) brightness(1.01) sepia(0.12)",
+  },
 ];
 
 const PHOTO_FILTER_KEYS = new Set(PHOTO_FILTER_OPTIONS.map((f) => f.key));

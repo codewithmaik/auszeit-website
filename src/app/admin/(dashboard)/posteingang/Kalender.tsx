@@ -1,12 +1,45 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { ChevronLeft, ChevronRight, Mail, Phone, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Mail, Phone, Trash2, FileText, Download } from "lucide-react";
 import Modal from "@/components/admin/Modal";
 import { addDays, formatDate } from "@/lib/booking";
 import type { CalendarDay } from "@/db/schema";
 import BookingForm, { type ApartmentOption } from "./BookingForm";
 import { createManualBooking, releaseBooking, updateBooking } from "./actions";
+
+export type CalendarInvoice = {
+  id: number;
+  token: string;
+  status: "entwurf" | "final";
+  pdfUrl: string | null;
+  invoiceNumber: string | null;
+};
+
+function InvoiceRow({ invoice }: { invoice: CalendarInvoice | undefined }) {
+  if (!invoice) return null;
+  return (
+    <div className="flex items-center gap-3 mt-2 text-[0.78rem]">
+      <span className="inline-flex items-center gap-1 text-ink-soft">
+        <FileText className="w-3.5 h-3.5" strokeWidth={1.5} />
+        Rechnung {invoice.status === "final" ? invoice.invoiceNumber ?? "" : "(Entwurf)"}
+      </span>
+      <a
+        href={`/de/rechnung/${invoice.token}`}
+        target="_blank"
+        rel="noreferrer"
+        className="text-forest hover:underline"
+      >
+        Ansehen
+      </a>
+      {invoice.pdfUrl && (
+        <a href={invoice.pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-forest hover:underline">
+          <Download className="w-3.5 h-3.5" strokeWidth={1.5} /> PDF
+        </a>
+      )}
+    </div>
+  );
+}
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const MONTH_FORMAT = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
@@ -34,9 +67,11 @@ function buildMonthGrid(monthStart: Date): (string | null)[] {
 export default function Kalender({
   days,
   apartments,
+  invoices,
 }: {
   days: CalendarDay[];
   apartments: ApartmentOption[];
+  invoices: Record<number, CalendarInvoice>;
 }) {
   const today = new Date();
   const [monthStart, setMonthStart] = useState(() => new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)));
@@ -205,7 +240,12 @@ export default function Kalender({
       {popup?.kind === "edit" && (
         <Modal onClose={() => setPopup(null)} title={`Belegung — ${formatDate(popup.day.checkIn ?? popup.day.date)}`}>
           {popup.day.bookingRequestId && (
-            <p className="text-[0.72rem] text-ink-soft mb-3 -mt-1">Aus einer Buchungsanfrage übernommen.</p>
+            <p className="text-[0.72rem] text-ink-soft mb-1 -mt-1">Aus einer Buchungsanfrage übernommen.</p>
+          )}
+          {popup.day.invoiceId != null && (
+            <div className="mb-3">
+              <InvoiceRow invoice={invoices[popup.day.invoiceId]} />
+            </div>
           )}
           <BookingForm
             apartments={apartments}
@@ -267,6 +307,7 @@ export default function Kalender({
                   )}
                 </div>
                 {d.note && <p className="text-[0.8rem] text-ink mt-1 mb-0 whitespace-pre-wrap">{d.note}</p>}
+                {d.invoiceId != null && <InvoiceRow invoice={invoices[d.invoiceId]} />}
               </li>
             ))}
           </ul>

@@ -148,6 +148,32 @@ export function issuerFromSettings(s: InvoiceSettings): InvoiceData["issuer"] {
   };
 }
 
+export type InvoiceInput = {
+  recipient: InvoiceParty;
+  servicePeriod: { from: string; to: string };
+  apartmentName: string;
+  guests: string;
+  lineItems: InvoiceLineItem[];
+  note: string;
+};
+
+/** Baut den immutablen Rechnungs-Snapshot (noch ohne Nummer/Datum = Entwurf). */
+export function buildInvoiceData(input: InvoiceInput, settings: InvoiceSettings): InvoiceData {
+  return {
+    issuer: issuerFromSettings(settings),
+    recipient: input.recipient,
+    invoiceNumber: null,
+    issueDate: null,
+    servicePeriod: input.servicePeriod,
+    apartmentName: input.apartmentName,
+    guests: input.guests,
+    lineItems: input.lineItems,
+    taxMode: settings.taxMode,
+    paymentTermDays: settings.paymentTermDays,
+    note: input.note,
+  };
+}
+
 // --- Rechnen ----------------------------------------------------------------
 
 export type InvoiceVatGroup = { rate: number; net: number; vat: number };

@@ -5,9 +5,10 @@ import { Mail, Phone, MessageSquare, ChevronRight } from "lucide-react";
 import Modal from "@/components/admin/Modal";
 import { STATUS_LABELS, STATUS_BADGE_CLASS, formatDate } from "@/lib/booking";
 import type { BookingRequest, BookingRequestStatus, BookingMessage } from "@/db/schema";
-import BookingForm, { type ApartmentOption } from "./BookingForm";
+import type { InvoiceSettings } from "@/lib/invoice";
+import { type ApartmentOption } from "./BookingForm";
 import RequestThread from "./RequestThread";
-import { confirmBooking } from "./actions";
+import ConfirmBooking from "./ConfirmBooking";
 
 const TABS: { key: BookingRequestStatus | "alle"; label: string }[] = [
   { key: "alle", label: "Alle" },
@@ -23,11 +24,13 @@ export default function RequestList({
   apartments,
   messages,
   mailLimited,
+  invoiceSettings,
 }: {
   requests: BookingRequest[];
   apartments: ApartmentOption[];
   messages: Record<number, BookingMessage[]>;
   mailLimited: boolean;
+  invoiceSettings: InvoiceSettings;
 }) {
   const [tab, setTab] = useState<BookingRequestStatus | "alle">("alle");
   const [openId, setOpenId] = useState<number | null>(null);
@@ -129,34 +132,17 @@ export default function RequestList({
       )}
 
       {confirmTarget && (
-        <Modal onClose={() => setConfirmTarget(null)} title="Als gebucht markieren" size="md">
-          <p className="text-[0.85rem] text-ink-soft mb-4">
-            Wohnung wählen und Daten prüfen. Beim Bestätigen wird die Anfrage als „Gebucht&rdquo; markiert
-            und die Tage im Kalender der gewählten Wohnung belegt.
-          </p>
+        <Modal onClose={() => setConfirmTarget(null)} title={`Als gebucht — ${confirmTarget.name}`} size="xl">
           {apartments.length === 0 ? (
             <p className="text-[0.85rem] text-[#a13c2f]">
               Es sind noch keine Wohnungen angelegt — dafür bitte zuerst unter „Wohnungen&rdquo; eine anlegen.
             </p>
           ) : (
-            <BookingForm
+            <ConfirmBooking
+              request={confirmTarget}
               apartments={apartments}
-              initial={{
-                apartmentId: confirmTarget.apartmentId,
-                checkIn: confirmTarget.checkIn,
-                checkOut: confirmTarget.checkOut,
-                guests: confirmTarget.guests,
-                guestName: confirmTarget.name,
-                guestEmail: confirmTarget.email,
-                guestPhone: confirmTarget.phone,
-                note: confirmTarget.message,
-              }}
-              submitLabel="Bestätigen & übernehmen"
-              onCancel={() => setConfirmTarget(null)}
-              onSubmit={async (data) => {
-                await confirmBooking(confirmTarget.id, data);
-                setConfirmTarget(null);
-              }}
+              invoiceSettings={invoiceSettings}
+              onDone={() => setConfirmTarget(null)}
             />
           )}
         </Modal>

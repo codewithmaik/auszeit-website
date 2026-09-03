@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // @react-pdf/renderer (PDF-Erzeugung der Rechnungen) nicht bundlen — läuft
+  // als natives Node-Modul in der Server Action.
+  serverExternalPackages: ["@react-pdf/renderer"],
   experimental: {
     serverActions: {
       bodySizeLimit: "10mb",

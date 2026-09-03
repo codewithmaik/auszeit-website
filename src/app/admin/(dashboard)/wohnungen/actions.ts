@@ -65,6 +65,8 @@ export async function createApartment(formData: FormData) {
 
   revalidatePath("/wohnung");
   revalidatePath("/admin/wohnungen");
+  // Neue Wohnung sofort im Posteingang-Kalender (Dropdown + eigener Kalender).
+  revalidatePath("/admin/posteingang");
   redirect(`/admin/wohnungen/${created.id}`);
 }
 
@@ -80,6 +82,7 @@ export async function updateApartment(id: number, formData: FormData) {
   revalidatePath("/wohnung");
   revalidatePath("/admin/wohnungen");
   revalidatePath(`/admin/wohnungen/${id}`);
+  revalidatePath("/admin/posteingang");
 }
 
 export async function deleteApartment(id: number) {
@@ -97,6 +100,7 @@ export async function deleteApartment(id: number) {
 
   revalidatePath("/wohnung");
   revalidatePath("/admin/wohnungen");
+  revalidatePath("/admin/posteingang");
   redirect("/admin/wohnungen");
 }
 

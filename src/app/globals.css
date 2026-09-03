@@ -323,3 +323,53 @@ img[data-photo-filter="sommerfrisch"] {
 img[data-photo-filter="weicher-nebel"] {
   filter: saturate(0.75) brightness(1.06) contrast(0.92);
 }
+
+/* --- Rechnung: 6 weitere Foto-Filter-Templates (kontrastreich/farbstark) --- */
+img[data-photo-filter="kraeftiges-azur"] {
+  filter: saturate(1.5) contrast(1.16) hue-rotate(-10deg) brightness(1.02);
+}
+img[data-photo-filter="goldene-stunde"] {
+  filter: sepia(0.32) saturate(1.55) contrast(1.12) brightness(1.05) hue-rotate(-8deg);
+}
+img[data-photo-filter="smaragd-gold"] {
+  filter: saturate(1.45) contrast(1.14) hue-rotate(8deg) brightness(1.02);
+}
+img[data-photo-filter="terrakotta-glut"] {
+  filter: sepia(0.4) saturate(1.7) contrast(1.15) hue-rotate(-14deg) brightness(1.02);
+}
+img[data-photo-filter="nordlicht-kuehl"] {
+  filter: saturate(1.35) contrast(1.2) hue-rotate(6deg) brightness(1.03);
+}
+img[data-photo-filter="kino-teal-orange"] {
+  filter: saturate(1.6) contrast(1.22) brightness(1.01) sepia(0.12);
+}
+
+/* --- Öffentliche Rechnungsseite: Druck-Layout (DIN A4, eine Seite) --- */
+@media print {
+  body > header,
+  body > footer,
+  header[class*="sticky"],
+  footer,
+  .no-print,
+  .print\:hidden {
+    display: none !important;
+  }
+  .rechnung-viewport {
+    background: #fff !important;
+    min-height: 0 !important;
+  }
+  .invoice-frame {
+    box-shadow: none !important;
+    margin: 0 !important;
+    width: auto !important;
+    overflow: visible !important;
+  }
+  .invoice-sheet {
+    width: 210mm !important;
+    box-shadow: none !important;
+  }
+  @page {
+    size: A4;
+    margin: 0;
+  }
+}

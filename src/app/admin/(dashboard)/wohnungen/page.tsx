@@ -29,18 +29,20 @@ export default async function AdminWohnungenPage() {
         </Link>
       </div>
 
-      <PhotoFilterPanel
-        previewImageUrl={previewImageUrl}
-        publishedKey={settings.apartmentPhotoFilter}
-        hasDraft={settings.apartmentPhotoFilterDraft !== null}
-        effectiveKey={effectiveFilter}
-      />
-
       {units.length === 0 ? (
         <p className="text-ink-soft">Noch keine Wohnungen angelegt.</p>
       ) : (
         <WohnungenGrid units={units} photoFilter={effectiveFilter} />
       )}
+
+      <div className="mt-10">
+        <PhotoFilterPanel
+          previewImageUrl={previewImageUrl}
+          publishedKey={settings.apartmentPhotoFilter}
+          hasDraft={settings.apartmentPhotoFilterDraft !== null}
+          effectiveKey={effectiveFilter}
+        />
+      </div>
     </div>
   );
 }
