@@ -1,45 +1,41 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { Check, X as XIcon, Archive, RotateCcw, Mail, Phone } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Mail, Phone, MessageSquare, ChevronRight } from "lucide-react";
 import Modal from "@/components/admin/Modal";
 import { STATUS_LABELS, STATUS_BADGE_CLASS, formatDate } from "@/lib/booking";
-import type { BookingRequest, BookingRequestStatus } from "@/db/schema";
+import type { BookingRequest, BookingRequestStatus, BookingMessage } from "@/db/schema";
 import BookingForm, { type ApartmentOption } from "./BookingForm";
-import { confirmBooking, setRequestStatus } from "./actions";
+import RequestThread from "./RequestThread";
+import { confirmBooking } from "./actions";
 
 const TABS: { key: BookingRequestStatus | "alle"; label: string }[] = [
   { key: "alle", label: "Alle" },
   { key: "neu", label: "Neu" },
+  { key: "in_bearbeitung", label: "In Bearbeitung" },
   { key: "gebucht", label: "Gebucht" },
   { key: "abgelehnt", label: "Abgelehnt" },
   { key: "archiviert", label: "Archiviert" },
 ];
 
-const actionButtonClass =
-  "inline-flex items-center gap-1.5 px-3.5 py-2 border border-line text-ink-soft font-sans text-[0.7rem] tracking-[0.06em] uppercase rounded-[2px] hover:text-forest hover:border-forest transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
-const primaryButtonClass =
-  "inline-flex items-center gap-1.5 px-3.5 py-2 bg-forest text-white font-sans text-[0.7rem] tracking-[0.06em] uppercase rounded-[2px] hover:bg-forest-dark transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
-
 export default function RequestList({
   requests,
   apartments,
+  messages,
+  mailLimited,
 }: {
   requests: BookingRequest[];
   apartments: ApartmentOption[];
+  messages: Record<number, BookingMessage[]>;
+  mailLimited: boolean;
 }) {
   const [tab, setTab] = useState<BookingRequestStatus | "alle">("alle");
+  const [openId, setOpenId] = useState<number | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<BookingRequest | null>(null);
-  const [isPending, startTransition] = useTransition();
 
   const apartmentName = useMemo(() => new Map(apartments.map((a) => [a.id, a.name])), [apartments]);
   const filtered = tab === "alle" ? requests : requests.filter((r) => r.status === tab);
-
-  function runStatusChange(id: number, status: Exclude<BookingRequestStatus, "gebucht">) {
-    startTransition(() => {
-      setRequestStatus(id, status);
-    });
-  }
+  const open = openId != null ? requests.find((r) => r.id === openId) ?? null : null;
 
   return (
     <div>
@@ -61,97 +57,79 @@ export default function RequestList({
       {filtered.length === 0 ? (
         <p className="text-ink-soft">Keine Anfragen in dieser Ansicht.</p>
       ) : (
-        <div className="space-y-4">
-          {filtered.map((r) => (
-            <div key={r.id} className="bg-white border border-line rounded-[2px] p-5">
-              <div className="flex items-start justify-between gap-4 flex-wrap mb-3">
-                <div>
-                  <div className="flex items-center gap-2.5 mb-1">
-                    <h3 className="text-[1.02rem] m-0">{r.name}</h3>
-                    <span
-                      className={`px-2 py-0.5 rounded-[2px] font-sans text-[0.66rem] tracking-[0.06em] uppercase ${STATUS_BADGE_CLASS[r.status]}`}
-                    >
-                      {STATUS_LABELS[r.status]}
-                    </span>
-                    {r.status === "gebucht" && r.apartmentId != null && (
-                      <span className="text-[0.72rem] text-ink-soft">
-                        {apartmentName.get(r.apartmentId) ?? `Wohnung ${r.apartmentId}`}
+        <div className="space-y-3">
+          {filtered.map((r) => {
+            const msgs = messages[r.id] ?? [];
+            return (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => setOpenId(r.id)}
+                className="w-full text-left bg-white border border-line rounded-[2px] p-4 hover:border-forest transition-colors cursor-pointer group"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2.5 mb-1 flex-wrap">
+                      <h3 className="text-[1rem] m-0">{r.name}</h3>
+                      <span
+                        className={`px-2 py-0.5 rounded-[2px] font-sans text-[0.64rem] tracking-[0.06em] uppercase ${STATUS_BADGE_CLASS[r.status]}`}
+                      >
+                        {STATUS_LABELS[r.status]}
                       </span>
+                      {r.status === "gebucht" && r.apartmentId != null && (
+                        <span className="text-[0.72rem] text-ink-soft">
+                          {apartmentName.get(r.apartmentId) ?? `Wohnung ${r.apartmentId}`}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[0.8rem] text-ink-soft m-0">
+                      {formatDate(r.checkIn)} – {formatDate(r.checkOut)}
+                      {r.guests ? ` · ${r.guests}` : ""}
+                    </p>
+                    {r.message && (
+                      <p className="text-[0.8rem] text-ink/80 m-0 mt-1 line-clamp-1">{r.message}</p>
                     )}
+                    <div className="flex items-center gap-3 mt-2 text-[0.74rem] text-ink-soft">
+                      <span className="inline-flex items-center gap-1">
+                        <Mail className="w-3.5 h-3.5" strokeWidth={1.5} />
+                        {r.email}
+                      </span>
+                      {r.phone && (
+                        <span className="inline-flex items-center gap-1">
+                          <Phone className="w-3.5 h-3.5" strokeWidth={1.5} />
+                          {r.phone}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1">
+                        <MessageSquare className="w-3.5 h-3.5" strokeWidth={1.5} />
+                        {msgs.length}
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-[0.8rem] text-ink-soft m-0">
-                    {formatDate(r.checkIn)} – {formatDate(r.checkOut)} · {r.guests}
-                  </p>
+                  <ChevronRight className="w-4 h-4 text-ink-soft flex-none mt-1 group-hover:text-forest transition-colors" strokeWidth={1.5} />
                 </div>
-                <div className="flex items-center gap-3 text-[0.8rem] text-ink-soft">
-                  <a href={`mailto:${r.email}`} className="flex items-center gap-1.5 hover:text-forest transition-colors">
-                    <Mail className="w-3.5 h-3.5" strokeWidth={1.5} />
-                    {r.email}
-                  </a>
-                  {r.phone && (
-                    <a href={`tel:${r.phone}`} className="flex items-center gap-1.5 hover:text-forest transition-colors">
-                      <Phone className="w-3.5 h-3.5" strokeWidth={1.5} />
-                      {r.phone}
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              {r.message && <p className="text-[0.85rem] text-ink mb-4 whitespace-pre-wrap">{r.message}</p>}
-
-              <div className="flex items-center gap-2.5 flex-wrap">
-                {r.status === "neu" && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmTarget(r)}
-                      className={primaryButtonClass}
-                      disabled={isPending}
-                    >
-                      <Check className="w-3.5 h-3.5" strokeWidth={2} />
-                      Als gebucht markieren
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => runStatusChange(r.id, "abgelehnt")}
-                      className={actionButtonClass}
-                      disabled={isPending}
-                    >
-                      <XIcon className="w-3.5 h-3.5" strokeWidth={2} />
-                      Ablehnen
-                    </button>
-                  </>
-                )}
-                {r.status !== "archiviert" && (
-                  <button
-                    type="button"
-                    onClick={() => runStatusChange(r.id, "archiviert")}
-                    className={actionButtonClass}
-                    disabled={isPending}
-                  >
-                    <Archive className="w-3.5 h-3.5" strokeWidth={1.5} />
-                    Archivieren
-                  </button>
-                )}
-                {r.status !== "neu" && r.status !== "gebucht" && (
-                  <button
-                    type="button"
-                    onClick={() => runStatusChange(r.id, "neu")}
-                    className={actionButtonClass}
-                    disabled={isPending}
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" strokeWidth={1.5} />
-                    Zurück zu Neu
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+              </button>
+            );
+          })}
         </div>
       )}
 
+      {open && (
+        <Modal onClose={() => setOpenId(null)} title={open.name} size="lg">
+          <RequestThread
+            request={open}
+            messages={messages[open.id] ?? []}
+            mailLimited={mailLimited}
+            onMarkBooked={() => {
+              setConfirmTarget(open);
+              setOpenId(null);
+            }}
+          />
+        </Modal>
+      )}
+
       {confirmTarget && (
-        <Modal onClose={() => setConfirmTarget(null)} title="Als gebucht markieren">
+        <Modal onClose={() => setConfirmTarget(null)} title="Als gebucht markieren" size="md">
           <p className="text-[0.85rem] text-ink-soft mb-4">
             Wohnung wählen und Daten prüfen. Beim Bestätigen wird die Anfrage als „Gebucht&rdquo; markiert
             und die Tage im Kalender der gewählten Wohnung belegt.

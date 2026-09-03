@@ -2,9 +2,11 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { auth } from "@/auth";
 import { db } from "@/db/client";
-import { bookingRequests, calendarDays, type BookingRequestStatus } from "@/db/schema";
+import { bookingRequests, bookingMessages, calendarDays, type BookingRequestStatus } from "@/db/schema";
 import { dateRange, type BookingFormData } from "@/lib/booking";
+import { sendCustomerEmail } from "@/lib/email";
 
 export async function setRequestStatus(id: number, status: BookingRequestStatus) {
   if (status === "gebucht") throw new Error("Dafür bitte confirmBooking() verwenden.");
@@ -13,6 +15,96 @@ export async function setRequestStatus(id: number, status: BookingRequestStatus)
     .set({ status, updatedAt: new Date() })
     .where(eq(bookingRequests.id, id));
   revalidatePath("/admin/posteingang");
+}
+
+// --- Chatverlauf (booking_messages) -----------------------------------------
+
+async function currentAdminName(): Promise<string | null> {
+  try {
+    const session = await auth();
+    return session?.user?.name ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Antwort an den Gast: als E-Mail über Resend verschicken (bzw. protokollieren,
+ * wenn der Versand nicht konfiguriert/limitiert ist) und im Chatverlauf ablegen.
+ * Eine „neu"-Anfrage rutscht dabei auf „in_bearbeitung".
+ */
+export async function sendThreadReply(
+  requestId: number,
+  input: { subject: string; body: string },
+): Promise<{ ok: boolean; delivered: boolean; error?: string }> {
+  const subject = input.subject.trim() || "Ihre Anfrage bei AUSZEIT";
+  const body = input.body.trim();
+  if (!body) return { ok: false, delivered: false, error: "Die Antwort darf nicht leer sein." };
+
+  const request = await db.query.bookingRequests.findFirst({
+    where: (r, { eq }) => eq(r.id, requestId),
+  });
+  if (!request) return { ok: false, delivered: false, error: "Anfrage nicht gefunden." };
+
+  const settings = await db.query.siteSettings.findFirst();
+  const replyTo = settings?.contactEmail || undefined;
+
+  const result = await sendCustomerEmail({ to: request.email, subject, body, replyTo });
+  const admin = await currentAdminName();
+
+  await db.insert(bookingMessages).values({
+    bookingRequestId: requestId,
+    direction: "outgoing",
+    channel: "email",
+    fromName: admin ?? "AUSZEIT",
+    toEmail: request.email,
+    subject,
+    body,
+    providerMessageId: result.id ?? null,
+    createdBy: admin,
+  });
+
+  if (request.status === "neu") {
+    await db
+      .update(bookingRequests)
+      .set({ status: "in_bearbeitung", updatedAt: new Date() })
+      .where(eq(bookingRequests.id, requestId));
+  } else {
+    await db
+      .update(bookingRequests)
+      .set({ updatedAt: new Date() })
+      .where(eq(bookingRequests.id, requestId));
+  }
+
+  revalidatePath("/admin/posteingang");
+  return { ok: true, delivered: result.ok, error: result.ok ? undefined : result.error };
+}
+
+/** Eingegangene Kundenantwort (aus dem normalen Postfach) manuell nachtragen. */
+export async function logIncomingMessage(
+  requestId: number,
+  input: { fromName: string; body: string },
+): Promise<{ ok: boolean; error?: string }> {
+  const body = input.body.trim();
+  if (!body) return { ok: false, error: "Bitte den Nachrichtentext eingeben." };
+
+  const request = await db.query.bookingRequests.findFirst({
+    where: (r, { eq }) => eq(r.id, requestId),
+  });
+  if (!request) return { ok: false, error: "Anfrage nicht gefunden." };
+
+  await db.insert(bookingMessages).values({
+    bookingRequestId: requestId,
+    direction: "incoming",
+    channel: "note",
+    fromName: input.fromName.trim() || request.name,
+    fromEmail: request.email,
+    body,
+    createdBy: await currentAdminName(),
+  });
+
+  revalidatePath("/admin/posteingang");
+  return { ok: true };
 }
 
 // --- Belegungen (Kalendertage) -------------------------------------------------

@@ -1,4 +1,10 @@
-import { getApartments, getBookingRequests, getCalendarDays } from "@/db/queries";
+import {
+  getApartments,
+  getBookingRequests,
+  getCalendarDays,
+  getAllBookingMessages,
+} from "@/db/queries";
+import { emailDeliveryLimited } from "@/lib/email";
 import RequestList from "./RequestList";
 import Kalender from "./Kalender";
 
@@ -6,24 +12,40 @@ export const metadata = { title: "Posteingang" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminPosteingangPage() {
-  const [requests, calendarDays, apartments] = await Promise.all([
+  const [requests, calendarDays, apartments, messagesByRequest] = await Promise.all([
     getBookingRequests(),
     getCalendarDays(),
     getApartments(),
+    getAllBookingMessages(),
   ]);
 
   const apartmentOptions = apartments.map((a) => ({ id: a.id, name: a.name }));
+  const messages = Object.fromEntries(messagesByRequest);
+  const mailLimited = emailDeliveryLimited();
 
   return (
     <div>
       <h1 className="text-[1.8rem] mb-2">Posteingang</h1>
       <p className="text-ink-soft mb-8 max-w-[640px]">
-        Buchungsanfragen aus dem Kontaktformular. Das Formular sendet aktuell noch nicht produktiv —
-        die Anfragen unten sind Beispieldaten, damit sich der Ablauf schon jetzt testen lässt.
+        Buchungsanfragen aus dem Kontaktformular. Klick auf eine Anfrage öffnet den Verlauf — dort
+        kannst du direkt per E-Mail antworten, den Status setzen und die Buchung übernehmen.
       </p>
 
+      {mailLimited && (
+        <div className="mb-6 rounded-[2px] border border-gold/40 bg-gold/10 px-4 py-3 text-[0.82rem] text-[#8a6a1a] max-w-[720px]">
+          <strong>Hinweis zum E-Mail-Versand:</strong> Es wird derzeit über die Resend-Testdomain
+          gesendet. Benachrichtigungen an die eigene Adresse funktionieren, Antworten an Gäste werden
+          protokolliert, aber erst nach Verifizierung einer eigenen Absender-Domain zugestellt.
+        </div>
+      )}
+
       <div className="grid grid-cols-[1fr_360px] max-[900px]:grid-cols-1 gap-8 items-start">
-        <RequestList requests={requests} apartments={apartmentOptions} />
+        <RequestList
+          requests={requests}
+          apartments={apartmentOptions}
+          messages={messages}
+          mailLimited={mailLimited}
+        />
 
         <div className="bg-white border border-line rounded-[2px] p-5 sticky top-6 max-[900px]:static">
           <h2 className="text-[1.05rem] mb-1">Belegungskalender</h2>
