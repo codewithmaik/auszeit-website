@@ -9,6 +9,19 @@
 
 Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwischen committed (`9bdeec9`, `4eeda79`, `28f74cd`) und deployed — der frühere Hinweis „noch nicht committed" in dieser Datei war veraltet.
 
+## Session: Adminpanel „Wohnungen" — Drag&Drop, Zurücksetzen, globaler Foto-Filter (laufend)
+
+**Auftrag:** Vier Erweiterungen für `/admin/wohnungen`: (1) Reihenfolge zusätzlich per Drag & Drop sortierbar (bestehende Auf/Ab-Pfeile bleiben), (2) jeder Eintrag auf seinen letzten gespeicherten Zustand zurücksetzbar, (3) gemeinsamer Foto-Filter mit 6 Templates für alle Wohnungs-Fotos, Live-Vorschau auf den Titelbildern der Übersicht, (4) Filter muss erst bestätigt/veröffentlicht werden, bevor er auf der öffentlichen Seite live geht. Plan mit dem User abgestimmt (inkl. 1 Rückfrage: Drag&Drop-Technik → `@dnd-kit/*` statt nativem HTML5-DnD, wegen Touch-/Tastatur-Zugänglichkeit), vollständiger Plan liegt unter `~/.claude/plans/structured-singing-gizmo.md`.
+
+Punkt 3+4 spiegeln bewusst das bestehende Entwurf/Veröffentlichen-Muster des Design-Editors (`designDraft`/`designDraftHistory`, s. „Session: Design-Editor" unten) sowie das `data-bg-anim`-CSS-Attribut-Muster für Bildeffekte — hier leichtgewichtiger, weil nur ein einzelner Filter-Key statt eines kompletten Snapshots im Entwurf steht.
+
+**Umsetzung in 5 Schritten** (jeder Schritt: eigener Commit + Push):
+1. Grundlage für den Foto-Filter — **erledigt, committed (`9304ea7`), gepusht.** Neue `siteSettings`-Spalten `apartmentPhotoFilter` (veröffentlicht, null = kein Filter) und `apartmentPhotoFilterDraft` (null = kein offener Entwurf, Sentinel `"none"` = Entwurf explizit „kein Filter", sonst Template-Key) — `npm run db:push` gegen die Dev-DB ausgeführt. Neue Datei `src/lib/photo-filters.ts`: 6 kuratierte Templates (Warmes Gold, Kühles Blau, Editorial S/W, Vintage Sepia, Sommerfrisch, Weicher Nebel) als reine CSS-`filter`-Kombinationen, plus `effectivePhotoFilterKey()`-Helper für die Entwurf/Veröffentlicht-Auflösung. Zugehörige `img[data-photo-filter="…"]`-Regeln in `globals.css`, direkt unter dem bestehenden `data-bg-anim`-Block, identisches Aktivierungsmuster (Attribut wird von `Photo`/`next/image` an das gerenderte `<img>` durchgereicht). Noch ohne UI/Server-Actions — kommt in Schritt 4/5.
+2. Zurücksetzen-Button (Bearbeiten-Formular) — **offen.**
+3. Drag & Drop Sortierung (`@dnd-kit/*`) — **offen.**
+4. Foto-Filter Server Actions + Query-Helper — **offen.**
+5. Foto-Filter UI (Admin-Panel + öffentliche Seite) — **offen.**
+
 ## Session: Rollen, Posteingang & Buchungskalender (laufend)
 
 **Auftrag:** Zwei Admin-Rollen (Admin: nur Wohnungen/Einstellungen; Developer: zusätzlich Design), neuer Menüpunkt „Posteingang" für beide mit Dummy-Buchungsanfragen (Kontaktformular sendet noch nicht produktiv), Status-Verwaltung (Neu/Gebucht/Abgelehnt/Archiviert), Monats-Verfügbarkeitskalender (Klick = Popup mit Infos, Doppelklick = frei/belegt umschalten, manuelle Anpassung jederzeit möglich), und beim Bestätigen einer Anfrage automatische Übernahme der Formular-Infos in die betroffenen Kalendertage (erst nach Bestätigungs-Popup). Plan unter `~/.claude/plans/snuggly-jumping-platypus.md`.
