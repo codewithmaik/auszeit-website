@@ -89,6 +89,17 @@ export const siteSettings = pgTable("site_settings", {
   stepIconOverrides: jsonb("step_icon_overrides").$type<IconOverrides>(),
   trustIconOverrides: jsonb("trust_icon_overrides").$type<IconOverrides>(),
 
+  // Globaler Foto-Filter für alle Wohnungs-Fotos (Titelbilder + Galerie),
+  // Template-Key aus PHOTO_FILTER_OPTIONS (src/lib/photo-filters.ts).
+  // apartmentPhotoFilter = veröffentlicht, null = kein Filter. Eigener
+  // leichtgewichtiger Entwurf/Veröffentlichen-Mechanismus (nur ein Wert statt
+  // eines kompletten Snapshots wie beim Design-Editor, s. designDraft oben):
+  // apartmentPhotoFilterDraft null = kein offener Entwurf (Anzeige folgt dem
+  // veröffentlichten Wert), Sentinel-String "none" = Entwurf explizit „kein
+  // Filter", jeder andere Wert = Template-Key.
+  apartmentPhotoFilter: text("apartment_photo_filter"),
+  apartmentPhotoFilterDraft: text("apartment_photo_filter_draft"),
+
   // Entwurf/Veröffentlichen-Workflow: `designDraft` hält den kompletten, noch
   // nicht veröffentlichten Bearbeitungsstand aller obigen Design-Felder (siehe
   // DesignDraft-Typ). null = kein offener Entwurf, Admin-Vorschau zeigt den

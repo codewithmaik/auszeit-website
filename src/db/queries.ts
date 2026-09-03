@@ -61,6 +61,8 @@ const DEFAULT_SETTINGS = {
   featureIconOverrides: null as IconOverrides | null,
   stepIconOverrides: null as IconOverrides | null,
   trustIconOverrides: null as IconOverrides | null,
+  apartmentPhotoFilter: null as string | null,
+  apartmentPhotoFilterDraft: null as string | null,
   designDraft: null as DesignDraft | null,
   designDraftHistory: null as DesignDraft[] | null,
 };
