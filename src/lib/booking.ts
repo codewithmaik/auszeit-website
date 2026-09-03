@@ -1,6 +1,29 @@
 import type { BookingRequestStatus } from "@/db/schema";
 
 /**
+ * Belegungsdaten, wie sie aus dem Belegungs-Popup (manuell wie beim Bestätigen
+ * einer Anfrage) an die Server Actions übergeben werden. Gastfelder sind
+ * optional — nur `apartmentId` und der Zeitraum sind Pflicht.
+ */
+export type BookingFormData = {
+  apartmentId: number;
+  checkIn: string;
+  checkOut: string;
+  guests: string;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+  note: string;
+};
+
+/** ISO-Datum + n Tage, z. B. addDays("2026-09-20", 1) -> "2026-09-21". */
+export function addDays(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().split("T")[0];
+}
+
+/**
  * Alle Tage von `checkIn` (inklusive) bis `checkOut` (exklusive) — die
  * Anreise-Nacht zählt, die Abreise selbst nicht mehr (Standard-Konvention
  * für Übernachtungen).

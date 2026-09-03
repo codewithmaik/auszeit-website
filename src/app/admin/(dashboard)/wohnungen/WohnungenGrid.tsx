@@ -46,11 +46,11 @@ function SortableCard({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`group bg-white border border-line rounded-[2px] overflow-hidden hover:border-gold transition-colors ${
-        isDragging ? "opacity-50 z-10" : ""
+      className={`group relative bg-white border border-line rounded-[2px] overflow-hidden hover:border-gold transition-colors ${
+        isDragging ? "opacity-50 z-10 shadow-lg" : ""
       }`}
     >
-      <Link href={`/admin/wohnungen/${unit.id}`}>
+      <Link href={`/admin/wohnungen/${unit.id}`} draggable={false}>
         <div className="relative h-[150px] bg-bg-soft">
           {cover ? (
             <Image
@@ -58,6 +58,7 @@ function SortableCard({
               alt={unit.name}
               fill
               sizes="300px"
+              draggable={false}
               className="object-cover"
               data-photo-filter={photoFilter ?? undefined}
             />
@@ -77,22 +78,20 @@ function SortableCard({
           </p>
         </div>
       </Link>
-      <div className="flex items-center justify-between px-4 pb-3 pt-1">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            {...attributes}
-            {...listeners}
-            aria-label="Zum Sortieren ziehen"
-            className="p-1 -ml-1 text-ink-soft hover:text-forest cursor-grab active:cursor-grabbing touch-none"
-          >
-            <GripVertical className="w-3.5 h-3.5" strokeWidth={2} />
-          </button>
+      <div className="flex items-center justify-between px-2 pb-2 pt-1">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label={`${unit.name} zum Sortieren ziehen`}
+          className="flex items-center gap-2 px-2 py-1.5 rounded-[2px] text-ink-soft hover:bg-bg-soft hover:text-forest cursor-grab active:cursor-grabbing touch-none transition-colors"
+        >
+          <GripVertical className="w-4 h-4 shrink-0" strokeWidth={2} />
           <span className="text-[0.68rem] tracking-[0.08em] uppercase text-ink-soft/60">
-            Position {index + 1} von {total}
+            Ziehen · Pos. {index + 1}/{total}
           </span>
-        </div>
-        <div className="flex gap-1">
+        </button>
+        <div className="flex gap-1" onPointerDown={(e) => e.stopPropagation()}>
           <form action={moveUp}>
             <button
               type="submit"

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Check, X as XIcon, Archive, RotateCcw, Mail, Phone } from "lucide-react";
 import Modal from "@/components/admin/Modal";
 import { STATUS_LABELS, STATUS_BADGE_CLASS, formatDate } from "@/lib/booking";
 import type { BookingRequest, BookingRequestStatus } from "@/db/schema";
+import BookingForm, { type ApartmentOption } from "./BookingForm";
 import { confirmBooking, setRequestStatus } from "./actions";
 
 const TABS: { key: BookingRequestStatus | "alle"; label: string }[] = [
@@ -20,22 +21,23 @@ const actionButtonClass =
 const primaryButtonClass =
   "inline-flex items-center gap-1.5 px-3.5 py-2 bg-forest text-white font-sans text-[0.7rem] tracking-[0.06em] uppercase rounded-[2px] hover:bg-forest-dark transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
 
-export default function RequestList({ requests }: { requests: BookingRequest[] }) {
+export default function RequestList({
+  requests,
+  apartments,
+}: {
+  requests: BookingRequest[];
+  apartments: ApartmentOption[];
+}) {
   const [tab, setTab] = useState<BookingRequestStatus | "alle">("alle");
   const [confirmTarget, setConfirmTarget] = useState<BookingRequest | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const apartmentName = useMemo(() => new Map(apartments.map((a) => [a.id, a.name])), [apartments]);
   const filtered = tab === "alle" ? requests : requests.filter((r) => r.status === tab);
 
   function runStatusChange(id: number, status: Exclude<BookingRequestStatus, "gebucht">) {
     startTransition(() => {
       setRequestStatus(id, status);
-    });
-  }
-
-  function runConfirmBooking(id: number) {
-    startTransition(() => {
-      confirmBooking(id).then(() => setConfirmTarget(null));
     });
   }
 
@@ -71,6 +73,11 @@ export default function RequestList({ requests }: { requests: BookingRequest[] }
                     >
                       {STATUS_LABELS[r.status]}
                     </span>
+                    {r.status === "gebucht" && r.apartmentId != null && (
+                      <span className="text-[0.72rem] text-ink-soft">
+                        {apartmentName.get(r.apartmentId) ?? `Wohnung ${r.apartmentId}`}
+                      </span>
+                    )}
                   </div>
                   <p className="text-[0.8rem] text-ink-soft m-0">
                     {formatDate(r.checkIn)} – {formatDate(r.checkOut)} · {r.guests}
@@ -144,32 +151,36 @@ export default function RequestList({ requests }: { requests: BookingRequest[] }
       )}
 
       {confirmTarget && (
-        <Modal onClose={() => setConfirmTarget(null)} title="Buchung bestätigen">
-          <p className="text-[0.9rem] text-ink mb-1">
-            <strong>{confirmTarget.name}</strong>
-          </p>
+        <Modal onClose={() => setConfirmTarget(null)} title="Als gebucht markieren">
           <p className="text-[0.85rem] text-ink-soft mb-4">
-            {formatDate(confirmTarget.checkIn)} – {formatDate(confirmTarget.checkOut)} · {confirmTarget.guests}
+            Wohnung wählen und Daten prüfen. Beim Bestätigen wird die Anfrage als „Gebucht&rdquo; markiert
+            und die Tage im Kalender der gewählten Wohnung belegt.
           </p>
-          <p className="text-[0.85rem] text-ink-soft mb-6">
-            Diese Anfrage wird als „Gebucht&rdquo; markiert und die betroffenen Tage werden im
-            Verfügbarkeitskalender als belegt eingetragen — inklusive der Kontaktdaten aus dieser
-            Anfrage. Das kann hier nicht direkt rückgängig gemacht werden.
-          </p>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => runConfirmBooking(confirmTarget.id)}
-              className={primaryButtonClass}
-              disabled={isPending}
-            >
-              <Check className="w-3.5 h-3.5" strokeWidth={2} />
-              Bestätigen
-            </button>
-            <button type="button" onClick={() => setConfirmTarget(null)} className={actionButtonClass}>
-              Abbrechen
-            </button>
-          </div>
+          {apartments.length === 0 ? (
+            <p className="text-[0.85rem] text-[#a13c2f]">
+              Es sind noch keine Wohnungen angelegt — dafür bitte zuerst unter „Wohnungen&rdquo; eine anlegen.
+            </p>
+          ) : (
+            <BookingForm
+              apartments={apartments}
+              initial={{
+                apartmentId: confirmTarget.apartmentId,
+                checkIn: confirmTarget.checkIn,
+                checkOut: confirmTarget.checkOut,
+                guests: confirmTarget.guests,
+                guestName: confirmTarget.name,
+                guestEmail: confirmTarget.email,
+                guestPhone: confirmTarget.phone,
+                note: confirmTarget.message,
+              }}
+              submitLabel="Bestätigen & übernehmen"
+              onCancel={() => setConfirmTarget(null)}
+              onSubmit={async (data) => {
+                await confirmBooking(confirmTarget.id, data);
+                setConfirmTarget(null);
+              }}
+            />
+          )}
         </Modal>
       )}
     </div>

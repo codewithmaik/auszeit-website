@@ -201,13 +201,28 @@ async function seed() {
   if (existingRequests.length > 0) {
     console.log("  -> booking_requests already exist, skipping");
   } else {
+    const [firstApartment] = await db
+      .select({ id: apartments.id })
+      .from(apartments)
+      .orderBy(apartments.sortOrder)
+      .limit(1);
+
     for (const req of DUMMY_REQUESTS) {
-      const [inserted] = await db.insert(bookingRequests).values(req).returning();
-      if (req.status === "gebucht") {
+      const apartmentId = req.status === "gebucht" ? (firstApartment?.id ?? null) : null;
+      const [inserted] = await db
+        .insert(bookingRequests)
+        .values({ ...req, apartmentId })
+        .returning();
+      if (req.status === "gebucht" && apartmentId != null) {
         const days = dateRange(req.checkIn, req.checkOut);
+        const bookingGroupId = crypto.randomUUID();
         await db.insert(calendarDays).values(
           days.map((date) => ({
+            apartmentId,
             date,
+            checkIn: req.checkIn,
+            checkOut: req.checkOut,
+            bookingGroupId,
             guestName: req.name,
             guestEmail: req.email,
             guestPhone: req.phone,

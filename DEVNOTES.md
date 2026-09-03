@@ -9,6 +9,37 @@
 
 Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwischen committed (`9bdeec9`, `4eeda79`, `28f74cd`) und deployed — der frühere Hinweis „noch nicht committed" in dieser Datei war veraltet.
 
+## Session: Posteingang — Wohnungskalender & Belegungs-Popups
+
+**Branch:** `feature/posteingang-wohnungskalender` (ausgehend von `feature/admin-design-editor`). Plan: `~/.claude/plans/tender-watching-acorn.md`.
+
+**Auftrag (5 Punkte):** (1) Drag&Drop der Wohnungen funktionierte für den User nicht. (2) Posteingang: Dropdown pro Wohnung + „Alle Wohnungen" (nur Übersicht, read-only) — je Wohnung ein eigener Kalender, die Anfragenliste bleibt global. (3) Beim Bestätigen einer Anfrage Daten anpassbar + Wohnung wählen (**Pflicht**) vor „gebucht". (4) Belegungs-Popup vor „gebucht", danach Kalendertage der Wohnung belegt; Klick auf belegten Tag → editierbares Overview-Popup. (5) Dasselbe Popup beim manuellen Belegen.
+
+**Schema** (`src/db/schema.ts`, `npm run db:push` ausgeführt):
+- `calendar_days` umgebaut: neue Spalten `apartment_id` (NOT NULL, FK → apartments, `onDelete: cascade`), `check_in`/`check_out` (Buchungsspanne des Tages), `booking_group_id` (NOT NULL, `crypto.randomUUID()` in der Action — gruppiert alle Tage einer Belegung). Der alte `date`-Unique-Constraint entfällt, stattdessen `uniqueIndex("calendar_days_apartment_date_uq").on(apartmentId, date)` (2. Table-Config-Argument).
+- `booking_requests.apartment_id` (nullable, FK → apartments, `onDelete: set null`) — für die Anzeige „Gebucht · Wohnung X".
+- Bestandsdaten: `calendar_days` enthielt nur Dummy-Daten und wurde vor `db:push` per Wegwerf-Skript geleert (danach gelöscht).
+
+**Server Actions** (`posteingang/actions.ts` neu strukturiert): `confirmBooking(id, data)` (neue Signatur mit `BookingFormData` — validiert Wohnung + Zeitraum, schreibt Kalendertage, updatet die Anfrage inkl. angepasster Felder), `createManualBooking(data)`, `updateBooking(bookingGroupId, data)` (löscht alle Tage der Gruppe + schreibt neu — deckt geänderten Zeitraum UND geänderte Wohnung ab), `releaseBooking(bookingGroupId)` (löscht Tage; bei `bookingRequestId` → Anfrage zurück auf „neu"). `toggleCalendarDay`/`saveCalendarDay` entfernt. `BookingFormData`-Typ + `addDays()`-Helper in `src/lib/booking.ts`.
+
+**UI:**
+- Neue gemeinsame Client-Komponente `BookingForm.tsx` (Wohnung-Select + Anreise/Abreise + Gästezahl/Name/E-Mail/Telefon/Notiz, eigenes `useTransition` + Fehleranzeige, Submit disabled bis Wohnung+gültiger Zeitraum) — genutzt von beiden Kalender-Popups **und** dem Bestätigen-Modal.
+- `Kalender.tsx` (Hauptumbau): `<select>` „Alle Wohnungen (Übersicht)" + je Wohnung. „Alle" = read-only Overlay (Klick zeigt Tages-Popup das alle Buchungen des Tages listet, Badge-Zähler bei >1). Einzelne Wohnung: Klick auf freien Tag → `BookingForm` (createManualBooking), Klick auf belegten Tag → `BookingForm` vorbefüllt (updateBooking) + „Freigeben"-Button mit **zweistufiger Inline-Bestätigung** (`ReleaseButton`, kein `window.confirm` — blockt Browser-Automation). Doppelklick-Toggle entfällt.
+- `RequestList.tsx`: Bestätigen-Modal ist jetzt `BookingForm` (Wohnung Pflicht, Felder vorbefüllt aus der Anfrage). Statuszeile zeigt bei „gebucht" den Wohnungsnamen.
+- `page.tsx`: lädt `getApartments()` zusätzlich, reicht `{id,name}[]` an beide Komponenten.
+
+**Drag&Drop-Fix** (`wohnungen/WohnungenGrid.tsx`): Befund — das bisherige Drag-Handle war nur ein 14px-`GripVertical`-Icon, praktisch unauffindbar. Fix: Handle ist jetzt ein vollwertiger Button „⣿ Ziehen · Pos. n/m" (Grip + Text, ~110×30px) mit `{...attributes} {...listeners}`; die Karte selbst trägt **keine** Listener mehr (vermeidet Click-nach-Drag-Navigation über den inneren `<Link>`). Auf/Ab-Buttons: `onPointerDown={e => e.stopPropagation()}` am Container, damit Klicks dort keinen Drag starten. `draggable={false}` auf `<Link>`/`<Image>`.
+
+**Browser-Test** (localhost:3000, Chrome-Automation — Login war über bestehende JWT-Session bereits aktiv, `AUTH_SECRET` unverändert; **kein** Passwort gesetzt/eingegeben nötig):
+- Drag&Drop: Reorder per Maus **und** Tastatur (Handle fokussieren → Space → Pfeiltaste → Space) verifiziert, hält nach Reload (`reorderApartments` persistiert). Normaler Klick auf die Karte öffnet weiter die Wohnung, Auf/Ab-Buttons unverändert. Reihenfolge nach Test wiederhergestellt.
+- Kalender: manuelle Belegung angelegt (Weinberg-Loft, 3 Nächte) → nur dort belegt, Rieslinghaus frei, „Alle Wohnungen" zeigt sie read-only mit vollen Infos. Overview-Popup: Wohnung gewechselt + Zeitraum verkürzt → Tage wanderten korrekt nach Rieslinghaus. „Freigeben" (zweistufig) → Tage frei.
+- Anfrage bestätigen: „Michael Müller" (neu) → Modal, ohne Wohnung ist „Bestätigen" deaktiviert; Wohnung „Flussblick" + Abreise angepasst → Status „Gebucht · Flussblick", Tage 14–16 im Flussblick-Kalender, Tages-Popup zeigt „Aus einer Buchungsanfrage übernommen." Danach per „Freigeben" wieder auf „neu" gesetzt (Testdaten via Wegwerf-Skript in den Ausgangszustand zurückgesetzt).
+- `npx tsc --noEmit` sauber. `npx eslint .`: nur 2 vorbestehende Fehler in `src/components/cookies/CookieConsent.tsx` (unberührt, `git stash` bestätigt sie als vorbestehend).
+
+**Bekannte Testdaten-Inkonsistenz (kein Bug):** Die Dummy-Anfragen „Jonas Klein" und „Familie Schneider" stehen auf „gebucht", haben aber `apartment_id = NULL` und keine Kalendertage (Alt-Zustand aus dem früheren `confirmBooking` ohne Wohnungsbezug; ihre Kalendertage wurden beim Schema-Umbau mitgeleert). Für eine saubere Demo einfach „Zurück zu Neu" → neu bestätigen, oder archivieren.
+
+**Offen:** commit/push/Deploy nach User-Freigabe. Merge-Frage `feature/admin-design-editor` → `main` weiterhin offen (Production läuft vom Branch).
+
 ## Session: Adminpanel „Wohnungen" — Drag&Drop, Zurücksetzen, globaler Foto-Filter (laufend)
 
 **Auftrag:** Vier Erweiterungen für `/admin/wohnungen`: (1) Reihenfolge zusätzlich per Drag & Drop sortierbar (bestehende Auf/Ab-Pfeile bleiben), (2) jeder Eintrag auf seinen letzten gespeicherten Zustand zurücksetzbar, (3) gemeinsamer Foto-Filter mit 6 Templates für alle Wohnungs-Fotos, Live-Vorschau auf den Titelbildern der Übersicht, (4) Filter muss erst bestätigt/veröffentlicht werden, bevor er auf der öffentlichen Seite live geht. Plan mit dem User abgestimmt (inkl. 1 Rückfrage: Drag&Drop-Technik → `@dnd-kit/*` statt nativem HTML5-DnD, wegen Touch-/Tastatur-Zugänglichkeit), vollständiger Plan liegt unter `~/.claude/plans/structured-singing-gizmo.md`.

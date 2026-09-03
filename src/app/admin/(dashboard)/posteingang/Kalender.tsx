@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
-import { ChevronLeft, ChevronRight, Mail, Phone } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { ChevronLeft, ChevronRight, Mail, Phone, Trash2 } from "lucide-react";
 import Modal from "@/components/admin/Modal";
-import { formatDate } from "@/lib/booking";
+import { addDays, formatDate } from "@/lib/booking";
 import type { CalendarDay } from "@/db/schema";
-import { saveCalendarDay, toggleCalendarDay } from "./actions";
+import BookingForm, { type ApartmentOption } from "./BookingForm";
+import { createManualBooking, releaseBooking, updateBooking } from "./actions";
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const MONTH_FORMAT = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
@@ -30,42 +31,92 @@ function buildMonthGrid(monthStart: Date): (string | null)[] {
   return cells;
 }
 
-export default function Kalender({ days }: { days: CalendarDay[] }) {
+export default function Kalender({
+  days,
+  apartments,
+}: {
+  days: CalendarDay[];
+  apartments: ApartmentOption[];
+}) {
   const today = new Date();
   const [monthStart, setMonthStart] = useState(() => new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)));
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [view, setView] = useState<number | "alle">(apartments[0]?.id ?? "alle");
+  const [popup, setPopup] = useState<
+    | { kind: "create"; date: string }
+    | { kind: "edit"; day: CalendarDay }
+    | { kind: "overview"; date: string }
+    | null
+  >(null);
 
-  const byDate = new Map(days.map((d) => [d.date, d]));
+  const apartmentName = useMemo(
+    () => new Map(apartments.map((a) => [a.id, a.name])),
+    [apartments],
+  );
+
+  const visibleDays = view === "alle" ? days : days.filter((d) => d.apartmentId === view);
+
+  // Für die Einzelansicht: ein Eintrag pro Tag. Für "alle": Liste pro Tag.
+  const singleByDate = useMemo(() => {
+    const m = new Map<string, CalendarDay>();
+    if (view !== "alle") for (const d of visibleDays) m.set(d.date, d);
+    return m;
+  }, [visibleDays, view]);
+
+  const multiByDate = useMemo(() => {
+    const m = new Map<string, CalendarDay[]>();
+    if (view === "alle") {
+      for (const d of days) {
+        const list = m.get(d.date);
+        if (list) list.push(d);
+        else m.set(d.date, [d]);
+      }
+    }
+    return m;
+  }, [days, view]);
+
   const cells = buildMonthGrid(monthStart);
   const todayIso = toIsoDate(today);
-  const selected = selectedDate ? (byDate.get(selectedDate) ?? null) : null;
 
   function changeMonth(delta: number) {
     setMonthStart((prev) => new Date(Date.UTC(prev.getUTCFullYear(), prev.getUTCMonth() + delta, 1)));
   }
 
   function handleDayClick(date: string) {
-    if (clickTimer.current) return;
-    clickTimer.current = setTimeout(() => {
-      setSelectedDate(date);
-      clickTimer.current = null;
-    }, 220);
-  }
-
-  function handleDayDoubleClick(date: string) {
-    if (clickTimer.current) {
-      clearTimeout(clickTimer.current);
-      clickTimer.current = null;
+    if (view === "alle") {
+      if (multiByDate.has(date)) setPopup({ kind: "overview", date });
+      return;
     }
-    startTransition(() => {
-      toggleCalendarDay(date);
-    });
+    const entry = singleByDate.get(date);
+    if (entry) setPopup({ kind: "edit", day: entry });
+    else setPopup({ kind: "create", date });
   }
 
   return (
     <div>
+      <div className="mb-4">
+        <label htmlFor="cal-view" className="block text-[0.68rem] tracking-[0.1em] uppercase text-ink-soft mb-1.5">
+          Kalender
+        </label>
+        <select
+          id="cal-view"
+          value={String(view)}
+          onChange={(e) => setView(e.target.value === "alle" ? "alle" : Number(e.target.value))}
+          className="w-full px-3 py-[10px] border border-line rounded-[2px] font-sans text-[0.9rem] bg-bg text-ink focus:outline-2 focus:outline-gold focus:outline-offset-1"
+        >
+          <option value="alle">Alle Wohnungen (Übersicht)</option>
+          {apartments.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+        {view === "alle" && (
+          <p className="text-[0.72rem] text-ink-soft mt-1.5 m-0">
+            Übersicht aller Wohnungen — zum Bearbeiten eine einzelne Wohnung wählen.
+          </p>
+        )}
+      </div>
+
       <div className="flex items-center justify-between mb-4">
         <button
           type="button"
@@ -97,24 +148,25 @@ export default function Kalender({ days }: { days: CalendarDay[] }) {
       <div className="grid grid-cols-7 gap-1">
         {cells.map((date, i) => {
           if (!date) return <div key={i} />;
-          const belegt = byDate.has(date);
           const day = Number(date.split("-")[2]);
           const isToday = date === todayIso;
+          const count = view === "alle" ? (multiByDate.get(date)?.length ?? 0) : singleByDate.has(date) ? 1 : 0;
+          const belegt = count > 0;
           return (
             <button
               key={date}
               type="button"
               onClick={() => handleDayClick(date)}
-              onDoubleClick={() => handleDayDoubleClick(date)}
-              disabled={isPending}
-              title="Klick: Details · Doppelklick: frei/belegt umschalten"
-              className={`aspect-square rounded-[2px] text-[0.8rem] transition-colors cursor-pointer border ${
+              className={`relative aspect-square rounded-[2px] text-[0.8rem] transition-colors cursor-pointer border ${
                 belegt
                   ? "bg-[#a13c2f]/10 border-[#a13c2f]/30 text-[#a13c2f] hover:border-[#a13c2f]"
                   : "bg-white border-line text-ink hover:border-forest"
               } ${isToday ? "ring-1 ring-gold ring-offset-1" : ""}`}
             >
               {day}
+              {view === "alle" && count > 1 && (
+                <span className="absolute bottom-0.5 right-1 text-[0.6rem] leading-none font-sans">{count}</span>
+              )}
             </button>
           );
         })}
@@ -131,107 +183,124 @@ export default function Kalender({ days }: { days: CalendarDay[] }) {
         </span>
       </div>
 
-      {selectedDate && (
-        <DayPopup
-          date={selectedDate}
-          entry={selected}
-          onClose={() => setSelectedDate(null)}
-        />
+      {popup?.kind === "create" && view !== "alle" && (
+        <Modal onClose={() => setPopup(null)} title={`${formatDate(popup.date)} — belegen`}>
+          <BookingForm
+            apartments={apartments}
+            initial={{
+              apartmentId: view,
+              checkIn: popup.date,
+              checkOut: addDays(popup.date, 1),
+            }}
+            submitLabel="Als belegt übernehmen"
+            onCancel={() => setPopup(null)}
+            onSubmit={async (data) => {
+              await createManualBooking(data);
+              setPopup(null);
+            }}
+          />
+        </Modal>
+      )}
+
+      {popup?.kind === "edit" && (
+        <Modal onClose={() => setPopup(null)} title={`Belegung — ${formatDate(popup.day.checkIn ?? popup.day.date)}`}>
+          {popup.day.bookingRequestId && (
+            <p className="text-[0.72rem] text-ink-soft mb-3 -mt-1">Aus einer Buchungsanfrage übernommen.</p>
+          )}
+          <BookingForm
+            apartments={apartments}
+            initial={{
+              apartmentId: popup.day.apartmentId,
+              checkIn: popup.day.checkIn ?? popup.day.date,
+              checkOut: popup.day.checkOut ?? addDays(popup.day.date, 1),
+              guests: popup.day.guests,
+              guestName: popup.day.guestName,
+              guestEmail: popup.day.guestEmail,
+              guestPhone: popup.day.guestPhone,
+              note: popup.day.note,
+            }}
+            submitLabel="Speichern"
+            onCancel={() => setPopup(null)}
+            onSubmit={async (data) => {
+              await updateBooking(popup.day.bookingGroupId, data);
+              setPopup(null);
+            }}
+            secondaryAction={
+              <ReleaseButton
+                bookingGroupId={popup.day.bookingGroupId}
+                onDone={() => setPopup(null)}
+              />
+            }
+          />
+        </Modal>
+      )}
+
+      {popup?.kind === "overview" && (
+        <Modal onClose={() => setPopup(null)} title={formatDate(popup.date)}>
+          <ul className="space-y-3 m-0 p-0 list-none">
+            {(multiByDate.get(popup.date) ?? []).map((d) => (
+              <li key={d.id} className="border border-line rounded-[2px] p-3">
+                <p className="text-[0.8rem] font-semibold text-ink m-0 mb-1">
+                  {apartmentName.get(d.apartmentId) ?? `Wohnung ${d.apartmentId}`}
+                </p>
+                <p className="text-[0.82rem] text-ink-soft m-0">
+                  {d.guestName || "Ohne Namen"}
+                  {d.guests ? ` · ${d.guests}` : ""}
+                </p>
+                {(d.checkIn || d.checkOut) && (
+                  <p className="text-[0.78rem] text-ink-soft m-0">
+                    {formatDate(d.checkIn ?? d.date)} – {formatDate(d.checkOut ?? d.date)}
+                  </p>
+                )}
+                <div className="flex items-center gap-3 text-[0.78rem] text-ink-soft mt-1">
+                  {d.guestEmail && (
+                    <a href={`mailto:${d.guestEmail}`} className="flex items-center gap-1.5 hover:text-forest">
+                      <Mail className="w-3.5 h-3.5" strokeWidth={1.5} />
+                      {d.guestEmail}
+                    </a>
+                  )}
+                  {d.guestPhone && (
+                    <a href={`tel:${d.guestPhone}`} className="flex items-center gap-1.5 hover:text-forest">
+                      <Phone className="w-3.5 h-3.5" strokeWidth={1.5} />
+                      {d.guestPhone}
+                    </a>
+                  )}
+                </div>
+                {d.note && <p className="text-[0.8rem] text-ink mt-1 mb-0 whitespace-pre-wrap">{d.note}</p>}
+              </li>
+            ))}
+          </ul>
+          <p className="text-[0.72rem] text-ink-soft mt-3 mb-0">
+            Zum Bearbeiten oben die betreffende Wohnung wählen.
+          </p>
+        </Modal>
       )}
     </div>
   );
 }
 
-function DayPopup({
-  date,
-  entry,
-  onClose,
-}: {
-  date: string;
-  entry: CalendarDay | null;
-  onClose: () => void;
-}) {
+function ReleaseButton({ bookingGroupId, onDone }: { bookingGroupId: string; onDone: () => void }) {
+  const [armed, setArmed] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [guestName, setGuestName] = useState(entry?.guestName ?? "");
-  const [note, setNote] = useState(entry?.note ?? "");
-
-  const linkedToRequest = Boolean(entry?.bookingRequestId);
-
-  function handleSave() {
-    startTransition(() => {
-      saveCalendarDay(date, { guestName, note }).then(() => onClose());
-    });
-  }
 
   return (
-    <Modal onClose={onClose} title={formatDate(date)}>
-      {!entry && (
-        <p className="text-[0.85rem] text-ink-soft">
-          Dieser Tag ist frei. Zum Markieren als belegt den Tag im Kalender doppelklicken.
-        </p>
-      )}
-
-      {entry && linkedToRequest && (
-        <div className="space-y-2 text-[0.85rem]">
-          <p className="text-ink m-0">
-            <strong>{entry.guestName}</strong>
-          </p>
-          <div className="flex items-center gap-3 text-ink-soft">
-            {entry.guestEmail && (
-              <a href={`mailto:${entry.guestEmail}`} className="flex items-center gap-1.5 hover:text-forest transition-colors">
-                <Mail className="w-3.5 h-3.5" strokeWidth={1.5} />
-                {entry.guestEmail}
-              </a>
-            )}
-            {entry.guestPhone && (
-              <a href={`tel:${entry.guestPhone}`} className="flex items-center gap-1.5 hover:text-forest transition-colors">
-                <Phone className="w-3.5 h-3.5" strokeWidth={1.5} />
-                {entry.guestPhone}
-              </a>
-            )}
-          </div>
-          {entry.guests && <p className="text-ink-soft m-0">{entry.guests}</p>}
-          {entry.note && <p className="text-ink m-0 whitespace-pre-wrap">{entry.note}</p>}
-          <p className="text-[0.75rem] text-ink-soft pt-2">Aus einer bestätigten Buchungsanfrage übernommen.</p>
-        </div>
-      )}
-
-      {entry && !linkedToRequest && (
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="guestName" className="block text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft mb-1.5">
-              Gastname
-            </label>
-            <input
-              id="guestName"
-              type="text"
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              className="w-full px-3 py-[11px] border border-line rounded-[2px] font-sans text-[0.92rem] bg-bg text-ink focus:outline-2 focus:outline-gold focus:outline-offset-1"
-            />
-          </div>
-          <div>
-            <label htmlFor="note" className="block text-[0.7rem] tracking-[0.1em] uppercase text-ink-soft mb-1.5">
-              Notiz
-            </label>
-            <textarea
-              id="note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={3}
-              className="w-full px-3 py-[11px] border border-line rounded-[2px] font-sans text-[0.92rem] bg-bg text-ink focus:outline-2 focus:outline-gold focus:outline-offset-1"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isPending}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-forest text-white font-sans text-[0.78rem] tracking-[0.1em] uppercase rounded-[2px] hover:bg-forest-dark transition-colors disabled:opacity-50"
-          >
-            Speichern
-          </button>
-        </div>
-      )}
-    </Modal>
+    <button
+      type="button"
+      disabled={isPending}
+      onClick={() => {
+        if (!armed) {
+          setArmed(true);
+          return;
+        }
+        startTransition(async () => {
+          await releaseBooking(bookingGroupId);
+          onDone();
+        });
+      }}
+      className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-[#a13c2f]/40 text-[#a13c2f] font-sans text-[0.72rem] tracking-[0.08em] uppercase rounded-[2px] hover:bg-[#a13c2f]/10 transition-colors cursor-pointer disabled:opacity-50 ml-auto"
+    >
+      <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+      {armed ? "Wirklich freigeben?" : "Freigeben"}
+    </button>
   );
 }

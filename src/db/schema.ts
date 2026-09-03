@@ -1,4 +1,14 @@
-import { pgTable, serial, text, integer, timestamp, jsonb, boolean, date } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  text,
+  integer,
+  timestamp,
+  jsonb,
+  boolean,
+  date,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import type {
   HomeContent,
@@ -158,36 +168,63 @@ export const bookingRequests = pgTable("booking_requests", {
   guests: text("guests").notNull().default(""),
   message: text("message").notNull().default(""),
   status: text("status").notNull().default("neu").$type<BookingRequestStatus>(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
-
-// Ein einziger, seitenweiter Verfügbarkeitskalender (nicht pro Wohnung, das
-// Kontaktformular fragt keine Wohnung ab). Nur belegte Tage haben eine
-// Zeile — ein Tag ohne Eintrag gilt als frei.
-export const calendarDays = pgTable("calendar_days", {
-  id: serial("id").primaryKey(),
-  date: date("date").notNull().unique(),
-  guestName: text("guest_name"),
-  guestEmail: text("guest_email"),
-  guestPhone: text("guest_phone"),
-  guests: text("guests"),
-  note: text("note"),
-  bookingRequestId: integer("booking_request_id").references(() => bookingRequests.id, {
+  // Beim Bestätigen gewählte Wohnung — für die Anzeige „Gebucht · Wohnung X"
+  // in der Anfragenliste. null = noch keine Wohnung zugeordnet.
+  apartmentId: integer("apartment_id").references(() => apartments.id, {
     onDelete: "set null",
   }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const bookingRequestsRelations = relations(bookingRequests, ({ many }) => ({
+// Verfügbarkeitskalender pro Wohnung. Nur belegte Tage haben eine Zeile — ein
+// Tag ohne Eintrag gilt für diese Wohnung als frei. Jede Zeile gehört zu genau
+// einer Wohnung (`apartmentId`) und zu genau einer Buchung (`bookingGroupId`,
+// gruppiert alle Tage einer Belegung, damit Bearbeiten/Freigeben die ganze
+// Buchung trifft). Gastdaten sind pro Tag denormalisiert.
+export const calendarDays = pgTable(
+  "calendar_days",
+  {
+    id: serial("id").primaryKey(),
+    apartmentId: integer("apartment_id")
+      .notNull()
+      .references(() => apartments.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    // Buchungsspanne, zu der dieser Tag gehört (Anreise inkl., Abreise exkl.).
+    checkIn: date("check_in"),
+    checkOut: date("check_out"),
+    // Gruppiert alle Tage einer Belegung (crypto.randomUUID() in der Action).
+    bookingGroupId: text("booking_group_id").notNull(),
+    guestName: text("guest_name"),
+    guestEmail: text("guest_email"),
+    guestPhone: text("guest_phone"),
+    guests: text("guests"),
+    note: text("note"),
+    bookingRequestId: integer("booking_request_id").references(() => bookingRequests.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("calendar_days_apartment_date_uq").on(t.apartmentId, t.date)],
+);
+
+export const bookingRequestsRelations = relations(bookingRequests, ({ one, many }) => ({
   calendarDays: many(calendarDays),
+  apartment: one(apartments, {
+    fields: [bookingRequests.apartmentId],
+    references: [apartments.id],
+  }),
 }));
 
 export const calendarDaysRelations = relations(calendarDays, ({ one }) => ({
   bookingRequest: one(bookingRequests, {
     fields: [calendarDays.bookingRequestId],
     references: [bookingRequests.id],
+  }),
+  apartment: one(apartments, {
+    fields: [calendarDays.apartmentId],
+    references: [apartments.id],
   }),
 }));
 
