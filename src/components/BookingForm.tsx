@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import type { Dictionary } from "@/dictionaries";
-
-const FORM_ENDPOINT = "https://formspree.io/f/YOUR_FORM_ID";
+import type { Locale } from "@/lib/i18n";
+import { submitBookingRequest } from "@/app/[lang]/kontakt/actions";
 
 type Status = { type: "idle" | "success" | "error"; message: string };
 
@@ -21,11 +21,13 @@ const submitBtnClass =
 
 export default function BookingForm({
   dict,
+  locale = "de",
   submitLabel,
   showPhone = false,
   twoStep = false,
 }: {
   dict: Dictionary["bookingForm"];
+  locale?: Locale;
   submitLabel?: string;
   showPhone?: boolean;
   twoStep?: boolean;
@@ -37,14 +39,14 @@ export default function BookingForm({
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<Status>({ type: "idle", message: "" });
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, startSubmit] = useTransition();
   const [step, setStep] = useState<1 | 2>(1);
   const [heights, setHeights] = useState<{ front?: number; back?: number }>({});
 
   // Uncontrolled date inputs: "today" is only known on the client, so the
   // defaults are written directly to the DOM here instead of via state to
   // avoid a server/client hydration mismatch.
-  useEffect(() => {
+  const applyDateDefaults = useCallback(() => {
     const checkinEl = checkinRef.current;
     const checkoutEl = checkoutRef.current;
     if (!checkinEl || !checkoutEl) return;
@@ -56,6 +58,10 @@ export default function BookingForm({
     checkinEl.value = fmt(inDate);
     checkoutEl.value = fmt(outDate);
   }, []);
+
+  useEffect(() => {
+    applyDateDefaults();
+  }, [applyDateDefaults]);
 
   useLayoutEffect(() => {
     if (!twoStep) return;
@@ -77,13 +83,14 @@ export default function BookingForm({
     }
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = formRef.current;
     if (!form) return;
 
-    const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
-    const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
+    const get = (n: string) => (form.elements.namedItem(n) as HTMLInputElement | null)?.value.trim() ?? "";
+    const name = get("name");
+    const email = get("email");
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
     if (!name || !emailOk) {
@@ -91,38 +98,26 @@ export default function BookingForm({
       return;
     }
 
-    if (!FORM_ENDPOINT || FORM_ENDPOINT.includes("YOUR_FORM_ID")) {
-      const data = Object.fromEntries(new FormData(form).entries());
-      const body = Object.entries(data)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join("%0D%0A");
-      window.location.href = `mailto:info@auszeit-mosel.de?subject=Buchungsanfrage%20AUSZEIT&body=${body}`;
-      setStatus({ type: "success", message: dict.successMailto });
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const res = await fetch(FORM_ENDPOINT, {
-        method: "POST",
-        headers: { Accept: "application/json" },
-        body: new FormData(form),
+    startSubmit(async () => {
+      const res = await submitBookingRequest({
+        name,
+        email,
+        phone: get("telefon"),
+        checkIn: get("anreise"),
+        checkOut: get("abreise"),
+        guests: get("gaeste"),
+        message: get("nachricht"),
+        locale: locale === "en" ? "en" : "de",
       });
-      if (!res.ok) throw new Error("Request failed");
-      setStatus({
-        type: "success",
-        message: dict.successSent,
-      });
-      form.reset();
-      setStep(1);
-    } catch {
-      setStatus({
-        type: "error",
-        message: dict.errorSend,
-      });
-    } finally {
-      setSubmitting(false);
-    }
+      if (res.ok) {
+        setStatus({ type: "success", message: dict.successSent });
+        form.reset();
+        applyDateDefaults();
+        setStep(1);
+      } else {
+        setStatus({ type: "error", message: res.error || dict.errorSend });
+      }
+    });
   }
 
   const tripFields = (

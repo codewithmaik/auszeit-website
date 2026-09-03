@@ -64,7 +64,7 @@ export default async function KontaktPage({ params }: PageProps<"/[lang]/kontakt
           </Reveal>
 
           <Reveal delay={100}>
-            <BookingForm dict={dict.bookingForm} submitLabel={t.submitLabel} showPhone twoStep />
+            <BookingForm dict={dict.bookingForm} locale={lang} submitLabel={t.submitLabel} showPhone twoStep />
           </Reveal>
         </div>
       </section>

@@ -178,7 +178,7 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
           </Reveal>
 
           <Reveal delay={100}>
-            <BookingForm dict={dict.bookingForm} twoStep />
+            <BookingForm dict={dict.bookingForm} locale={lang} twoStep />
           </Reveal>
 
           <Reveal delay={200} className="rounded-[2px] overflow-hidden shadow-[0_18px_40px_-20px_rgba(44,50,38,0.35)]">
