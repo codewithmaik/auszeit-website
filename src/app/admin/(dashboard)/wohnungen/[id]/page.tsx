@@ -2,7 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUp, ArrowDown, Trash2, Upload } from "lucide-react";
-import { getApartment } from "@/db/queries";
+import { getApartment, getSiteSettings } from "@/db/queries";
+import { effectivePhotoFilterKey } from "@/lib/photo-filters";
 import ConfirmSubmitButton from "@/components/admin/ConfirmSubmitButton";
 import {
   updateApartment,
@@ -21,8 +22,12 @@ export default async function EditApartmentPage({ params }: { params: Promise<{ 
   const id = Number(idParam);
   if (!Number.isFinite(id)) notFound();
 
-  const apartment = await getApartment(id);
+  const [apartment, settings] = await Promise.all([getApartment(id), getSiteSettings()]);
   if (!apartment) notFound();
+  const photoFilter = effectivePhotoFilterKey(
+    settings.apartmentPhotoFilter,
+    settings.apartmentPhotoFilterDraft,
+  );
 
   const updateWithId = updateApartment.bind(null, id);
   const deleteThisApartment = deleteApartment.bind(null, id);
@@ -68,7 +73,14 @@ export default async function EditApartmentPage({ params }: { params: Promise<{ 
               return (
                 <div key={image.id} className="border border-line rounded-[2px] overflow-hidden">
                   <div className="relative h-[110px] bg-bg-soft">
-                    <Image src={image.url} alt={image.alt || apartment.name} fill sizes="200px" className="object-cover" />
+                    <Image
+                      src={image.url}
+                      alt={image.alt || apartment.name}
+                      fill
+                      sizes="200px"
+                      className="object-cover"
+                      data-photo-filter={photoFilter ?? undefined}
+                    />
                     {i === 0 && (
                       <span className="absolute top-1.5 left-1.5 bg-forest text-white text-[0.62rem] tracking-[0.05em] uppercase px-2 py-0.5 rounded-[2px]">
                         Titelbild

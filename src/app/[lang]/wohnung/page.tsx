@@ -17,7 +17,7 @@ import Divider from "@/components/Divider";
 import PageHero from "@/components/PageHero";
 import Reveal from "@/components/Reveal";
 import WohnungenShowcase from "@/components/WohnungenShowcase";
-import { getApartments } from "@/db/queries";
+import { getApartments, getSiteSettings } from "@/db/queries";
 import { isLocale, localeHref } from "@/lib/i18n";
 import { getDictionary } from "@/dictionaries";
 
@@ -48,7 +48,11 @@ export default async function WohnungPage({ params }: PageProps<"/[lang]/wohnung
   const dict = getDictionary(lang);
   const t = dict.wohnung;
 
-  const apartments = await getApartments();
+  const [apartments, settings] = await Promise.all([getApartments(), getSiteSettings()]);
+  // Nur der veröffentlichte Filter wird hier gelesen — ein offener Entwurf
+  // (apartmentPhotoFilterDraft) darf nie auf die öffentliche Seite durch-
+  // schlagen, bevor er im Adminpanel bestätigt wurde.
+  const photoFilter = settings.apartmentPhotoFilter;
   const units = apartments.map((a) => ({
     slug: a.slug,
     name: a.name,
@@ -66,7 +70,7 @@ export default async function WohnungPage({ params }: PageProps<"/[lang]/wohnung
       </PageHero>
 
       {units.length > 0 ? (
-        <WohnungenShowcase units={units} locale={lang} dict={t} galleryDict={dict.gallery} />
+        <WohnungenShowcase units={units} locale={lang} dict={t} galleryDict={dict.gallery} photoFilter={photoFilter} />
       ) : (
         <section className="py-20">
           <div className="max-w-[1180px] mx-auto px-8">

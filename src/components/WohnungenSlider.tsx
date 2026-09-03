@@ -24,12 +24,14 @@ export default function WohnungenSlider({
   dict,
   index,
   onChange,
+  photoFilter,
 }: {
   units: WohnungUnit[];
   locale: Locale;
   dict: Dictionary["wohnung"]["slider"];
   index: number;
   onChange: (index: number) => void;
+  photoFilter?: string | null;
 }) {
   const total = units.length;
 
@@ -75,6 +77,7 @@ export default function WohnungenSlider({
                     sizes="(max-width: 860px) 100vw, 590px"
                     priority={i === 0}
                     className="object-cover"
+                    data-photo-filter={photoFilter ?? undefined}
                   />
                 </div>
                 <div className="bg-white flex flex-col justify-center p-10 max-[860px]:p-6">

@@ -9,7 +9,15 @@ import { formatTemplate } from "@/lib/i18n";
 
 type GalleryPhoto = { src: string; alt: string; tall?: boolean };
 
-export default function GalleryGrid({ photos, dict }: { photos: GalleryPhoto[]; dict: Dictionary["gallery"] }) {
+export default function GalleryGrid({
+  photos,
+  dict,
+  photoFilter,
+}: {
+  photos: GalleryPhoto[];
+  dict: Dictionary["gallery"];
+  photoFilter?: string | null;
+}) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const close = useCallback(() => setActiveIndex(null), []);
@@ -62,6 +70,7 @@ export default function GalleryGrid({ photos, dict }: { photos: GalleryPhoto[]; 
                 fill
                 sizes="(max-width: 560px) 100vw, (max-width: 860px) 50vw, 380px"
                 className="object-cover transition-transform duration-500 group-hover:scale-105"
+                data-photo-filter={photoFilter ?? undefined}
               />
               <span className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                 <Expand
@@ -118,7 +127,14 @@ export default function GalleryGrid({ photos, dict }: { photos: GalleryPhoto[]; 
             className="relative w-full max-w-[1100px] h-[75vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <Photo src={active.src} alt={active.alt} fill sizes="100vw" className="object-contain" />
+            <Photo
+              src={active.src}
+              alt={active.alt}
+              fill
+              sizes="100vw"
+              className="object-contain"
+              data-photo-filter={photoFilter ?? undefined}
+            />
           </div>
 
           <p className="absolute bottom-5 left-1/2 -translate-x-1/2 text-white/80 text-[0.85rem] tracking-[0.05em]">

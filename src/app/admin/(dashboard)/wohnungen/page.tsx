@@ -1,13 +1,20 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { getApartments } from "@/db/queries";
+import { getApartments, getSiteSettings } from "@/db/queries";
+import { effectivePhotoFilterKey } from "@/lib/photo-filters";
 import WohnungenGrid from "./WohnungenGrid";
+import PhotoFilterPanel from "./PhotoFilterPanel";
 
 export const metadata = { title: "Wohnungen" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminWohnungenPage() {
-  const units = await getApartments();
+  const [units, settings] = await Promise.all([getApartments(), getSiteSettings()]);
+  const effectiveFilter = effectivePhotoFilterKey(
+    settings.apartmentPhotoFilter,
+    settings.apartmentPhotoFilterDraft,
+  );
+  const previewImageUrl = units.find((u) => u.images[0])?.images[0]?.url ?? null;
 
   return (
     <div>
@@ -22,10 +29,17 @@ export default async function AdminWohnungenPage() {
         </Link>
       </div>
 
+      <PhotoFilterPanel
+        previewImageUrl={previewImageUrl}
+        publishedKey={settings.apartmentPhotoFilter}
+        hasDraft={settings.apartmentPhotoFilterDraft !== null}
+        effectiveKey={effectiveFilter}
+      />
+
       {units.length === 0 ? (
         <p className="text-ink-soft">Noch keine Wohnungen angelegt.</p>
       ) : (
-        <WohnungenGrid units={units} />
+        <WohnungenGrid units={units} photoFilter={effectiveFilter} />
       )}
     </div>
   );

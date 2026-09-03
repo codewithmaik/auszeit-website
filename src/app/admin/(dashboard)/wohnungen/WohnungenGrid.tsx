@@ -28,10 +28,12 @@ function SortableCard({
   unit,
   index,
   total,
+  photoFilter,
 }: {
   unit: ApartmentWithImages;
   index: number;
   total: number;
+  photoFilter?: string | null;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: unit.id,
@@ -51,7 +53,14 @@ function SortableCard({
       <Link href={`/admin/wohnungen/${unit.id}`}>
         <div className="relative h-[150px] bg-bg-soft">
           {cover ? (
-            <Image src={cover.url} alt={unit.name} fill sizes="300px" className="object-cover" />
+            <Image
+              src={cover.url}
+              alt={unit.name}
+              fill
+              sizes="300px"
+              className="object-cover"
+              data-photo-filter={photoFilter ?? undefined}
+            />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-ink-soft/50">
               <ImageOff className="w-6 h-6" strokeWidth={1.5} />
@@ -110,7 +119,13 @@ function SortableCard({
   );
 }
 
-export default function WohnungenGrid({ units }: { units: ApartmentWithImages[] }) {
+export default function WohnungenGrid({
+  units,
+  photoFilter,
+}: {
+  units: ApartmentWithImages[];
+  photoFilter?: string | null;
+}) {
   const [items, setItems] = useState(units);
   const [prevUnits, setPrevUnits] = useState(units);
   const [, startTransition] = useTransition();
@@ -151,7 +166,7 @@ export default function WohnungenGrid({ units }: { units: ApartmentWithImages[] 
       <SortableContext items={items.map((u) => u.id)} strategy={rectSortingStrategy}>
         <div className="grid grid-cols-3 max-[860px]:grid-cols-2 max-[560px]:grid-cols-1 gap-5">
           {items.map((unit, i) => (
-            <SortableCard key={unit.id} unit={unit} index={i} total={items.length} />
+            <SortableCard key={unit.id} unit={unit} index={i} total={items.length} photoFilter={photoFilter} />
           ))}
         </div>
       </SortableContext>

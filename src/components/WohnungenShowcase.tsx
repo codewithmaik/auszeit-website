@@ -14,11 +14,13 @@ export default function WohnungenShowcase({
   locale,
   dict,
   galleryDict,
+  photoFilter,
 }: {
   units: WohnungUnit[];
   locale: Locale;
   dict: Dictionary["wohnung"];
   galleryDict: Dictionary["gallery"];
+  photoFilter?: string | null;
 }) {
   const [index, setIndex] = useState(0);
   const activeUnit = units[index];
@@ -30,7 +32,14 @@ export default function WohnungenShowcase({
     <>
       <section className="py-20">
         <div className="max-w-[1180px] mx-auto px-8">
-          <WohnungenSlider units={units} locale={locale} dict={dict.slider} index={index} onChange={setIndex} />
+          <WohnungenSlider
+            units={units}
+            locale={locale}
+            dict={dict.slider}
+            index={index}
+            onChange={setIndex}
+            photoFilter={photoFilter}
+          />
         </div>
       </section>
 
@@ -61,7 +70,7 @@ export default function WohnungenShowcase({
             ))}
           </div>
 
-          <GalleryGrid key={activeUnit.slug} photos={photos} dict={galleryDict} />
+          <GalleryGrid key={activeUnit.slug} photos={photos} dict={galleryDict} photoFilter={photoFilter} />
         </div>
       </section>
     </>
