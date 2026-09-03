@@ -17,7 +17,7 @@ Punkt 3+4 spiegeln bewusst das bestehende Entwurf/Veröffentlichen-Muster des De
 
 **Umsetzung in 5 Schritten** (jeder Schritt: eigener Commit + Push):
 1. Grundlage für den Foto-Filter — **erledigt, committed (`9304ea7`), gepusht.** Neue `siteSettings`-Spalten `apartmentPhotoFilter` (veröffentlicht, null = kein Filter) und `apartmentPhotoFilterDraft` (null = kein offener Entwurf, Sentinel `"none"` = Entwurf explizit „kein Filter", sonst Template-Key) — `npm run db:push` gegen die Dev-DB ausgeführt. Neue Datei `src/lib/photo-filters.ts`: 6 kuratierte Templates (Warmes Gold, Kühles Blau, Editorial S/W, Vintage Sepia, Sommerfrisch, Weicher Nebel) als reine CSS-`filter`-Kombinationen, plus `effectivePhotoFilterKey()`-Helper für die Entwurf/Veröffentlicht-Auflösung. Zugehörige `img[data-photo-filter="…"]`-Regeln in `globals.css`, direkt unter dem bestehenden `data-bg-anim`-Block, identisches Aktivierungsmuster (Attribut wird von `Photo`/`next/image` an das gerenderte `<img>` durchgereicht). Noch ohne UI/Server-Actions — kommt in Schritt 4/5.
-2. Zurücksetzen-Button (Bearbeiten-Formular) — **offen.**
+2. Zurücksetzen-Button (Bearbeiten-Formular) — **erledigt, committed (`4135dd8`), gepusht.** `[id]/page.tsx`: zweiter Button (`type="reset"`) neben „Änderungen speichern" im selben Formular — funktioniert ohne JS, weil `ApartmentFormFields` ausschließlich `defaultValue` (unkontrollierte Inputs) nutzt. Gilt nur für die Textfelder; Foto-Upload/-Löschen/-Sortierung committen weiterhin sofort einzeln (kein „unsaved" Zwischenzustand dort).
 3. Drag & Drop Sortierung (`@dnd-kit/*`) — **offen.**
 4. Foto-Filter Server Actions + Query-Helper — **offen.**
 5. Foto-Filter UI (Admin-Panel + öffentliche Seite) — **offen.**
