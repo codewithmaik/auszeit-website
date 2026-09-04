@@ -4,10 +4,42 @@
 
 ## Aktueller Stand
 
-**Branch:** `feature/admin-design-editor` — gepusht nach `origin` (GitHub `codewithmaik/auszeit-website-11`), **nicht** nach `main` gemerged (Production läuft weiterhin bewusst direkt vom Branch-Deploy, wie in allen früheren Sessions). Working tree sauber (bis auf absichtlich ungetrackte `.agents/`, `.claude/`, `auszeit-apartments/`, `skills-lock.json`, s. u.).
-**Production:** läuft über `auszeit-mosel.vercel.app` — **das ist die einzige gültige Domain für dieses Projekt**, alle anderen `.vercel.app`-Aliase (`auszeit-website-11.vercel.app`, `auszeit-mosel-codewithmaik.vercel.app`) werden nach jedem Deploy wieder entfernt (s. „Domain-Aufräumen" unten, inkl. **wichtigem Hinweis für jeden künftigen Deploy**). Die komplette „Design-Editor Runde 3"-Session (11 Erweiterungen, siehe unten) ist seit `2026-09-03` live deployed (Deployment `dpl_5KBFYLr6zZSpDnxRD38QyeaKrcr6`).
+**Branch:** `feature/posteingang-chat-rechnung` — gepusht nach `origin` (GitHub `codewithmaik/auszeit-website-11`), **nicht** nach `main` gemerged (Production läuft weiterhin bewusst direkt vom Branch-Deploy, wie in allen früheren Sessions). Working tree sauber (bis auf absichtlich ungetrackte `.agents/`, `.claude/`, `auszeit-apartments/`, `skills-lock.json`, s. u.).
+**Production:** läuft über `auszeit-mosel.vercel.app` — **das ist die einzige gültige Domain für dieses Projekt**, alle anderen `.vercel.app`-Aliase (`auszeit-website-11.vercel.app`, `auszeit-mosel-codewithmaik.vercel.app`) werden nach jedem Deploy wieder entfernt (s. „Domain-Aufräumen" unten, inkl. **wichtigem Hinweis für jeden künftigen Deploy**). Seit `2026-09-05` live: der komplette Stand aus „Session: Kalender-Schnellaktionen, Antwort-Vorlagen, Rechnungs-Feinschliff" **und** „Session: Posteingang-Chat, E-Mail-Antworten, Rechnungssystem & Foto-Filter-Ausbau" (beide unten), Deployment `dpl_5s2Wo57mdrgLWpPteZ2UbMrqtVcN`.
 
 Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwischen committed (`9bdeec9`, `4eeda79`, `28f74cd`) und deployed — der frühere Hinweis „noch nicht committed" in dieser Datei war veraltet.
+
+## Session: Deploy Posteingang-Chat/Rechnung nach Production (2026-09-05)
+
+**Auftrag:** Vor dem Deploy die Devnotes auf unerledigte Tasks prüfen, dann deployen, Devnotes updaten. Kein Code geändert, keine neue Planungsdatei.
+
+**Offene Punkte aus früheren Sessions geprüft — Stand:**
+1. **Kontaktdaten/Impressum-Platzhalter (Bonn/„Norbert Winkel")** — **weiterhin offen**, unverändert seit der letzten Session (s. „Kalender-Schnellaktionen…" unten). Betrifft `/de/kontakt`, `/de/impressum` und den Rechnungssteller-Fallback in `siteSettings`. Braucht die echten AUSZEIT-an-der-Mosel-Kontaktdaten vom User, wurde bewusst nicht selbständig geraten/geändert.
+2. **Resend-E-Mail-Integration** — **weiterhin offen**. Marketplace-Terms noch nicht bestätigt
+   (`https://vercel.com/codewithmaik/~/integrations/accept-terms/resend?source=cli`), danach
+   `vercel integration add resend/resend-email --no-claim`, dann `RESEND_API_KEY` +
+   `NOTIFY_EMAIL` in allen 3 Vercel-Env-Targets setzen. Bis dahin läuft der E-Mail-Versand nur
+   protokolliert (`isEmailConfigured()` false), Feature ist vollständig gebaut.
+3. **Eigene Absender-Domain (SPF/DKIM) + `EMAIL_FROM`** — weiterhin offen, hängt an Punkt 2.
+4. **Merge `feature/…` → `main`** — wie in jeder früheren Session bewusst nicht gemacht, Production läuft absichtlich direkt vom Branch-Deploy.
+5. Optional/klein: Icon-Overrides räumen keine alten Blobs auf (Design-Editor, bewusste Vereinfachung); 2-Wege-Inbound-E-Mail-Webhook; Logo-Upload für Rechnungen (aktuell nur URL-Feld).
+
+Keiner dieser Punkte blockiert den Deploy — alle sind reine Konfigurations-/Dateneingaben durch den User, kein Code-TODO.
+
+**Vor dem Deploy verifiziert:** `npx tsc --noEmit` sauber, `npm run build` (Production-Build) sauber.
+
+**Deploy:** `vercel --prod --scope codewithmaik --yes` → Deployment `dpl_5s2Wo57mdrgLWpPteZ2UbMrqtVcN`
+(`auszeit-mosel-g6mmdwyp2-codewithmaik.vercel.app`). Alias auf `auszeit-mosel.vercel.app` gesetzt.
+Nebenalias `auszeit-mosel-codewithmaik.vercel.app` per `vercel alias rm` entfernt — lief durch.
+**`auszeit-website-11.vercel.app` konnte diesmal nicht per CLI entfernt werden** (Auto-Mode-
+Classifier blockte `vercel alias rm` für genau diesen Alias wiederholt, vermutlich weil er exakt
+dem Repo-Namen entspricht) — User hat sich entschieden, den Befehl selbst per `!`-Terminal
+auszuführen; Status danach nicht mehr durch diese Session verifiziert, ggf. in der nächsten
+Session per `curl -o /dev/null -w "%{http_code}" https://auszeit-website-11.vercel.app` prüfen
+(soll `404` sein).
+**Smoke-Test per `curl`:** `auszeit-mosel.vercel.app/de` → `200`, `/de/wohnung` → `200`,
+`/admin/posteingang` → `307` (Redirect zu Login, kein Fehler-Hinweis auf fehlende DB-Spalten in
+Production). `auszeit-mosel-codewithmaik.vercel.app` → `404` (korrekt entfernt).
 
 ## Session: Kalender-Schnellaktionen, Antwort-Vorlagen, Rechnungs-Feinschliff (2026-09-04)
 
