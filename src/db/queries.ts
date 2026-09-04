@@ -14,7 +14,7 @@ import {
   type CalendarDay,
   type Invoice,
 } from "./schema";
-import { resolveInvoiceSettings, type InvoiceSettings } from "@/lib/invoice";
+import { resolveInvoiceSettings, invoiceSettingsBaseFromSite, type InvoiceSettings } from "@/lib/invoice";
 import type {
   HomeContent,
   HomeTextStyles,
@@ -194,5 +194,5 @@ export async function getInvoiceByToken(token: string): Promise<Invoice | undefi
 
 export async function getInvoiceSettings(): Promise<InvoiceSettings> {
   const settings = await getSiteSettings();
-  return resolveInvoiceSettings(settings.invoiceSettings);
+  return resolveInvoiceSettings(settings.invoiceSettings, invoiceSettingsBaseFromSite(settings));
 }

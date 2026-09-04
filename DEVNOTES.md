@@ -9,6 +9,103 @@
 
 Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwischen committed (`9bdeec9`, `4eeda79`, `28f74cd`) und deployed — der frühere Hinweis „noch nicht committed" in dieser Datei war veraltet.
 
+## Session: Kalender-Schnellaktionen, Antwort-Vorlagen, Rechnungs-Feinschliff (2026-09-04)
+
+**Branch:** `feature/posteingang-chat-rechnung` (unverändert, weiter oben drauf). Auftrag kam als
+Stichpunktliste vom User (9 Punkte), keine Planungsdatei — direkt umgesetzt und per Chrome-
+Automation gegen die Dev-DB verifiziert (Testdaten danach per Wegwerf-Skript wieder entfernt).
+
+**Umgesetzt:**
+
+1. **Doppelklick-Toggle im Belegungskalender** (`Kalender.tsx`): neuer `useDayClick()`-Hook
+   unterscheidet Einzel- von Doppelklick per Timer (`DOUBLE_CLICK_MS = 320`, da Klick-Events vor
+   `dblclick` feuern und das bisherige Popup sonst kurz aufgeblitzt wäre) — Einzelklick verhält
+   sich wie bisher (Popup öffnen), Doppelklick schaltet direkt zwischen belegt/frei um
+   (`toggleQuick()` → `createManualBooking()`/`releaseBooking()`, keine Zusatzangaben nötig).
+2. **Globaler Kalender („Alle Wohnungen"), neuer Doppelklick-Flow:** Doppelklick auf einen Tag
+   öffnet ein „Wohnung wählen"-Menü (Status je Wohnung sichtbar) → Klick auf eine Wohnung öffnet
+   ein Popup mit „Bestätigen" (sofortiger Toggle, wie oben) oder „Buchungsinformationen" (öffnet
+   das normale Beleg-/Bearbeiten-Formular — der Kalender ändert sich hier **erst** nach dessen
+   eigenem Speichern-Klick, nicht schon beim Öffnen). Popup-States dafür generalisiert: `create`
+   trägt jetzt `apartmentId` explizit statt implizit über `view`.
+3. **Alle Kalender-Pop-ups 25 % breiter, linksbündig:** `Modal.tsx` bekam eine neue Size `cal`
+   (600px statt 480px) und einen `align`-Prop (`"left"` positioniert das Pop-up mit Abstand am
+   linken Rand statt zentriert) — nur in `Kalender.tsx` verwendet, andere Pop-ups (Anfrage-
+   Thread, Rechnung, Wohnungen) bleiben zentriert wie bisher.
+4. **Kontaktformular:** `Name`-Feld in `src/components/BookingForm.tsx` in `Vorname`/`Nachname`
+   nebeneinander (eine Zeile, `grid-cols-2`) aufgeteilt — Nachname optional, wird beim Absenden zu
+   einem kombinierten `name` zusammengeführt (kein Schema-Change, `booking_requests.name` bleibt
+   ein Feld). Neue Dictionary-Keys `labelVorname`/`labelNachname` in `de.ts`/`en.ts`.
+5. **2 Antwort-Vorlagen im Anfrage-Popup** (`RequestThread.tsx`): „Bestätigen"/„Ablehnen"-Buttons
+   über dem E-Mail-Composer befüllen Betreff+Text mit vollständigen Vorlagen (`buildReplyTemplate()`,
+   DE/EN je nach `request.locale`) — die Bestätigen-Vorlage fragt aktiv nach den vollständigen
+   Rechnungsdaten des Gasts (Name/Anschrift), damit die Rechnung im Anschluss erstellt werden kann.
+6. **Rechnung: Entwurf-Speichern + Link-teilen entfernt, durch Download ersetzt**
+   (`ConfirmBooking.tsx`, `posteingang/actions.ts`): `InvoiceFlowMode` von `"draft" | "send" | "share"`
+   auf `"send" | "download"` reduziert — beide Modi finalisieren jetzt immer (Nummer, Datum, PDF),
+   nur „send" verschickt zusätzlich die E-Mail. „PDF herunterladen" öffnet die fertige PDF
+   automatisch in einem neuen Tab (versteckter `<a download>`-Link wird per `useEffect` angeklickt,
+   plus sichtbarer Fallback-Link, falls Popups blockiert werden — Cross-Origin-Downloads vom Blob-
+   Storage lassen sich nicht zuverlässig erzwingen, „öffnen zum Speichern" ist der praktikable Weg).
+7. **Rechnungs-Vorschau größer + auf A4 zugeschnitten:** alte `transform: scale()`-Technik verkleinerte
+   nur visuell, ließ aber die volle A4-Layoutbox (und damit viel Leerraum) im scrollbaren Container
+   stehen. Ersetzt durch CSS `zoom` (ändert die tatsächliche Layoutgröße, kein Leerraum-Bug) —
+   `[zoom:0.92]` Desktop, `max-[720px]:[zoom:0.5]` mobil — plus `max-h-[80vh]` statt `52vh`.
+8. **Rechnungssteller-Kontaktdaten aus dem Impressum:** `lib/invoice.ts` neue
+   `invoiceSettingsBaseFromSite()` (parst `contactAddress` „Straße, PLZ Ort" per Regex) +
+   `resolveInvoiceSettings(raw, base)` jetzt mit optionalem `base`-Parameter (Default weiterhin
+   `DEFAULT_INVOICE_SETTINGS`/`BUSINESS`). `getInvoiceSettings()` (`db/queries.ts`),
+   `claimNextInvoiceNumber()` und `confirmBookingWithInvoice()` (`posteingang/actions.ts`) sowie
+   `updateInvoiceSettings()` (`einstellungen/actions.ts`) nutzen jetzt diese Basis statt der
+   festen `BUSINESS`-Platzhalter — die separaten Aussteller-Felder unter Einstellungen →
+   „Rechnungsdaten" überschreiben das weiterhin, wenn explizit gepflegt (unverändertes Verhalten,
+   nur die Fallback-Ebene wurde ausgetauscht). `updateInvoiceSettings()` blankt einzelne Felder
+   beim Speichern nicht mehr auf „" (fiel vorher auf `current.issuerName` nur bei Name/Präfix
+   zurück, jetzt konsistent bei allen Aussteller-Feldern).
+   **Wichtiger Fund dabei:** Die site-weiten Kontaktdaten (`contactAddress`/`contactPhone`/
+   `contactEmail`, Einstellungen → „Kontaktdaten") und der Impressum-Freitext zeigen in der
+   Dev-DB weiterhin die alten Platzhalter („Norbert Winkel, Annaberger Str. 231, 53175 Bonn,
+   info@luxury-apartments-bonn.com") — nicht die echte AUSZEIT-an-der-Mosel-Adresse. Betrifft
+   auch die öffentliche `/de/kontakt`- und `/de/impressum`-Seite, nicht nur die Rechnung. Die
+   separaten Rechnungsdaten-Aussteller-Felder waren in einer früheren Session bereits korrekt auf
+   die echten Mosel-Daten gesetzt (daher zeigt die Rechnung schon jetzt richtig) — **aber die
+   Kontaktdaten/Impressum-Platzhalter selbst wurden in dieser Session bewusst NICHT angefasst**
+   (kein Teil des Auftrags, echte Adresse/Name nicht zweifelsfrei bekannt, Impressum-Rechtstext
+   sollte nicht ungefragt umgeschrieben werden) — dem User zur Korrektur mitgeteilt.
+
+**Verifiziert per Chrome-Automation gegen die Dev-DB (localhost:3000, bestehende JWT-Session):**
+- Einzel-Wohnung-Kalender: Doppelklick auf freien Tag → sofort belegt (kein Popup, keine
+  Zusatzangaben); erneuter Doppelklick → sofort wieder frei. Kein Popup blitzt dabei auf.
+- „Alle Wohnungen"-Kalender: Doppelklick öffnet „Wohnung wählen" (Status je Wohnung korrekt:
+  „Frei"/„Belegt") → Wohnung wählen → Popup mit „Bestätigen"/„Buchungsinformationen".
+  „Buchungsinformationen" öffnet korrekt das vorausgefüllte Beleg-Formular, **ohne** den
+  Kalender zu ändern, solange nicht dort gespeichert wird; „Abbrechen" lässt den Tag frei.
+  „Bestätigen" schaltet sofort um (Overview-Popup zeigt danach „Ohne Namen" — minimale Buchung
+  ohne Zusatzangaben, wie gefordert).
+- Kalender-Pop-ups erscheinen sichtbar breiter und linksbündig mit Randabstand (nicht mehr
+  zentriert) — alle 5 Pop-up-Arten (`create`/`edit`/`overview`/`chooseApartment`/`confirmChoice`).
+- Kontaktformular `/de/kontakt`: Vorname/Nachname nebeneinander sichtbar; Absenden mit
+  Vorname „Testina" + Nachname „Testowski" → `booking_requests.name = "Testina Testowski"`
+  (Server-Log: „Neue Anfrage von Testina Testowski"), danach wieder gelöscht.
+- Anfrage-Popup „Familie Weber": Vorlage „Bestätigen" befüllt Betreff „…— Bestätigung" + Text mit
+  Zeitraum/Gästezahl und Anfrage nach vollständigen Rechnungsdaten; Vorlage „Ablehnen" befüllt
+  Betreff/Text entsprechend um — beide sofort sichtbar im Composer, überschreibbar vor dem Senden.
+- „Als gebucht" mit Rechnung → Vorschau zeigt die A4-Rechnung deutlich größer, ohne den alten
+  Leerraum-Bug; Aussteller korrekt „AUSZEIT Ferienwohnung Mosel, Moselstraße 12, 54470
+  Bernkastel-Kues" (aus den bereits gepflegten Rechnungsdaten-Aussteller-Feldern). Nur noch 3
+  Buttons (Anpassen/PDF herunterladen/Absenden), kein Entwurf/Link teilen mehr. „PDF
+  herunterladen" finalisiert die Rechnung (Nummer `AZ-2026-0003` vergeben), öffnet die PDF in
+  neuem Tab (echtes React-PDF, Aussteller-Daten korrekt). Testbuchung danach wieder rückgängig
+  gemacht (Status zurück auf „in_bearbeitung", Kalendertage wieder auf die ursprüngliche
+  Rechnung `AZ-2026-0001` verlinkt, Test-Rechnung + PDF-Blob gelöscht, Nummernkreis-Zähler auf
+  den Ausgangswert 3 zurückgesetzt).
+- `npx tsc --noEmit`, `npx eslint` (geänderte Dateien) und `npm run build`: alle sauber.
+
+**Bewusst nicht angefasst:**
+- Kontaktdaten/Impressum-Platzhalter (Bonn) — s. Fund oben, User-Entscheidung nötig.
+- `booking_requests`/`calendar_days`-Schema unverändert (kein neues Vorname/Nachname-Feld,
+  Kombination passiert nur clientseitig beim Absenden).
+
 ## Session: Posteingang-Chat, E-Mail-Antworten, Rechnungssystem & Foto-Filter-Ausbau (2026-09-04)
 
 **Branch:** `feature/posteingang-chat-rechnung` (ausgehend von `feature/posteingang-wohnungskalender`).

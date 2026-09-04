@@ -4,7 +4,12 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
 import { siteSettings } from "@/db/schema";
-import { resolveInvoiceSettings, type InvoiceSettings, type InvoiceTaxMode } from "@/lib/invoice";
+import {
+  resolveInvoiceSettings,
+  invoiceSettingsBaseFromSite,
+  type InvoiceSettings,
+  type InvoiceTaxMode,
+} from "@/lib/invoice";
 
 async function ensureSettingsId(): Promise<number> {
   const existing = await db.select({ id: siteSettings.id }).from(siteSettings).limit(1);
@@ -26,16 +31,19 @@ export async function updateInvoiceSettings(formData: FormData) {
     str("taxMode") === "regelbesteuerung" ? "regelbesteuerung" : "kleinunternehmer";
 
   const row = await db.query.siteSettings.findFirst();
-  const current = resolveInvoiceSettings(row?.invoiceSettings ?? null);
+  const current = resolveInvoiceSettings(
+    row?.invoiceSettings ?? null,
+    row ? invoiceSettingsBaseFromSite(row) : undefined,
+  );
 
   const next: InvoiceSettings = {
     issuerName: str("issuerName") || current.issuerName,
-    issuerAddressLine: str("issuerAddressLine"),
-    issuerZip: str("issuerZip"),
-    issuerCity: str("issuerCity"),
+    issuerAddressLine: str("issuerAddressLine") || current.issuerAddressLine,
+    issuerZip: str("issuerZip") || current.issuerZip,
+    issuerCity: str("issuerCity") || current.issuerCity,
     issuerCountry: str("issuerCountry") || "Deutschland",
-    issuerPhone: str("issuerPhone"),
-    issuerEmail: str("issuerEmail"),
+    issuerPhone: str("issuerPhone") || current.issuerPhone,
+    issuerEmail: str("issuerEmail") || current.issuerEmail,
     issuerWebsite: str("issuerWebsite"),
     logoUrl: str("logoUrl") || null,
     taxMode,

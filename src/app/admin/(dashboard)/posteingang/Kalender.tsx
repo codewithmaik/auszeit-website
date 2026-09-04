@@ -1,12 +1,59 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ChevronLeft, ChevronRight, Mail, Phone, Trash2, FileText, Download } from "lucide-react";
 import Modal from "@/components/admin/Modal";
 import { addDays, formatDate } from "@/lib/booking";
 import type { CalendarDay } from "@/db/schema";
 import BookingForm, { type ApartmentOption } from "./BookingForm";
 import { createManualBooking, releaseBooking, updateBooking } from "./actions";
+
+/** Minimale Belegung ohne Zusatzangaben — für den schnellen Doppelklick-Toggle. */
+function blankBookingData(apartmentId: number, date: string) {
+  return {
+    apartmentId,
+    checkIn: date,
+    checkOut: addDays(date, 1),
+    guests: "",
+    guestName: "",
+    guestEmail: "",
+    guestPhone: "",
+    note: "",
+  };
+}
+
+const DOUBLE_CLICK_MS = 320;
+
+/**
+ * Unterscheidet Einzel- von Doppelklick auf demselben Tag: der erste Klick wartet
+ * `DOUBLE_CLICK_MS`, bevor `onSingle` feuert — folgt ein zweiter Klick auf denselben
+ * Tag rechtzeitig, wird stattdessen `onDouble` ausgelöst und der Timer verworfen.
+ */
+function useDayClick(onSingle: (date: string) => void, onDouble: (date: string) => void) {
+  const pending = useRef<{ date: string; timer: ReturnType<typeof setTimeout> } | null>(null);
+
+  useEffect(
+    () => () => {
+      if (pending.current) clearTimeout(pending.current.timer);
+    },
+    [],
+  );
+
+  return function handle(date: string) {
+    if (pending.current && pending.current.date === date) {
+      clearTimeout(pending.current.timer);
+      pending.current = null;
+      onDouble(date);
+      return;
+    }
+    if (pending.current) clearTimeout(pending.current.timer);
+    const timer = setTimeout(() => {
+      pending.current = null;
+      onSingle(date);
+    }, DOUBLE_CLICK_MS);
+    pending.current = { date, timer };
+  };
+}
 
 export type CalendarInvoice = {
   id: number;
@@ -76,10 +123,13 @@ export default function Kalender({
   const today = new Date();
   const [monthStart, setMonthStart] = useState(() => new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)));
   const [view, setView] = useState<number | "alle">(apartments[0]?.id ?? "alle");
+  const [isToggling, startToggle] = useTransition();
   const [popup, setPopup] = useState<
-    | { kind: "create"; date: string }
+    | { kind: "create"; date: string; apartmentId: number }
     | { kind: "edit"; day: CalendarDay }
     | { kind: "overview"; date: string }
+    | { kind: "chooseApartment"; date: string }
+    | { kind: "confirmChoice"; date: string; apartmentId: number }
     | null
   >(null);
 
@@ -87,6 +137,32 @@ export default function Kalender({
     () => new Map(apartments.map((a) => [a.id, a.name])),
     [apartments],
   );
+
+  /** Belegung einer bestimmten Wohnung an einem bestimmten Tag, unabhängig von `view`. */
+  const dayByApartmentDate = useMemo(() => {
+    const m = new Map<string, CalendarDay>();
+    for (const d of days) m.set(`${d.apartmentId}|${d.date}`, d);
+    return m;
+  }, [days]);
+
+  function findDay(apartmentId: number, date: string): CalendarDay | undefined {
+    return dayByApartmentDate.get(`${apartmentId}|${date}`);
+  }
+
+  /** Schneller Belegt/Frei-Toggle ohne weitere Angaben (Doppelklick). */
+  function toggleQuick(apartmentId: number, date: string) {
+    const entry = findDay(apartmentId, date);
+    startToggle(async () => {
+      if (entry) await releaseBooking(entry.bookingGroupId);
+      else await createManualBooking(blankBookingData(apartmentId, date));
+    });
+  }
+
+  function openBookingInfo(apartmentId: number, date: string) {
+    const entry = findDay(apartmentId, date);
+    if (entry) setPopup({ kind: "edit", day: entry });
+    else setPopup({ kind: "create", date, apartmentId });
+  }
 
   const visibleDays = view === "alle" ? days : days.filter((d) => d.apartmentId === view);
 
@@ -116,15 +192,23 @@ export default function Kalender({
     setMonthStart((prev) => new Date(Date.UTC(prev.getUTCFullYear(), prev.getUTCMonth() + delta, 1)));
   }
 
-  function handleDayClick(date: string) {
+  function handleDaySingleClick(date: string) {
     if (view === "alle") {
       if (multiByDate.has(date)) setPopup({ kind: "overview", date });
       return;
     }
-    const entry = singleByDate.get(date);
-    if (entry) setPopup({ kind: "edit", day: entry });
-    else setPopup({ kind: "create", date });
+    openBookingInfo(view, date);
   }
+
+  function handleDayDoubleClick(date: string) {
+    if (view === "alle") {
+      setPopup({ kind: "chooseApartment", date });
+      return;
+    }
+    toggleQuick(view, date);
+  }
+
+  const handleDayClick = useDayClick(handleDaySingleClick, handleDayDoubleClick);
 
   return (
     <div>
@@ -191,8 +275,9 @@ export default function Kalender({
             <button
               key={date}
               type="button"
+              disabled={isToggling}
               onClick={() => handleDayClick(date)}
-              className={`relative aspect-square rounded-[2px] text-[0.8rem] transition-colors cursor-pointer border ${
+              className={`relative aspect-square rounded-[2px] text-[0.8rem] transition-colors cursor-pointer border disabled:cursor-wait disabled:opacity-70 ${
                 belegt
                   ? "bg-[#a13c2f]/10 border-[#a13c2f]/30 text-[#a13c2f] hover:border-[#a13c2f]"
                   : "bg-white border-line text-ink hover:border-forest"
@@ -217,13 +302,14 @@ export default function Kalender({
           Belegt
         </span>
       </div>
+      <p className="text-[0.72rem] text-ink-soft mt-1.5 m-0">Doppelklick auf einen Tag: Status sofort umschalten.</p>
 
-      {popup?.kind === "create" && view !== "alle" && (
-        <Modal onClose={() => setPopup(null)} title={`${formatDate(popup.date)} — belegen`}>
+      {popup?.kind === "create" && (
+        <Modal onClose={() => setPopup(null)} title={`${formatDate(popup.date)} — belegen`} size="cal" align="left">
           <BookingForm
             apartments={apartments}
             initial={{
-              apartmentId: view,
+              apartmentId: popup.apartmentId,
               checkIn: popup.date,
               checkOut: addDays(popup.date, 1),
             }}
@@ -238,7 +324,12 @@ export default function Kalender({
       )}
 
       {popup?.kind === "edit" && (
-        <Modal onClose={() => setPopup(null)} title={`Belegung — ${formatDate(popup.day.checkIn ?? popup.day.date)}`}>
+        <Modal
+          onClose={() => setPopup(null)}
+          title={`Belegung — ${formatDate(popup.day.checkIn ?? popup.day.date)}`}
+          size="cal"
+          align="left"
+        >
           {popup.day.bookingRequestId && (
             <p className="text-[0.72rem] text-ink-soft mb-1 -mt-1">Aus einer Buchungsanfrage übernommen.</p>
           )}
@@ -275,8 +366,82 @@ export default function Kalender({
         </Modal>
       )}
 
+      {popup?.kind === "chooseApartment" && (
+        <Modal onClose={() => setPopup(null)} title={`${formatDate(popup.date)} — Wohnung wählen`} size="cal" align="left">
+          <p className="text-[0.8rem] text-ink-soft mb-3 mt-0">Welche Wohnung ist an diesem Tag belegt?</p>
+          <ul className="space-y-2 m-0 p-0 list-none">
+            {apartments.map((a) => {
+              const occupied = Boolean(findDay(a.id, popup.date));
+              return (
+                <li key={a.id}>
+                  <button
+                    type="button"
+                    onClick={() => setPopup({ kind: "confirmChoice", date: popup.date, apartmentId: a.id })}
+                    className={`w-full text-left flex items-center justify-between gap-2 px-4 py-2.5 border rounded-[2px] font-sans text-[0.85rem] transition-colors cursor-pointer ${
+                      occupied
+                        ? "border-[#a13c2f]/30 text-[#a13c2f] hover:bg-[#a13c2f]/10"
+                        : "border-line text-ink hover:border-forest"
+                    }`}
+                  >
+                    {a.name}
+                    <span className="text-[0.68rem] tracking-[0.06em] uppercase opacity-70">
+                      {occupied ? "Belegt" : "Frei"}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </Modal>
+      )}
+
+      {popup?.kind === "confirmChoice" && (
+        <Modal
+          onClose={() => setPopup(null)}
+          title={`${apartmentName.get(popup.apartmentId) ?? "Wohnung"} — ${formatDate(popup.date)}`}
+          size="cal"
+          align="left"
+        >
+          {(() => {
+            const occupied = Boolean(findDay(popup.apartmentId, popup.date));
+            return (
+              <>
+                <p className="text-[0.8rem] text-ink-soft mb-4 mt-0">
+                  Aktuell{" "}
+                  <strong className={occupied ? "text-[#a13c2f]" : "text-forest"}>
+                    {occupied ? "belegt" : "frei"}
+                  </strong>
+                  . „Bestätigen&ldquo; schaltet den Status direkt um, ohne weitere Angaben — für Details
+                  „Buchungsinformationen&ldquo; wählen.
+                </p>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <button
+                    type="button"
+                    disabled={isToggling}
+                    onClick={() => {
+                      toggleQuick(popup.apartmentId, popup.date);
+                      setPopup(null);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-forest text-white font-sans text-[0.72rem] tracking-[0.08em] uppercase rounded-[2px] hover:bg-forest-dark transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    Bestätigen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openBookingInfo(popup.apartmentId, popup.date)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-line text-ink-soft font-sans text-[0.72rem] tracking-[0.08em] uppercase rounded-[2px] hover:text-forest hover:border-forest transition-colors cursor-pointer"
+                  >
+                    Buchungsinformationen
+                  </button>
+                </div>
+              </>
+            );
+          })()}
+        </Modal>
+      )}
+
       {popup?.kind === "overview" && (
-        <Modal onClose={() => setPopup(null)} title={formatDate(popup.date)}>
+        <Modal onClose={() => setPopup(null)} title={formatDate(popup.date)} size="cal" align="left">
           <ul className="space-y-3 m-0 p-0 list-none">
             {(multiByDate.get(popup.date) ?? []).map((d) => (
               <li key={d.id} className="border border-line rounded-[2px] p-3">

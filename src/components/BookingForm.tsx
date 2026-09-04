@@ -89,11 +89,13 @@ export default function BookingForm({
     if (!form) return;
 
     const get = (n: string) => (form.elements.namedItem(n) as HTMLInputElement | null)?.value.trim() ?? "";
-    const name = get("name");
+    const vorname = get("vorname");
+    const nachname = get("nachname");
+    const name = [vorname, nachname].filter(Boolean).join(" ");
     const email = get("email");
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-    if (!name || !emailOk) {
+    if (!vorname || !emailOk) {
       setStatus({ type: "error", message: dict.errorValidation });
       return;
     }
@@ -153,9 +155,15 @@ export default function BookingForm({
 
   const contactFields = (
     <>
-      <div className="mb-4">
-        <label htmlFor="name" className={labelClass}>{dict.labelName}</label>
-        <input type="text" id="name" name="name" required className={inputClass} />
+      <div className="grid grid-cols-2 gap-3.5 mb-4">
+        <div>
+          <label htmlFor="vorname" className={labelClass}>{dict.labelVorname}</label>
+          <input type="text" id="vorname" name="vorname" required className={inputClass} />
+        </div>
+        <div>
+          <label htmlFor="nachname" className={labelClass}>{dict.labelNachname}</label>
+          <input type="text" id="nachname" name="nachname" className={inputClass} />
+        </div>
       </div>
       <div className="mb-4">
         <label htmlFor="email" className={labelClass}>{dict.labelEmail}</label>

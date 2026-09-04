@@ -118,8 +118,45 @@ export const DEFAULT_INVOICE_SETTINGS: InvoiceSettings = {
   footerNote: "",
 };
 
-export function resolveInvoiceSettings(raw: Partial<InvoiceSettings> | null | undefined): InvoiceSettings {
-  return { ...DEFAULT_INVOICE_SETTINGS, ...(raw ?? {}) };
+export function resolveInvoiceSettings(
+  raw: Partial<InvoiceSettings> | null | undefined,
+  base: InvoiceSettings = DEFAULT_INVOICE_SETTINGS,
+): InvoiceSettings {
+  return { ...base, ...(raw ?? {}) };
+}
+
+/**
+ * Zerlegt die einzeilige Kontaktadresse ("Straße Hnr., PLZ Ort") in Adresszeile,
+ * PLZ und Ort. Passt das Format nicht, landet die ganze Zeile in `addressLine`.
+ */
+function splitContactAddress(address: string): { addressLine: string; zip: string; city: string } {
+  const match = address.match(/^(.*),\s*(\d{4,6})\s+(.*)$/);
+  if (!match) return { addressLine: address, zip: "", city: "" };
+  return { addressLine: match[1].trim(), zip: match[2].trim(), city: match[3].trim() };
+}
+
+/**
+ * Rechnungssteller-Grundlage aus den echten, im Adminpanel unter „Einstellungen"
+ * (→ Impressum-Kontaktdaten) gepflegten Angaben — statt der festen Platzhalter aus
+ * `BUSINESS`. Wird als `base` in `resolveInvoiceSettings()` verwendet, damit die
+ * Rechnung automatisch die richtigen Aussteller-Kontaktdaten zeigt, solange die
+ * separaten „Rechnungsdaten"-Felder unter Einstellungen noch nicht eigens gepflegt
+ * wurden.
+ */
+export function invoiceSettingsBaseFromSite(site: {
+  contactAddress: string;
+  contactPhone: string;
+  contactEmail: string;
+}): InvoiceSettings {
+  const { addressLine, zip, city } = splitContactAddress(site.contactAddress);
+  return {
+    ...DEFAULT_INVOICE_SETTINGS,
+    issuerAddressLine: addressLine || DEFAULT_INVOICE_SETTINGS.issuerAddressLine,
+    issuerZip: zip || DEFAULT_INVOICE_SETTINGS.issuerZip,
+    issuerCity: city || DEFAULT_INVOICE_SETTINGS.issuerCity,
+    issuerPhone: site.contactPhone || DEFAULT_INVOICE_SETTINGS.issuerPhone,
+    issuerEmail: site.contactEmail || DEFAULT_INVOICE_SETTINGS.issuerEmail,
+  };
 }
 
 export function buildNextInvoiceNumber(settings: InvoiceSettings): string {

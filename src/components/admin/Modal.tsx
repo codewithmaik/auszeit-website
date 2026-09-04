@@ -7,6 +7,8 @@ const SIZE_CLASS = {
   md: "max-w-[480px]",
   lg: "max-w-[680px]",
   xl: "max-w-[960px]",
+  // 25 % breiter als `md` — für die Kalender-Pop-ups (siehe `align="left"`).
+  cal: "max-w-[600px]",
 } as const;
 
 export default function Modal({
@@ -14,11 +16,14 @@ export default function Modal({
   title,
   children,
   size = "md",
+  align = "center",
 }: {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
   size?: keyof typeof SIZE_CLASS;
+  /** "left" rückt das Pop-up mit etwas Abstand an den linken Bildschirmrand statt es zu zentrieren. */
+  align?: "center" | "left";
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -29,7 +34,12 @@ export default function Modal({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+    <div
+      className={`fixed inset-0 z-50 flex items-center p-4 bg-black/50 ${
+        align === "left" ? "justify-start pl-6 max-[640px]:pl-4" : "justify-center"
+      }`}
+      onClick={onClose}
+    >
       <div
         className={`bg-white rounded-[3px] shadow-[0_24px_60px_-20px_rgba(0,0,0,0.4)] w-full ${SIZE_CLASS[size]} max-h-[88vh] overflow-y-auto`}
         onClick={(e) => e.stopPropagation()}

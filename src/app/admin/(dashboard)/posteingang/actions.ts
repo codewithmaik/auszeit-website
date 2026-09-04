@@ -23,6 +23,7 @@ import {
   formatEuro,
   formatInvoiceDate,
   resolveInvoiceSettings,
+  invoiceSettingsBaseFromSite,
   type InvoiceInput,
 } from "@/lib/invoice";
 import { renderInvoicePdf } from "@/components/invoice/render";
@@ -301,7 +302,10 @@ async function originFromHeaders(): Promise<string> {
 /** Fortlaufende Nummer vergeben + Zähler in den Einstellungen hochsetzen. */
 async function claimNextInvoiceNumber(): Promise<string> {
   const row = await db.query.siteSettings.findFirst();
-  const resolved = resolveInvoiceSettings(row?.invoiceSettings ?? null);
+  const resolved = resolveInvoiceSettings(
+    row?.invoiceSettings ?? null,
+    row ? invoiceSettingsBaseFromSite(row) : undefined,
+  );
   const number = buildNextInvoiceNumber(resolved);
   const nextSettings = { ...resolved, invoiceNumberNextSeq: resolved.invoiceNumberNextSeq + 1 };
 
@@ -321,7 +325,7 @@ async function claimNextInvoiceNumber(): Promise<string> {
   return number;
 }
 
-export type InvoiceFlowMode = "draft" | "send" | "share";
+export type InvoiceFlowMode = "send" | "download";
 
 export type InvoiceFlowResult =
   | { ok: true; mode: InvoiceFlowMode; shareUrl: string; pdfUrl: string | null; delivered: boolean }
@@ -329,10 +333,10 @@ export type InvoiceFlowResult =
 
 /**
  * „Als gebucht" MIT vorbereiteter Rechnung. Schreibt zuerst die Buchung
- * (Kalendertage + Anfrage-Status), legt dann die Rechnung an:
- * - draft: Entwurf, kein PDF, keine Nummer
- * - send:  finalisiert (Nummer, Datum, PDF im Blob), E-Mail an den Gast
- * - share: finalisiert (Nummer, Datum, PDF im Blob), gibt den Share-Link zurück
+ * (Kalendertage + Anfrage-Status), legt dann die finalisierte Rechnung an
+ * (Nummer, Datum, PDF im Blob):
+ * - send:     zusätzlich E-Mail an den Gast
+ * - download: kein Versand, nur die fertige Rechnung zum Herunterladen
  */
 export async function confirmBookingWithInvoice(
   requestId: number,
@@ -350,32 +354,30 @@ export async function confirmBookingWithInvoice(
     }
 
     const row = await db.query.siteSettings.findFirst();
-    const settings = resolveInvoiceSettings(row?.invoiceSettings ?? null);
+    const settings = resolveInvoiceSettings(
+      row?.invoiceSettings ?? null,
+      row ? invoiceSettingsBaseFromSite(row) : undefined,
+    );
 
     const token = crypto.randomUUID().replace(/-/g, "");
     let data = buildInvoiceData(invoiceInput, settings);
-    let invoiceNumber: string | null = null;
-    let issuedAt: string | null = null;
-    let pdfUrl: string | null = null;
 
-    if (mode !== "draft") {
-      invoiceNumber = await claimNextInvoiceNumber();
-      issuedAt = new Date().toISOString().split("T")[0];
-      data = { ...data, invoiceNumber, issueDate: issuedAt };
-      const buffer = await renderInvoicePdf(data);
-      const blob = await put(`invoices/${token}/${invoiceNumber}.pdf`, buffer, {
-        access: "public",
-        contentType: "application/pdf",
-      });
-      pdfUrl = blob.url;
-    }
+    const invoiceNumber = await claimNextInvoiceNumber();
+    const issuedAt = new Date().toISOString().split("T")[0];
+    data = { ...data, invoiceNumber, issueDate: issuedAt };
+    const buffer = await renderInvoicePdf(data);
+    const blob = await put(`invoices/${token}/${invoiceNumber}.pdf`, buffer, {
+      access: "public",
+      contentType: "application/pdf",
+    });
+    const pdfUrl = blob.url;
 
     const [invoice] = await db
       .insert(invoices)
       .values({
         bookingRequestId: requestId,
         invoiceNumber,
-        status: mode === "draft" ? "entwurf" : "final",
+        status: "final",
         token,
         data,
         pdfUrl,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Mail, Phone, Send, StickyNote, Check, X as XIcon, Archive, RotateCcw, Loader2 } from "lucide-react";
+import { Mail, Phone, Send, StickyNote, Check, X as XIcon, Archive, RotateCcw, Loader2, FileEdit } from "lucide-react";
 import { STATUS_LABELS, STATUS_BADGE_CLASS, formatDate } from "@/lib/booking";
 import type { BookingRequest, BookingRequestStatus, BookingMessage } from "@/db/schema";
 import { sendThreadReply, logIncomingMessage, setRequestStatus } from "./actions";
@@ -12,6 +12,87 @@ const chipBtn =
   "inline-flex items-center gap-1.5 px-3 py-1.5 border border-line text-ink-soft font-sans text-[0.68rem] tracking-[0.06em] uppercase rounded-[2px] hover:text-forest hover:border-forest transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
 const primaryBtn =
   "inline-flex items-center gap-1.5 px-3.5 py-2 bg-forest text-white font-sans text-[0.7rem] tracking-[0.06em] uppercase rounded-[2px] hover:bg-forest-dark transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
+
+type ReplyTemplate = { subject: string; body: string };
+
+/**
+ * Vorlagen für die erste Antwort auf eine Buchungsanfrage — „Bestätigen" fragt
+ * zusätzlich die vollständigen Kontakt-/Rechnungsdaten des Gasts ab, damit im
+ * Anschluss die Rechnung erstellt werden kann.
+ */
+function buildReplyTemplate(kind: "confirm" | "reject", request: BookingRequest): ReplyTemplate {
+  const firstName = request.name.split(" ")[0] || request.name;
+  const zeitraum = `${formatDate(request.checkIn)} – ${formatDate(request.checkOut)}`;
+  const en = request.locale === "en";
+
+  if (kind === "confirm") {
+    return en
+      ? {
+          subject: "Your booking request at AUSZEIT — confirmed",
+          body: [
+            `Hello ${firstName},`,
+            "",
+            `wonderful news — we're happy to confirm your stay from ${zeitraum}${request.guests ? ` (${request.guests})` : ""}.`,
+            "",
+            "To prepare your invoice, could you please reply with your full billing details:",
+            "- Full name",
+            "- Address (street, house number, postcode, city)",
+            "- A different email address for the invoice, if applicable",
+            "",
+            "As soon as we have these details, we'll send the invoice over. We're looking forward to having you!",
+            "",
+            "Best regards,",
+            "AUSZEIT",
+          ].join("\n"),
+        }
+      : {
+          subject: "Ihre Buchungsanfrage bei AUSZEIT — Bestätigung",
+          body: [
+            `Hallo ${firstName},`,
+            "",
+            `sehr gerne bestätigen wir Ihnen den Zeitraum vom ${zeitraum}${request.guests ? ` (${request.guests})` : ""}.`,
+            "",
+            "Damit wir Ihnen im Anschluss die Rechnung zusenden können, benötigen wir noch Ihre vollständigen Daten:",
+            "- Vollständiger Name",
+            "- Anschrift (Straße, Hausnummer, PLZ, Ort)",
+            "- Ggf. abweichende E-Mail-Adresse für den Rechnungsversand",
+            "",
+            "Bitte antworten Sie einfach auf diese E-Mail mit den Angaben. Wir freuen uns auf Ihren Aufenthalt!",
+            "",
+            "Herzliche Grüße",
+            "AUSZEIT",
+          ].join("\n"),
+        };
+  }
+
+  return en
+    ? {
+        subject: "Your booking request at AUSZEIT",
+        body: [
+          `Hello ${firstName},`,
+          "",
+          `thank you for your interest in AUSZEIT. Unfortunately we're unable to offer the requested period from ${zeitraum} — [reason].`,
+          "",
+          "If you'd like, we're happy to suggest an alternative date — just get in touch.",
+          "",
+          "Best regards,",
+          "AUSZEIT",
+        ].join("\n"),
+      }
+    : {
+        subject: "Ihre Buchungsanfrage bei AUSZEIT",
+        body: [
+          `Hallo ${firstName},`,
+          "",
+          `vielen Dank für Ihr Interesse an AUSZEIT. Leider können wir Ihnen den gewünschten Zeitraum vom ${zeitraum} nicht anbieten — [Grund ergänzen].`,
+          "",
+          "Bei Interesse schlagen wir Ihnen gerne einen Alternativtermin vor — melden Sie sich einfach bei uns.",
+          "",
+          "Herzliche Grüße",
+          "AUSZEIT",
+        ].join("\n"),
+      };
+}
 
 function fmtDateTime(d: Date | string): string {
   const date = typeof d === "string" ? new Date(d) : d;
@@ -71,6 +152,14 @@ export default function RequestThread({
           : "Antwort im Verlauf gespeichert — Zustellung an den Gast erst nach Domain-Verifizierung.",
       });
     });
+  }
+
+  function applyTemplate(kind: "confirm" | "reject") {
+    const template = buildReplyTemplate(kind, request);
+    setSubject(template.subject);
+    setBody(template.body);
+    setFeedback(null);
+    composerRef.current?.focus();
   }
 
   function submitLog() {
@@ -163,6 +252,17 @@ export default function RequestThread({
       {/* Antwort-Composer */}
       <div className="border-t border-line pt-4">
         <h3 className="text-[0.8rem] tracking-[0.08em] uppercase text-ink-soft mb-2">Per E-Mail antworten</h3>
+        <div className="flex items-center gap-2.5 flex-wrap mb-2.5">
+          <span className="text-[0.68rem] tracking-[0.06em] uppercase text-ink-soft">Vorlage:</span>
+          <button type="button" onClick={() => applyTemplate("confirm")} disabled={isPending} className={chipBtn}>
+            <FileEdit className="w-3.5 h-3.5" strokeWidth={1.5} />
+            Bestätigen
+          </button>
+          <button type="button" onClick={() => applyTemplate("reject")} disabled={isPending} className={chipBtn}>
+            <FileEdit className="w-3.5 h-3.5" strokeWidth={1.5} />
+            Ablehnen
+          </button>
+        </div>
         <input
           type="text"
           value={subject}

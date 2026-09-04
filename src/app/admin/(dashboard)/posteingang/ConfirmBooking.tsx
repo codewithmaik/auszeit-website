@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Plus, Trash2, ArrowLeft, Check, FileText, Send, Link2, Loader2, Copy } from "lucide-react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { Plus, Trash2, ArrowLeft, Check, FileText, Send, Download, Loader2 } from "lucide-react";
 import type { BookingRequest } from "@/db/schema";
 import type { BookingFormData } from "@/lib/booking";
 import {
@@ -41,8 +41,8 @@ export default function ConfirmBooking({
   const [view, setView] = useState<View>("booking");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const downloadLinkRef = useRef<HTMLAnchorElement>(null);
 
   // Buchungsfelder
   const [apartmentId, setApartmentId] = useState(request.apartmentId != null ? String(request.apartmentId) : "");
@@ -169,13 +169,18 @@ export default function ConfirmBooking({
         setError(res.error);
         return;
       }
-      if (mode === "share") {
-        setShareUrl(res.shareUrl);
+      if (mode === "download") {
+        setDownloadUrl(res.pdfUrl ?? res.shareUrl);
         return;
       }
       onDone();
     });
   }
+
+  // Löst den Download automatisch aus, sobald die PDF fertig ist.
+  useEffect(() => {
+    if (downloadUrl) downloadLinkRef.current?.click();
+  }, [downloadUrl]);
 
   // ---- Ansicht: Buchung ----
   if (view === "booking") {
@@ -248,8 +253,7 @@ export default function ConfirmBooking({
         </label>
         {prepareInvoice && (
           <p className="text-[0.75rem] text-ink-soft m-0 -mt-1">
-            Kalender und Status werden erst nach „Entwurf speichern&ldquo;, „Absenden&ldquo; oder „Link teilen&ldquo;
-            aktualisiert.
+            Kalender und Status werden erst nach „PDF herunterladen&ldquo; oder „Absenden&ldquo; aktualisiert.
           </p>
         )}
 
@@ -410,38 +414,36 @@ export default function ConfirmBooking({
     );
   }
 
-  // ---- Ansicht: Vorschau + 4 Aktionen ----
+  // ---- Ansicht: Vorschau + Aktionen ----
   return (
     <div className="space-y-4">
-      {shareUrl ? (
+      {downloadUrl ? (
         <div className="rounded-[3px] border border-forest/30 bg-forest/[0.06] p-4">
-          <p className="text-[0.85rem] text-ink m-0 mb-2">Buchung übernommen. Teilbarer Link zur Rechnung:</p>
-          <div className="flex items-center gap-2">
-            <input readOnly value={shareUrl} className={`${field} text-[0.8rem]`} onFocus={(e) => e.currentTarget.select()} />
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard?.writeText(shareUrl).then(() => {
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                });
-              }}
-              className={ghostBtn}
-            >
-              <Copy className="w-3.5 h-3.5" strokeWidth={1.5} />
-              {copied ? "Kopiert" : "Kopieren"}
+          <p className="text-[0.85rem] text-ink m-0 mb-2">
+            Buchung übernommen. Der Download der Rechnung startet automatisch.
+          </p>
+          <a
+            ref={downloadLinkRef}
+            href={downloadUrl}
+            target="_blank"
+            rel="noreferrer"
+            download
+            className="text-forest text-[0.82rem] hover:underline break-all"
+          >
+            {downloadUrl}
+          </a>
+          <div>
+            <button type="button" onClick={onDone} className={`${primaryBtn} mt-3`}>
+              Fertig
             </button>
           </div>
-          <button type="button" onClick={onDone} className={`${primaryBtn} mt-3`}>
-            Fertig
-          </button>
         </div>
       ) : (
         <>
-          <div className="border border-line rounded-[2px] bg-[#f3f3ec] overflow-auto max-h-[52vh] p-4">
+          <div className="border border-line rounded-[2px] bg-[#f3f3ec] overflow-auto max-h-[80vh] p-4 flex justify-center">
             <div
-              style={{ width: "210mm", transformOrigin: "top left" }}
-              className="mx-auto shadow-[0_10px_30px_-12px_rgba(0,0,0,0.3)] scale-[0.62] max-[720px]:scale-[0.42]"
+              style={{ width: "210mm" }}
+              className="shadow-[0_10px_30px_-12px_rgba(0,0,0,0.3)] shrink-0 [zoom:0.92] max-[720px]:[zoom:0.5]"
             >
               <InvoiceDocument data={previewData} />
             </div>
@@ -453,15 +455,13 @@ export default function ConfirmBooking({
             <button type="button" onClick={() => setView("invoice")} disabled={isPending} className={ghostBtn}>
               <ArrowLeft className="w-3.5 h-3.5" strokeWidth={2} /> Anpassen
             </button>
-            <button type="button" onClick={() => runInvoiceFlow("draft")} disabled={isPending} className={ghostBtn}>
-              <FileText className="w-3.5 h-3.5" strokeWidth={1.75} /> Entwurf speichern
+            <button type="button" onClick={() => runInvoiceFlow("download")} disabled={isPending} className={ghostBtn}>
+              {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" strokeWidth={1.75} />}
+              PDF herunterladen
             </button>
             <button type="button" onClick={() => runInvoiceFlow("send")} disabled={isPending} className={primaryBtn}>
               {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" strokeWidth={2} />}
               Absenden
-            </button>
-            <button type="button" onClick={() => runInvoiceFlow("share")} disabled={isPending} className={ghostBtn}>
-              <Link2 className="w-3.5 h-3.5" strokeWidth={1.75} /> Link teilen
             </button>
           </div>
         </>

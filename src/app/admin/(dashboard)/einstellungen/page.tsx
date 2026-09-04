@@ -129,7 +129,10 @@ export default async function AdminSettingsPage() {
           Grundlage für den Rechnungsgenerator im Posteingang (Aussteller, Steuer, Bank, Nummernkreis).
         </p>
 
-        <h3 className="text-[0.8rem] tracking-[0.08em] uppercase text-ink-soft mb-3">Aussteller</h3>
+        <h3 className="text-[0.8rem] tracking-[0.08em] uppercase text-ink-soft mb-1">Aussteller</h3>
+        <p className="text-[0.78rem] text-ink-soft mb-3 mt-0">
+          Vorausgefüllt aus den Kontaktdaten oben (Impressum) — hier nur bei Bedarf abweichend anpassen.
+        </p>
         <div className="grid grid-cols-2 gap-3.5 mb-4 max-[560px]:grid-cols-1">
           <div className="col-span-2 max-[560px]:col-span-1">
             <label htmlFor="issuerName" className={labelClass}>Name / Firma</label>
