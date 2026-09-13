@@ -32,7 +32,7 @@ function buildReplyTemplate(kind: "confirm" | "reject", request: BookingRequest)
           body: [
             `Hello ${firstName},`,
             "",
-            `wonderful news — we're happy to confirm your stay from ${zeitraum}${request.guests ? ` (${request.guests})` : ""}.`,
+            `Wonderful news — we're happy to confirm your stay from ${zeitraum}${request.guests ? ` (${request.guests})` : ""}.`,
             "",
             "To prepare your invoice, could you please reply with your full billing details:",
             "- Full name",
@@ -71,7 +71,7 @@ function buildReplyTemplate(kind: "confirm" | "reject", request: BookingRequest)
         body: [
           `Hello ${firstName},`,
           "",
-          `thank you for your interest in AUSZEIT. Unfortunately we're unable to offer the requested period from ${zeitraum} — [reason].`,
+          `Thank you for your interest in AUSZEIT. Unfortunately we're unable to offer the requested period from ${zeitraum} — [reason].`,
           "",
           "If you'd like, we're happy to suggest an alternative date — just get in touch.",
           "",

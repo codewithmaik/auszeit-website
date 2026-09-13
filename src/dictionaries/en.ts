@@ -234,6 +234,8 @@ export const dictionary: Dictionary = {
     heroText:
       "These reviews are placeholder examples. Replace them with real feedback from your guests once it's available.",
     ratingLabel: "reviews",
+    quoteOpen: "“",
+    quoteClose: "”",
     reviews: [
       {
         text: "A beautiful retreat with a stunning view of the Moselle. The apartment was lovingly furnished and very clean.",

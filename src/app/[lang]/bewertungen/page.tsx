@@ -6,14 +6,17 @@ import Eyebrow from "@/components/Eyebrow";
 import Divider from "@/components/Divider";
 import PageHero from "@/components/PageHero";
 import Reveal from "@/components/Reveal";
-import { isLocale, localeHref } from "@/lib/i18n";
+import { isLocale, localeHref, localeAlternates } from "@/lib/i18n";
 import { getDictionary } from "@/dictionaries";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/bewertungen">): Promise<Metadata> {
   const { lang } = await params;
   if (!isLocale(lang)) return {};
   const dict = getDictionary(lang);
-  return { title: dict.bewertungen.metaTitle, alternates: { canonical: localeHref(lang, "/bewertungen") } };
+  return {
+    title: dict.bewertungen.metaTitle,
+    alternates: { canonical: localeHref(lang, "/bewertungen"), languages: localeAlternates("/bewertungen") },
+  };
 }
 
 function Stars() {
@@ -42,7 +45,9 @@ export default async function BewertungenPage({ params }: PageProps<"/[lang]/bew
         <div className="max-w-[1180px] mx-auto px-8">
           <Reveal className="flex items-center justify-center gap-3 mb-14 text-center">
             <Stars />
-            <span className="text-forest font-serif text-[1.1rem]">5,0</span>
+            <span className="text-forest font-serif text-[1.1rem]">
+              {new Intl.NumberFormat(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(5)}
+            </span>
             <span className="text-ink-soft text-[0.9rem]">
               · {t.reviews.length} {t.ratingLabel}
             </span>
@@ -57,7 +62,11 @@ export default async function BewertungenPage({ params }: PageProps<"/[lang]/bew
               >
                 <Quote className="w-6 h-6 text-gold/40 mb-2" strokeWidth={1.5} />
                 <Stars />
-                <p className="text-[0.92rem]">&bdquo;{r.text}&ldquo;</p>
+                <p className="text-[0.92rem]">
+                  {t.quoteOpen}
+                  {r.text}
+                  {t.quoteClose}
+                </p>
                 <div className="font-serif text-forest text-[0.95rem]">— {r.name}</div>
               </Reveal>
             ))}

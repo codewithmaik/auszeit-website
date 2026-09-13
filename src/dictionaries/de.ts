@@ -232,6 +232,8 @@ export const dictionary = {
     heroText:
       "Diese Bewertungen sind Platzhalter-Beispiele. Ersetzen Sie sie mit echten Rückmeldungen Ihrer Gäste, sobald diese vorliegen.",
     ratingLabel: "Bewertungen",
+    quoteOpen: "„",
+    quoteClose: "“",
     reviews: [
       {
         text: "Ein wunderschöner Rückzugsort mit traumhaftem Blick auf die Mosel. Die Wohnung war liebevoll eingerichtet und sehr sauber.",
