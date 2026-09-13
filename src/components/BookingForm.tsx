@@ -110,6 +110,7 @@ export default function BookingForm({
         guests: get("gaeste"),
         message: get("nachricht"),
         locale: locale === "en" ? "en" : "de",
+        website: get("website"),
       });
       if (res.ok) {
         setStatus({ type: "success", message: dict.successSent });
@@ -178,6 +179,14 @@ export default function BookingForm({
       <div className="mb-4">
         <label htmlFor="nachricht" className={labelClass}>{dict.labelNachricht}</label>
         <textarea id="nachricht" name="nachricht" rows={3} className={inputClass} />
+      </div>
+      {/* Honeypot gegen einfache Formular-Bots: für Menschen unsichtbar und per
+          aria-hidden/tabIndex aus Tastatur-/Screenreader-Bedienung ausgeschlossen,
+          Bots füllen es aber oft blind aus. Server prüft in actions.ts, dass es
+          leer bleibt. */}
+      <div className="absolute -left-[9999px] w-px h-px overflow-hidden" aria-hidden="true">
+        <label htmlFor="website">Website</label>
+        <input type="text" id="website" name="website" tabIndex={-1} autoComplete="off" />
       </div>
     </>
   );

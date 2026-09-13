@@ -36,7 +36,7 @@ export default function MapEmbed({
         src={src}
         className="w-full h-[340px] border-0"
         loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
+        referrerPolicy="strict-origin-when-cross-origin"
       />
     );
   }

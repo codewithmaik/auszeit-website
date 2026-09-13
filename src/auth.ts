@@ -2,6 +2,12 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 
+// Öffentlich bekannter Beispiel-Hash aus der bcrypt-Dokumentation (Hash von
+// "password") — dient nur als Vergleichsziel, wenn keine E-Mail passt, damit
+// bcrypt.compare() immer läuft. Der Klartext ist irrelevant, da dieser Zweig
+// ohnehin nie zu einem erfolgreichen Login führt.
+const DUMMY_HASH = "$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: "jwt" },
   pages: { signIn: "/admin/login" },
@@ -36,12 +42,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           },
         ];
 
-        for (const account of accounts) {
-          if (!account.email || !account.hash) continue;
-          if (email.toLowerCase() !== account.email.toLowerCase()) continue;
-          if (await bcrypt.compare(password, account.hash)) {
-            return { id: account.id, email: account.email, name: account.name, role: account.role };
-          }
+        // bcrypt.compare läuft bewusst IMMER genau einmal, auch wenn keine
+        // E-Mail passt: ein `continue` vor dem bcrypt-Aufruf bei falscher
+        // E-Mail wäre spürbar schneller als bei falschem Passwort (bcrypt ist
+        // absichtlich langsam) und würde per Timing-Angriff verraten, welche
+        // E-Mail-Adressen überhaupt gültige Accounts sind.
+        const match = accounts.find(
+          (a) => a.email && a.hash && email.toLowerCase() === a.email.toLowerCase(),
+        );
+        const ok = await bcrypt.compare(password, match?.hash ?? DUMMY_HASH);
+        if (match?.hash && ok) {
+          return { id: match.id, email: match.email!, name: match.name, role: match.role };
         }
 
         return null;

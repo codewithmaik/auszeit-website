@@ -77,7 +77,43 @@ einplanen, Git-Befehle im Hintergrund laufen lassen statt auf Timeout zu prüfen
   alle ~30 Schriftdateien. Jetzt `preload: false` auf allen zwölf; die tatsächlich immer
   verwendeten Standardschriften (Playfair Display/Jost in `app/layout.tsx`) unverändert.
 
-**Noch nicht geprüft:** Punkt 4 (Security) steht noch aus.
+**4) Security — geprüft, mehrere reale Lücken gefunden & behoben:**
+- `next.config.ts` hatte bislang **gar keine** Security-Header. Neue `headers()`:
+  CSP, `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`,
+  `Permissions-Policy`, HSTS. CSP bewusst mit `'unsafe-inline'` für
+  script-/style-src (Next.js' eigene Hydration-Inline-Scripts brauchen das ohne
+  Nonce-Infrastruktur; die App nutzt außerdem sitezweit inline `style={{...}}`-
+  Overrides) — echter Zugewinn trotzdem über `object-src 'none'`,
+  `frame-ancestors 'none'`, `base-uri 'self'` und eine feste Allowlist für
+  img-/frame-/connect-src. Ein strict-CSP-Umbau mit Nonces wäre der nächste
+  Schritt, sobald Live-Browser-Verifikation in einer Session möglich ist.
+- `auth.ts`: Timing-Seitenkanal im Login — bei falscher E-Mail wurde
+  `bcrypt.compare()` gar nicht erst aufgerufen (schnelle Antwort), bei falschem
+  Passwort schon (bcrypt ist absichtlich langsam) → per Antwortzeit ließ sich
+  erraten, welche E-Mail-Adressen überhaupt gültige Accounts sind. Jetzt läuft
+  `bcrypt.compare()` immer genau einmal (gegen einen festen Dummy-Hash, wenn
+  keine E-Mail passt).
+- Öffentliches Kontaktformular (`kontakt/actions.ts`, `submitBookingRequest`)
+  hatte **keinerlei** Spam-/Missbrauchsschutz — unauthentifizierter Server-Action-
+  Endpoint, der beliebig oft DB-Zeilen anlegen und Admin-Benachrichtigungsmails
+  auslösen konnte, ohne Längenbegrenzung auf irgendeinem Feld. Jetzt: Honeypot-
+  Feld (unsichtbar für Menschen, `BookingForm.tsx`) lässt Bot-Anfragen still
+  verpuffen, plus Max-Längen auf allen Textfeldern. Kein echtes Rate-Limiting
+  (bräuchte z. B. Vercel Firewall/BotID — eigenständige Produktentscheidung,
+  nicht in dieser Session umgesetzt).
+- `MapEmbed.tsx`: `referrerPolicy` von `no-referrer-when-downgrade` (sendet die
+  volle URL an Google) auf `strict-origin-when-cross-origin` verschärft —
+  konsistent mit dem in der Datenschutzerklärung beschriebenen Anspruch,
+  möglichst wenig an Google zu übertragen.
+- Geprüft und unauffällig befunden: keine rohen SQL-Queries (Drizzle-ORM überall
+  parametrisiert), kein `dangerouslySetInnerHTML` mit Nutzereingaben (kein
+  Stored-XSS-Pfad für Name/Nachricht aus dem Kontaktformular im Adminpanel),
+  Rechnungs-Tokens nutzen `crypto.randomUUID()` (unratbar), `.env.local` korrekt
+  in `.gitignore`, keine sonstigen API-Routen außer NextAuths eigener.
+- Nicht behoben (niedrigere Priorität, admin-only): Foto-Upload
+  (`wohnungen/actions.ts`) validiert weder Content-Type noch Dateigröße vor dem
+  Speichern in Vercel Blob — nur für eingeloggte Admins erreichbar, daher
+  geringeres Risiko, aber bei Gelegenheit nachrüstbar.
 
 **Bekannte, bewusst nicht angefasste Punkte (weiterhin offen, brauchen User-Input):**
 - Kontaktdaten/Impressum-Platzhalter (Bonn/„Norbert Winkel", `factory-defaults.ts`) — unverändert,

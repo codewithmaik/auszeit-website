@@ -15,11 +15,14 @@ export type BookingRequestPayload = {
   guests: string;
   message: string;
   locale: "de" | "en";
+  /** Honeypot: unsichtbares Formularfeld, das nur Bots ausfüllen (siehe BookingForm.tsx). */
+  website?: string;
 };
 
 export type SubmitResult = { ok: true } | { ok: false; error: string };
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const cap = (s: string, max: number) => s.slice(0, max);
 
 /**
  * Nimmt eine Anfrage aus dem öffentlichen Kontaktformular entgegen:
@@ -28,8 +31,14 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
  * E-Mail. E-Mail-Fehler lassen die Anfrage nie scheitern.
  */
 export async function submitBookingRequest(payload: BookingRequestPayload): Promise<SubmitResult> {
-  const name = payload.name?.trim() ?? "";
-  const email = payload.email?.trim() ?? "";
+  // Honeypot ausgefüllt -> vermutlich ein Bot. Erfolg vortäuschen (kein
+  // Hinweis, dass die Anfrage verworfen wurde) statt sie zu verarbeiten.
+  if (payload.website?.trim()) {
+    return { ok: true };
+  }
+
+  const name = cap(payload.name?.trim() ?? "", 200);
+  const email = cap(payload.email?.trim() ?? "", 200);
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   if (!name || !emailOk) {
     return { ok: false, error: "Bitte Name und eine gültige E-Mail-Adresse angeben." };
@@ -41,9 +50,9 @@ export async function submitBookingRequest(payload: BookingRequestPayload): Prom
     return { ok: false, error: "Bitte gültige An- und Abreisedaten wählen." };
   }
 
-  const phone = payload.phone?.trim() ?? "";
-  const guests = payload.guests?.trim() ?? "";
-  const message = payload.message?.trim() ?? "";
+  const phone = cap(payload.phone?.trim() ?? "", 50);
+  const guests = cap(payload.guests?.trim() ?? "", 100);
+  const message = cap(payload.message?.trim() ?? "", 5000);
   const locale: "de" | "en" = payload.locale === "en" ? "en" : "de";
 
   const rawPayload: Record<string, string> = {
