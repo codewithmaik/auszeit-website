@@ -2,7 +2,10 @@ import Link from "next/link";
 import { LogOut, LayoutDashboard, Home, Settings, Palette, Inbox } from "lucide-react";
 import { auth, signOut } from "@/auth";
 
-export const metadata = { title: { template: "%s — Admin", default: "Admin" } };
+export const metadata = {
+  title: { template: "%s — Admin", default: "Admin" },
+  robots: { index: false, follow: false },
+};
 
 async function logoutAction() {
   "use server";

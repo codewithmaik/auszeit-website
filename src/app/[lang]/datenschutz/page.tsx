@@ -2,14 +2,17 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import PageHero from "@/components/PageHero";
 import { getSiteSettings } from "@/db/queries";
-import { isLocale, localeHref } from "@/lib/i18n";
+import { isLocale, localeHref, localeAlternates } from "@/lib/i18n";
 import { getDictionary } from "@/dictionaries";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/datenschutz">): Promise<Metadata> {
   const { lang } = await params;
   if (!isLocale(lang)) return {};
   const dict = getDictionary(lang);
-  return { title: dict.datenschutz.metaTitle, alternates: { canonical: localeHref(lang, "/datenschutz") } };
+  return {
+    title: dict.datenschutz.metaTitle,
+    alternates: { canonical: localeHref(lang, "/datenschutz"), languages: localeAlternates("/datenschutz") },
+  };
 }
 
 export const revalidate = 3600;

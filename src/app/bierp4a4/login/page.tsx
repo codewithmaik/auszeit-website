@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { signIn } from "@/auth";
 
-export const metadata = { title: "Webdev-Login" };
+export const metadata = { title: "Webdev-Login", robots: { index: false, follow: false } };
 
 async function loginAction(formData: FormData) {
   "use server";

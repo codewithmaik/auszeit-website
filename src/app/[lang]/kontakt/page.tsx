@@ -9,7 +9,7 @@ import Reveal from "@/components/Reveal";
 import Faq from "@/components/Faq";
 import MapEmbed from "@/components/MapEmbed";
 import { getSiteSettings } from "@/db/queries";
-import { isLocale, localeHref } from "@/lib/i18n";
+import { isLocale, localeHref, localeAlternates } from "@/lib/i18n";
 import { getDictionary } from "@/dictionaries";
 
 const MAPS_SRC =
@@ -19,7 +19,11 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/kontakt">)
   const { lang } = await params;
   if (!isLocale(lang)) return {};
   const dict = getDictionary(lang);
-  return { title: dict.kontakt.metaTitle, alternates: { canonical: localeHref(lang, "/kontakt") } };
+  return {
+    title: dict.kontakt.metaTitle,
+    description: dict.kontakt.heroText,
+    alternates: { canonical: localeHref(lang, "/kontakt"), languages: localeAlternates("/kontakt") },
+  };
 }
 
 export const dynamic = "force-dynamic";
@@ -38,8 +42,24 @@ export default async function KontaktPage({ params }: PageProps<"/[lang]/kontakt
     { icon: Clock, label: t.labelErreichbarkeit, value: t.erreichbarkeitValue },
   ];
 
+  // FAQPage-Schema für Rich Snippets in klassischen Suchergebnissen und als
+  // strukturierte, direkt zitierbare Quelle für KI-Antwortmaschinen (GEO).
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: t.faqItems.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: { "@type": "Answer", text: item.answer },
+    })),
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <PageHero eyebrow={t.heroEyebrow} title={t.heroTitle}>
         {t.heroText}
       </PageHero>

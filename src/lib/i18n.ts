@@ -12,6 +12,13 @@ export function localeHref(locale: Locale, path: string): string {
   return `/${locale}${path}`;
 }
 
+/** Builds the `alternates.languages` map for generateMetadata (hreflang tags), e.g.
+ * localeAlternates("/kontakt") -> { de: "/de/kontakt", en: "/en/kontakt", "x-default": "/de/kontakt" }. */
+export function localeAlternates(path: string): Record<string, string> {
+  const byLocale = Object.fromEntries(locales.map((l) => [l, localeHref(l, path)]));
+  return { ...byLocale, "x-default": localeHref(defaultLocale, path) };
+}
+
 /** Swaps the leading /de or /en segment of a pathname for the target locale. */
 export function swapLocale(pathname: string, target: Locale): string {
   const rest = pathname.replace(/^\/(de|en)(?=\/|$)/, "");

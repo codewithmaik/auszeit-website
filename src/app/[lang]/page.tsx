@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Check, ArrowRight } from "lucide-react";
 import Button from "@/components/Button";
@@ -7,12 +8,22 @@ import Photo from "@/components/Photo";
 import Reveal from "@/components/Reveal";
 import Image from "next/image";
 import { ICONS as BRAND_ICON_SRC } from "@/components/BrandIcon";
-import { isLocale, localeHref } from "@/lib/i18n";
+import { isLocale, localeHref, localeAlternates } from "@/lib/i18n";
 import { getDictionary } from "@/dictionaries";
 import { getSiteSettings } from "@/db/queries";
 import { FEATURE_ICONS, FEATURE_ICON_FRAME, TRUST_ICONS, STEP_ICONS } from "@/lib/home-icons";
 import type { HomeTextStyles } from "@/db/home-content";
 import { fontFamilyFor } from "@/lib/fonts";
+
+// Ohne eigenes generateMetadata erbte die Startseite bislang das `canonical: "/"`
+// des Root-Layouts unverändert für /de UND /en — beide Sprachversionen zeigten
+// also auf die (per proxy.ts weiterleitende, nicht indexierbare) Root-URL statt
+// auf sich selbst. Einzige Seite ohne locale-spezifisches Canonical/hreflang.
+export async function generateMetadata({ params }: PageProps<"/[lang]">): Promise<Metadata> {
+  const { lang } = await params;
+  if (!isLocale(lang)) return {};
+  return { alternates: { canonical: localeHref(lang, "/"), languages: localeAlternates("/") } };
+}
 
 // Wendet einen im Adminpanel gesetzten Textstil-Override (falls vorhanden)
 // auf ein Startseiten-Textfeld an — Feldpfade siehe

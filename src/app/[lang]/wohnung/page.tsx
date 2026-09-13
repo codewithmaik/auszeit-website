@@ -18,7 +18,7 @@ import PageHero from "@/components/PageHero";
 import Reveal from "@/components/Reveal";
 import WohnungenShowcase from "@/components/WohnungenShowcase";
 import { getApartments, getSiteSettings } from "@/db/queries";
-import { isLocale, localeHref } from "@/lib/i18n";
+import { isLocale, localeHref, localeAlternates } from "@/lib/i18n";
 import { getDictionary } from "@/dictionaries";
 
 const AMENITY_ICONS: Record<string, typeof BedDouble> = {
@@ -37,7 +37,11 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/wohnung">)
   const { lang } = await params;
   if (!isLocale(lang)) return {};
   const dict = getDictionary(lang);
-  return { title: dict.wohnung.metaTitle, alternates: { canonical: localeHref(lang, "/wohnung") } };
+  return {
+    title: dict.wohnung.metaTitle,
+    description: dict.wohnung.heroText,
+    alternates: { canonical: localeHref(lang, "/wohnung"), languages: localeAlternates("/wohnung") },
+  };
 }
 
 export const dynamic = "force-dynamic";

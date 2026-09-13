@@ -20,7 +20,7 @@ import BrandIcon from "@/components/BrandIcon";
 import PhotoCard from "@/components/PhotoCard";
 import Reveal from "@/components/Reveal";
 import MapEmbed from "@/components/MapEmbed";
-import { isLocale, localeHref } from "@/lib/i18n";
+import { isLocale, localeHref, localeAlternates } from "@/lib/i18n";
 import { getDictionary } from "@/dictionaries";
 
 const SIGHT_ICONS: Record<string, typeof Landmark> = {
@@ -64,7 +64,11 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/region">):
   const { lang } = await params;
   if (!isLocale(lang)) return {};
   const dict = getDictionary(lang);
-  return { title: dict.region.metaTitle, alternates: { canonical: localeHref(lang, "/region") } };
+  return {
+    title: dict.region.metaTitle,
+    description: dict.region.heroText,
+    alternates: { canonical: localeHref(lang, "/region"), languages: localeAlternates("/region") },
+  };
 }
 
 export default async function RegionPage({ params }: PageProps<"/[lang]/region">) {
