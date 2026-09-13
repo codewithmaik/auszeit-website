@@ -59,7 +59,11 @@ export default async function Footer({ locale, dict }: { locale: Locale; dict: D
             <p className="text-white/68 text-[0.88rem] mb-2">{settings.contactEmail}</p>
           </div>
         </div>
-        <div className="flex justify-between flex-wrap gap-2.5 pt-5 text-[0.78rem] text-white/50">
+        {/* text-white/65 (statt vorher /50, /55, /40): errechneter Kontrast auf
+            --color-forest (#3c4632) lag bei ca. 3.0–4.3:1 und riss damit unter den
+            WCAG-AA-Mindestwert 4.5:1 für normal große Schrift — betraf auch die
+            eingebetteten Links (Impressum, Datenschutz, Cookie-Einstellungen). */}
+        <div className="flex justify-between flex-wrap gap-2.5 pt-5 text-[0.78rem] text-white/65">
           <span>
             © {new Date().getFullYear()} {copyrightSuffix}
           </span>
@@ -75,7 +79,7 @@ export default async function Footer({ locale, dict }: { locale: Locale; dict: D
             <CookieSettingsLink label={legalCookie} />
           </span>
         </div>
-        <div className="pt-5 mt-2 border-t border-white/10 text-center text-[0.72rem] tracking-[0.03em] text-white/40">
+        <div className="pt-5 mt-2 border-t border-white/10 text-center text-[0.72rem] tracking-[0.03em] text-white/65">
           {dict.footer.creditPrefix}{" "}
           <a
             href="https://codewithmaik.com"
@@ -83,7 +87,7 @@ export default async function Footer({ locale, dict }: { locale: Locale; dict: D
             rel="noopener noreferrer"
             className="group inline-flex items-center gap-1 hover:text-white/90 transition-colors duration-300"
           >
-            <span className="relative text-white/55 group-hover:text-gold transition-colors duration-300">
+            <span className="relative text-white/65 group-hover:text-gold transition-colors duration-300">
               codewithmaik
               <span className="absolute left-0 -bottom-0.5 h-px w-full origin-left scale-x-0 bg-gold transition-transform duration-300 ease-out group-hover:scale-x-100" />
             </span>
@@ -99,7 +103,7 @@ export default async function Footer({ locale, dict }: { locale: Locale; dict: D
             rel="noopener noreferrer"
             className="group inline-flex items-center gap-1 hover:text-white/90 transition-colors duration-300"
           >
-            <span className="relative text-white/55 group-hover:text-gold transition-colors duration-300">
+            <span className="relative text-white/65 group-hover:text-gold transition-colors duration-300">
               coding-johnny
               <span className="absolute left-0 -bottom-0.5 h-px w-full origin-left scale-x-0 bg-gold transition-transform duration-300 ease-out group-hover:scale-x-100" />
             </span>

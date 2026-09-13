@@ -27,30 +27,67 @@ import {
 // Abmahnthema. Gleiches Muster wie die bereits bestehenden
 // Playfair_Display/Jost-Importe in src/app/layout.tsx (eigene Instanz hier,
 // da next/font pro Datei-Import eine eigene, isolierte Font-Instanz erzeugt).
-const inter = Inter({ variable: "--font-inter", subsets: ["latin"], weight: ["400", "600", "700"] });
-const lora = Lora({ variable: "--font-lora", subsets: ["latin"], weight: ["400", "600", "700"] });
-const merriweather = Merriweather({ variable: "--font-merriweather", subsets: ["latin"], weight: ["400", "700"] });
-const montserrat = Montserrat({ variable: "--font-montserrat", subsets: ["latin"], weight: ["400", "600", "700"] });
-const nunito = Nunito({ variable: "--font-nunito", subsets: ["latin"], weight: ["400", "600", "700"] });
-const raleway = Raleway({ variable: "--font-raleway", subsets: ["latin"], weight: ["400", "600", "700"] });
+// preload: false auf allen zwölf — sie sind ausschließlich Opt-in-Overrides
+// einzelner Textfelder im Design-Editor (siehe HomeTextStyles["fontFamily"]),
+// für die allermeisten Seitenaufrufe also gar nicht aktiv. next/font preloadet
+// eine importierte Schriftart standardmäßig unabhängig davon, ob ihre Variable
+// im gerenderten Markup tatsächlich referenziert wird — ohne preload:false
+// bekam jede Seite bislang <link rel="preload"> für alle 12×3 Schriftschnitte,
+// die so gut wie nie gebraucht werden. Die tatsächlich immer verwendeten
+// Standardschriften (Playfair Display/Jost, src/app/layout.tsx) behalten ihr
+// Standard-Preload.
+const inter = Inter({ variable: "--font-inter", subsets: ["latin"], weight: ["400", "600", "700"], preload: false });
+const lora = Lora({ variable: "--font-lora", subsets: ["latin"], weight: ["400", "600", "700"], preload: false });
+const merriweather = Merriweather({
+  variable: "--font-merriweather",
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  preload: false,
+});
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  preload: false,
+});
+const nunito = Nunito({ variable: "--font-nunito", subsets: ["latin"], weight: ["400", "600", "700"], preload: false });
+const raleway = Raleway({
+  variable: "--font-raleway",
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  preload: false,
+});
 const playfairDisplay = Playfair_Display({
   variable: "--font-playfair-display",
   subsets: ["latin"],
   weight: ["500", "600", "700"],
+  preload: false,
 });
 const cormorantGaramond = Cormorant_Garamond({
   variable: "--font-cormorant-garamond",
   subsets: ["latin"],
   weight: ["400", "600", "700"],
+  preload: false,
 });
 const libreBaskerville = Libre_Baskerville({
   variable: "--font-libre-baskerville",
   subsets: ["latin"],
   weight: ["400", "700"],
+  preload: false,
 });
-const workSans = Work_Sans({ variable: "--font-work-sans", subsets: ["latin"], weight: ["400", "600", "700"] });
-const josefinSans = Josefin_Sans({ variable: "--font-josefin-sans", subsets: ["latin"], weight: ["400", "600", "700"] });
-const karla = Karla({ variable: "--font-karla", subsets: ["latin"], weight: ["400", "600", "700"] });
+const workSans = Work_Sans({
+  variable: "--font-work-sans",
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  preload: false,
+});
+const josefinSans = Josefin_Sans({
+  variable: "--font-josefin-sans",
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  preload: false,
+});
+const karla = Karla({ variable: "--font-karla", subsets: ["latin"], weight: ["400", "600", "700"], preload: false });
 
 const CURATED_FONTS = [
   inter,

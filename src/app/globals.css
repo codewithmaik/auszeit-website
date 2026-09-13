@@ -6,6 +6,15 @@
   --color-sage: #8a9a7e;
   --color-mist: #d6d8d1;
   --color-gold: #c99a3f;
+  /* Nur für Fließtext/Labels auf hellem Grund: #c99a3f liegt dort bei ~2.4:1
+     Kontrast (WCAG AA verlangt 4.5:1 für normal große Schrift) — betraf u. a.
+     die Eyebrow-Labels auf praktisch jeder Sektion der Website. --color-gold
+     selbst bleibt unverändert für Icons/Buttons/Akzente auf dunklem Grund. */
+  --color-gold-ink: #8a6a28;
+  /* Gegenstück für Text auf dunklem Grund (z. B. PageHero auf --color-forest):
+     dort liegt sogar das normale --color-gold nur bei ~3.9:1 — dieser hellere
+     Ton kommt auf ~4.8:1. */
+  --color-gold-bright: #dcae5a;
   --color-khaki: #c3b091;
   --color-cream: #f3e4c4;
   --color-bg: #faf8f3;
@@ -29,6 +38,8 @@
   --color-sage: var(--color-sage);
   --color-mist: var(--color-mist);
   --color-gold: var(--color-gold);
+  --color-gold-ink: var(--color-gold-ink);
+  --color-gold-bright: var(--color-gold-bright);
   --color-khaki: var(--color-khaki);
   --color-cream: var(--color-cream);
   --color-bg: var(--color-bg);

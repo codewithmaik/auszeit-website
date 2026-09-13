@@ -213,7 +213,7 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
               <p className="mt-2.5">
                 <a
                   href={localeHref(lang, "/wohnung")}
-                  className="inline-flex items-center gap-1.5 text-gold text-[calc(0.85rem+2px)] tracking-[0.05em] uppercase"
+                  className="inline-flex items-center gap-1.5 text-gold-ink text-[calc(0.85rem+2px)] tracking-[0.05em] uppercase"
                   style={styleFor(styles, "wohlfuehl.more")}
                 >
                   {t.wohlfuehl.more} <ArrowRight className="w-3.5 h-3.5" strokeWidth={2} />

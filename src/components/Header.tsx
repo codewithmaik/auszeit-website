@@ -100,7 +100,7 @@ export default function Header({
                   <span className="block font-serif text-[1.25rem] max-[560px]:text-[0.85rem] tracking-[0.12em] max-[560px]:tracking-[0.06em] text-forest leading-none whitespace-nowrap">
                     AUSZEIT
                   </span>
-                  <span className="block text-[0.56rem] max-[560px]:text-[0.4rem] leading-[1.15] tracking-[0.14em] max-[560px]:tracking-[0.04em] uppercase text-gold whitespace-nowrap">
+                  <span className="block text-[0.56rem] max-[560px]:text-[0.4rem] leading-[1.15] tracking-[0.14em] max-[560px]:tracking-[0.04em] uppercase text-gold-ink whitespace-nowrap">
                     Ferienwohnung
                     <br />
                     an der Mosel
@@ -114,7 +114,11 @@ export default function Header({
         <nav
           id="main-nav"
           className={`flex items-center gap-[30px] max-[900px]:fixed max-[900px]:inset-x-0 max-[900px]:top-[70px] max-[900px]:bottom-0 max-[900px]:bg-bg max-[900px]:flex-col max-[900px]:items-start max-[900px]:p-[30px] max-[900px]:gap-[22px] max-[900px]:transition-transform max-[900px]:duration-300 ${
-            open ? "max-[900px]:translate-y-0" : "max-[900px]:translate-y-[-110%]"
+            // visibility (not just the transform) keeps the off-canvas panel's links out of
+            // the tab order and hidden from screen readers while closed on mobile — a plain
+            // transform still leaves them focusable/announced off-screen. Only applies below
+            // the 900px breakpoint, so desktop's always-visible row is unaffected.
+            open ? "max-[900px]:translate-y-0 max-[900px]:visible" : "max-[900px]:translate-y-[-110%] max-[900px]:invisible"
           }`}
         >
           {navLinks.map((link) => {
@@ -157,6 +161,7 @@ export default function Header({
             className="hidden max-[900px]:flex bg-transparent border-none text-forest cursor-pointer flex-none"
             aria-label={open ? dict.nav.menuClose : dict.nav.menuOpen}
             aria-expanded={open}
+            aria-controls="main-nav"
             onClick={() => setOpen((v) => !v)}
           >
             {open ? <X className="w-6 h-6" strokeWidth={1.5} /> : <Menu className="w-6 h-6" strokeWidth={1.5} />}

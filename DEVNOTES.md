@@ -9,6 +9,85 @@
 
 Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwischen committed (`9bdeec9`, `4eeda79`, `28f74cd`) und deployed — der frühere Hinweis „noch nicht committed" in dieser Datei war veraltet.
 
+## Session: Übersetzung, SEO/GEO, Accessibility & Performance (2026-09-13)
+
+**Auftrag:** Vier Punkte nacheinander abarbeiten — (1) englische Übersetzung auf Korrektheit/
+Vollständigkeit prüfen, (2) SEO/GEO maximal optimieren, (3) Performance & Barrierefreiheit
+prüfen/optimieren, (4) Security prüfen/optimieren (Devnotes vorher lesen, danach aktuell halten,
+schrittweise mit regelmäßigen Commits). Kein Deploy in dieser Session, nur Code-Fixes + Commits
+auf dem Feature-Branch.
+
+**Wichtiger Umgebungs-Hinweis für künftige Sessions:** `git commit`, `tsc --noEmit` und der
+Next-Dev-Server sind in dieser iCloud-Drive-synchronisierten Projekt-Ordner-Umgebung teils extrem
+langsam (ein einzelner `git commit` kann 3–5 Minuten dauern, `next dev` initial ~3 Minuten; ein
+Dev-Server-Request, der `getSiteSettings()`/die Neon-DB braucht, hat in dieser Session gar nicht
+mehr geantwortet — vermutlich blockiert die Sandbox die DB-Verbindung). Live-Verifikation im
+Browser war deshalb in dieser Session nicht möglich; alle Fixes wurden stattdessen durch
+sorgfältiges manuelles Lesen plus `mcp__ide__getDiagnostics` (TS-Sprachserver von VS Code, liefert
+Diagnosen ohne vollen `tsc`-Lauf) verifiziert. Bei künftigen Sessions in dieser Umgebung: Geduld
+einplanen, Git-Befehle im Hintergrund laufen lassen statt auf Timeout zu prüfen, und wenn möglich
+`mcp__ide__getDiagnostics` statt `tsc --noEmit` für schnelles Feedback nutzen.
+
+**1) Übersetzung (DE→EN) — geprüft, 3 echte Bugs gefunden & behoben:**
+- Bewertungsseite: hart codiertes deutsches Dezimalkomma `"5,0"` und deutsche Anführungszeichen
+  `„…"` erschienen unverändert auch auf der englischen Seite → jetzt `Intl.NumberFormat` bzw. neue
+  Dictionary-Keys `quoteOpen`/`quoteClose` (de.ts/en.ts).
+- Bestätigungs-/Absage-Mailvorlagen (Posteingang, `RequestThread.tsx`): Sätze nach der Anrede
+  begannen kleingeschrieben (deutsche Stilkonvention) — im Englischen ein Grammatikfehler, jetzt
+  großgeschrieben.
+- Ansonsten: Dictionary ist TypeScript-typsicher auf Schlüssel-Parität geprüft (de.ts/en.ts),
+  keine fehlenden/hardcodierten Strings in den öffentlichen Seiten gefunden.
+
+**2) SEO/GEO — mehrere reale Bugs gefunden & behoben:**
+- `SITE_URL` (`lib/site.ts`) zeigte auf `www.auszeit-mosel.de` — liefert per `curl` **keine
+  DNS-Antwort** (Domain noch nicht registriert/verbunden). Canonical-Tags, OpenGraph, Sitemap und
+  JSON-LD liefen sitezweit ins Leere. Jetzt auf `https://auszeit-mosel.vercel.app` (laut dieser
+  Datei die einzige aktuell gültige Domain). **Wichtig:** sobald die echte Domain
+  `auszeit-mosel.de` live ist, `SITE_URL` dorthin umstellen.
+- Startseite (`[lang]/page.tsx`) hatte als einzige Seite kein eigenes `generateMetadata` und erbte
+  `canonical: "/"` vom Root-Layout — identisch für /de UND /en, und "/" selbst ist nur eine
+  weiterleitende URL (proxy.ts). Jetzt eigenes `generateMetadata` mit korrektem
+  locale-spezifischem Canonical.
+- Neuer Helper `localeAlternates()` (`lib/i18n.ts`) liefert hreflang-Paare (de/en/x-default), jetzt
+  auf allen Seiten gesetzt (vorher nur in `sitemap.ts`, nicht in den Seiten-`<head>`s).
+- Eindeutige Meta-Description je Seite (Wohnungen/Region/Kontakt) statt überall derselben
+  Startseiten-Beschreibung.
+- FAQPage-JSON-LD auf der Kontaktseite (Rich Snippets + zitierbare Quelle für KI-Antwortmaschinen).
+- `robots.ts`: `/admin`, `/bierp4a4`, `/api`, `/*/rechnung/` explizit disallowed; Admin-/
+  Webdev-Login sowie gesamtes Adminpanel zusätzlich mit `robots: noindex`.
+
+**3) Accessibility & Performance — gefunden & behoben:**
+- `Header.tsx`: Mobiles Off-Canvas-Menü blieb bei geschlossenem Zustand per Tab-Taste erreichbar
+  und für Screenreader sichtbar (nur `transform`, kein `visibility`/`inert`) — echte Tastatur-
+  Falle unter 900px Breite. Fix: `visibility` zusätzlich zum Transform, plus `aria-controls` am
+  Toggle-Button.
+- Kontrast-Fehler gegen WCAG AA (4.5:1) rechnerisch verifiziert und behoben:
+  - `Footer.tsx`: `text-white/40`/`/50`/`/55` auf `--color-forest` lagen bei ~3.0–4.3:1 (betraf
+    auch echte Links: Impressum, Datenschutz, Cookie-Einstellungen) → `/65` (~5.3:1).
+  - `Eyebrow.tsx` (sitezweit auf praktisch jeder Sektion): `text-gold` (#c99a3f) auf hellem Grund
+    lag bei ~2.4:1, auf `--color-forest` (PageHero) bei ~3.9:1 — keiner der beiden Kontexte
+    bestand mit demselben Ton. Neue Tokens `--color-gold-ink` (#8a6a28, ~4.7:1 auf hell) und
+    `--color-gold-bright` (#dcae5a, ~4.8:1 auf `--color-forest`), `Eyebrow` bekam einen
+    `tone`-Prop (`PageHero` nutzt `tone="dark"`). Gleiches Problem auch in `BookingForm.tsx`,
+    `WohnungenSlider.tsx`, `kontakt/page.tsx` (Kontaktdaten-Labels) und der „Mehr erfahren"-Link
+    auf der Startseite behoben.
+- `lib/fonts.ts`: 12 Google-Fonts für den Design-Editor-Schriftartenpicker (je 2–3 Schnitte) wurden
+  ohne `preload: false` importiert — obwohl sie nur Opt-in-Overrides einzelner Textfelder sind und
+  bei den allermeisten Seitenaufrufen gar nicht aktiv, bekam jede Seite `<link rel="preload">` für
+  alle ~30 Schriftdateien. Jetzt `preload: false` auf allen zwölf; die tatsächlich immer
+  verwendeten Standardschriften (Playfair Display/Jost in `app/layout.tsx`) unverändert.
+
+**Noch nicht geprüft:** Punkt 4 (Security) steht noch aus.
+
+**Bekannte, bewusst nicht angefasste Punkte (weiterhin offen, brauchen User-Input):**
+- Kontaktdaten/Impressum-Platzhalter (Bonn/„Norbert Winkel", `factory-defaults.ts`) — unverändert,
+  siehe frühere Sessions.
+- Resend-E-Mail-Integration / eigene Absender-Domain — unverändert offen.
+- Alt-Text pro Foto ist nicht individuell im Adminpanel editierbar, fällt aber bereits sauber auf
+  den Wohnungsnamen zurück (`img.alt || a.name`, `wohnung/page.tsx`) — kein blankes `alt=""` in
+  Produktion, aber jedes Foto einer Wohnung teilt sich denselben generischen Alt-Text statt einer
+  fotospezifischen Beschreibung.
+
 ## Session: Deploy Posteingang-Chat/Rechnung nach Production (2026-09-05)
 
 **Auftrag:** Vor dem Deploy die Devnotes auf unerledigte Tasks prüfen, dann deployen, Devnotes updaten. Kein Code geändert, keine neue Planungsdatei.
