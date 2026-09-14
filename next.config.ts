@@ -23,6 +23,12 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.mosel-auszeit.de" }],
+        destination: "https://mosel-auszeit.de/:path*",
+        permanent: true,
+      },
+      {
         source: "/galerie",
         destination: "/wohnung",
         permanent: true,
