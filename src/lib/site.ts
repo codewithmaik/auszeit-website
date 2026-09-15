@@ -1,11 +1,13 @@
-export const SITE_URL = "https://www.auszeit-mosel.de";
+// Kundendomain, seit 2026-09-15 live verbunden (DNS bei Strato, Hosting weiterhin auf Vercel,
+// s. DEVNOTES.md „Session: Kundendomain mosel-auszeit.de verbinden").
+export const SITE_URL = "https://mosel-auszeit.de";
 
 export const BUSINESS = {
   name: "AUSZEIT Ferienwohnung",
-  streetAddress: "Moselstraße 12",
-  postalCode: "54470",
-  addressLocality: "Bernkastel-Kues",
+  streetAddress: "Annaberger Str. 231",
+  postalCode: "53175",
+  addressLocality: "Bonn",
   addressCountry: "DE",
-  telephone: "+49 6531 123456",
-  email: "info@auszeit-mosel.de",
+  telephone: "0228-28695499",
+  email: "info@luxury-apartments-bonn.com",
 };

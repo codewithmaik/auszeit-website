@@ -4,65 +4,669 @@
 
 ## Aktueller Stand
 
-**Branch:** `feature/admin-panel` (noch nicht gemerged nach `main`, noch nicht gepusht)
-**Task:** Adminpanel für Kunde — **fertig, DB verbunden, kompletter Klick-Test erfolgreich durchlaufen.**
-**Dev-Server:** lief zuletzt auf `localhost:3000` — falls nicht mehr aktiv: `npm run dev`.
+**Branch:** `feature/posteingang-chat-rechnung` — gepusht nach `origin` (GitHub `codewithmaik/auszeit-website-11`), **nicht** nach `main` gemerged (Production läuft weiterhin bewusst direkt vom Branch-Deploy, wie in allen früheren Sessions). Working tree sauber (bis auf absichtlich ungetrackte `.agents/`, `.claude/`, `auszeit-apartments/`, `skills-lock.json`, s. u.).
+**Production:** läuft über `auszeit-mosel.vercel.app` — **das ist die einzige gültige Domain für dieses Projekt**, alle anderen `.vercel.app`-Aliase (`auszeit-website-11.vercel.app`, `auszeit-mosel-codewithmaik.vercel.app`) werden nach jedem Deploy wieder entfernt (s. „Domain-Aufräumen" unten, inkl. **wichtigem Hinweis für jeden künftigen Deploy**). Seit `2026-09-05` live: der komplette Stand aus „Session: Kalender-Schnellaktionen, Antwort-Vorlagen, Rechnungs-Feinschliff" **und** „Session: Posteingang-Chat, E-Mail-Antworten, Rechnungssystem & Foto-Filter-Ausbau" (beide unten), Deployment `dpl_5s2Wo57mdrgLWpPteZ2UbMrqtVcN`.
 
-## ✅ Blocker aufgelöst
+## Session: Kundendomain mosel-auszeit.de verbinden (2026-09-15, laufend)
 
-Neon-Terms wurden vom Kontoinhaber im Browser bestätigt. `vercel integration add neon --name auszeit-website-11-db --non-interactive` lief danach durch, DB ist provisioniert und mit dem Projekt verknüpft (`.env.local` wurde von `vercel integration add` automatisch mit allen DB-Env-Vars überschrieben/ergänzt). `npm run db:push` + `npm run db:seed` liefen erfolgreich — die 7 Platzhalter-Wohnungen und Default-Settings sind in der DB.
+**Auftrag:** Kunde hat `mosel-auszeit.de` bei Strato gekauft, soll mit diesem Vercel-Projekt verbunden werden (Hosting bleibt auf Vercel, nur DNS bei Strato anpassen).
 
-## 🐛 Drei echte Bugs gefunden + gefixt (nicht nur der DB-Blocker)
+**Ausgangslage (bereits vor dieser Session vorbereitet):** `mosel-auszeit.de` + `www.mosel-auszeit.de` waren schon im Vercel-Team `codewithmaik` angelegt und dem Projekt `auszeit-mosel` zugewiesen (`vercel domains ls`/`inspect` zeigten das). Commit `d3fefda` hatte bereits einen `next.config.ts`-Redirect `www.mosel-auszeit.de → mosel-auszeit.de` vorbereitet.
 
-Diese drei Dinge waren unabhängig vom Neon-Blocker echte Bugs im bereits geschriebenen Code, die erst beim tatsächlichen End-to-End-Test mit echter DB/echtem Login/echten Uploads sichtbar wurden:
+**Wichtiger Fund:** MX-Record (`smtpin.rzone.de`) auf der Domain aktiv → Strato-E-Mail-Hosting ist vorbereitet (laut User: „E-Mail gekauft aber noch nicht eingerichtet"). **Deshalb bewusst NICHT die Nameserver auf Vercel umgestellt** (Option B in Vercels Domain-Check), sondern nur die DNS-Records bei Strato geändert (Option A, von Vercel selbst empfohlen) — Nameserver bleiben bei Strato (`docks16.rzone.de`/`shades12.rzone.de`), MX/E-Mail-Vorbereitung bleibt unangetastet.
 
-1. **`scripts/seed.ts` → `scripts/seed.mts`**: Datei nutzte Top-Level-`await`, aber `package.json` hat kein `"type": "module"`, also kompilierte `tsx` es als CJS und crashte. Umbenannt auf `.mts` (tsx behandelt das immer als ESM), `db:seed`-Script in `package.json` angepasst.
+**Bei Strato geändert:** A-Record `mosel-auszeit.de` → `76.76.21.21` (Strato-UI hat nur einen A-Record-Slot für die Root-Domain, kein separates Feld für `www` auf derselben Seite — `www` lief vorher schon als CNAME auf die Root-Domain, was durch den neuen A-Record automatisch mitfunktioniert). Per `dig`/`vercel domains inspect` verifiziert: beide Domains zeigen jetzt **keine** Konfigurationswarnung mehr bei Vercel, HTTP (Port 80) liefert die Seite bereits korrekt aus (`curl http://mosel-auszeit.de/de` → 200, Next.js-Antwort mit `X-Matched-Path: /[lang]`).
 
-2. **`ADMIN_PASSWORD_HASH` in `.env.local` durch `dotenv-expand` korrumpiert**: bcrypt-Hashes enthalten `$`-Zeichen (`$2b$10$rG1jQb...`), und Next.js' `@next/env`-Loader (nutzt intern `dotenv-expand`) interpretiert `$rG1jQb46t8t1dc9mvBw7i` als Variablenreferenz und ersetzt es durch einen leeren String, wenn keine gleichnamige Env-Var existiert → Login schlug lokal fehl, obwohl Hash + Passwort korrekt waren. **Fix:** `$` in `.env.local` mit `\$` escapen (`ADMIN_PASSWORD_HASH="\$2b\$10\$rG1jQb46..."`). Betrifft nur lokales `.env.local`-Parsing — auf Vercel selbst werden Env-Vars direkt injiziert (kein `.env`-Parsing), Production ist also nicht betroffen. **Falls der Hash je neu erzeugt wird: die `$`-Zeichen in `.env.local` wieder escapen, sonst bricht der Login lokal erneut.**
+**Update: Domain ist jetzt komplett live (2026-09-15, ~04:00 Uhr).** Das SSL-Zertifikat hing zunächst **mehrere Stunden** fest (TLS-Handshake brach sofort ohne Zertifikat ab — `curl`/`openssl s_client` zeigten übereinstimmend `SSL_ERROR_SYSCALL`/„unexpected eof while reading", 0 Bytes vom Handshake gelesen — vermutlich ein hängengebliebener Ausstellungsversuch, evtl. Nachwirkung der zuvor falschen A-Record-IP). **Fix (mit User-Bestätigung durchgeführt):** Domain in Vercel komplett entfernt (`vercel domains rm mosel-auszeit.de`) und frisch wieder zum Projekt hinzugefügt (`vercel domains add mosel-auszeit.de auszeit-mosel`, gleiches für `www.`) — das hat einen neuen Zertifikats-Versuch ausgelöst, der diesmal innerhalb weniger Minuten durchging. `vercel domains verify` zeigte danach sofort `"ok": true, "misconfigured": false` (nur eine optionale Empfehlung auf neuere Vercel-IPs `216.198.79.1`/`64.29.17.1` statt der aktuell gesetzten `76.76.21.21` — nicht zwingend, aktuelle Konfiguration funktioniert). `curl https://mosel-auszeit.de/de` → **200**, `curl https://www.mosel-auszeit.de` → **308-Redirect** auf die Apex-Domain (wie in `next.config.ts` vorgesehen).
 
-3. **Zwei next.config.ts-Fixes, ohne die das Fotoupload-Feature in der Praxis nicht nutzbar gewesen wäre:**
-   - `experimental.serverActions.bodySizeLimit` war nicht gesetzt → Default 1 MB. Echte Handyfotos sind oft 2–8 MB, jeder Upload eines normalen Fotos wäre mit `Error: Body exceeded 1 MB limit` gescheitert. Jetzt auf `"10mb"` gesetzt.
-   - `images.remotePatterns` hatte den Vercel-Blob-Host nicht erlaubt → jede Seite, die ein hochgeladenes Foto per `next/image` rendert (Admin-Editor **und** die öffentliche `/wohnung`-Seite), wäre mit 500 „Invalid src prop … hostname not configured" gecrasht, sobald ein echtes Foto hochgeladen wurde (mit den alten lokalen `/images/...`-Pfaden aus den Seed-Daten fiel das vorher nicht auf). Jetzt `*.public.blob.vercel-storage.com` erlaubt.
+**Danach erledigt:** `SITE_URL` in `src/lib/site.ts` von `https://auszeit-mosel.vercel.app` auf `https://mosel-auszeit.de` umgestellt und committed (`3130022`). Mit User-Bestätigung nach Production deployed (`vercel --prod --scope codewithmaik` → Deployment `dpl_6A7PnENETPRvmDThtA29gCVfPp7Z`) — Domain-Aufräumen wie gewohnt durchgeführt: `auszeit-mosel.vercel.app` per `vercel alias set` auf den neuen Deployment gesetzt, die beiden automatisch angelegten Nebenaliase (`auszeit-website-11.vercel.app`, `auszeit-mosel-codewithmaik.vercel.app`) per `vercel alias rm` entfernt. Verifiziert per `curl`: `mosel-auszeit.de`, `www.mosel-auszeit.de` und `auszeit-mosel.vercel.app` → alle 200, beide Nebenaliase → 404, Canonical-Tag auf `/de` zeigt korrekt auf `https://mosel-auszeit.de/de`. **Domain-Migration ist damit abgeschlossen.**
 
-   Beide Fixes sind in `next.config.ts`, committed, noch nicht gepusht.
+**Nächste Schritte für den Kunden (später, nicht Teil dieser Session):** Strato-E-Mail (`smtpin.rzone.de`) einrichten sobald gewünscht — MX-Record ist schon aktiv, nur das Postfach selbst fehlt noch laut User.
 
-## ✅ Kompletter Klick-Test durchgeführt (im Browser, per Chrome-Automation)
+**Separates Problem in dieser Session entdeckt — `next dev` antwortet nicht:** Beim Versuch, localhost zu starten, ist der Dev-Server zwar mit „✓ Ready" gestartet (auf mehreren Ports getestet: 3002, dann sauberer Neustart auf 3010), nimmt aber **keine** Anfrage entgegen — selbst `robots.txt` (bypassed Middleware laut `proxy.ts`-Matcher) hängt >2 Minuten ohne Antwort und ohne jegliches Compile-Log. `netstat` zeigt die TCP-Verbindung als `ESTABLISHED` (Kernel nimmt sie an), der Node-Prozess selbst liegt aber die ganze Zeit bei **0% CPU** (`ps` bestätigt) — der Prozess verarbeitet die Anfrage also gar nicht erst, sondern hängt irgendwo blockierend fest. Deckt sich mit dem in „Übersetzung, SEO/GEO..."-Session (2026-09-13) dokumentierten Verdacht, dass diese Sandbox-Umgebung (Claude Code Bash-Tool) DB-Verbindungen zu Neon blockiert (roher `nc`-Connect zum Neon-Pooler-Host gelingt zwar, aber das schließt einen Hang tiefer im Node-/Treiber-Stack nicht aus). **Nicht als Code-Bug behandeln** — vermutlich Sandbox-/Umgebungsproblem dieser Session. Für den User: bitte selbst außerhalb der Sandbox (normales Terminal) `npm run dev` testen, um zu bestätigen, ob es dort funktioniert.
 
-Alles erfolgreich getestet und wieder aufgeräumt (Testdaten gelöscht, Telefonnummer zurückgesetzt):
+**Nachtrag:** `ls -lO@` zeigte, dass `.next/BUILD_ID` als `hidden,compressed,dataless` markiert war — also eine iCloud-Platzhalterdatei, nicht lokal vorhanden. Naheliegender Verdacht: Turbopack liest beim Start alten Build-Cache, der erst von iCloud nachgeladen werden muss, und hängt dabei, wenn die iCloud-Synchronisation blockiert ist (siehe auch: `brctl status` für den iCloud-Account hing ebenfalls >120s, mit riesigem Sync-Rückstau unter unrelated `Backup_23.08.25`-Ordnern). **Test durchgeführt:** `.next` komplett gelöscht, Server sauber neu gestartet (frischer Cache, kein dataless-Risiko mehr) — **Hänger bestand trotzdem weiter**, identisch zu vorher. Die dataless-`.next`-Theorie ist also widerlegt bzw. nicht die (alleinige) Ursache.
 
-- `/admin/login` → Login funktioniert
-- Wohnung anlegen ("Testwohnung") → funktioniert
-- Mehrere Fotos hochladen → funktioniert (nach den obigen Fixes)
-- Reihenfolge ändern (Pfeil-Buttons) → funktioniert, Titelbild-Badge wandert korrekt mit
-- Einzelnes Foto löschen → funktioniert
-- `/wohnung`: Slider zeigt neue Wohnung, Thumbnail-Dots bei mehreren Fotos → funktioniert
-- Wohnung löschen (inkl. Blob-Cleanup) → funktioniert, verschwindet aus Slider, Zähler wieder korrekt
-- Einstellungen ändern (Telefonnummer testweise geändert) → sofort sichtbar auf `/kontakt`, im Footer und im JSON-LD (`LodgingBusiness`), ohne Redeploy dank `revalidatePath` — dann zurückgesetzt auf Originalwert
-- Impressum/Datenschutz sind bewusst freier Text (nicht an `contactPhone` gekoppelt) — Verhalten wie designt, kein Bug
+**Auflösung: Fehldiagnose meinerseits, kein echtes Server-Problem.** Der User hat den Dev-Server in einem echten Browser (nach Ausschluss eines störenden alten Tabs/Service-Workers eines unabhängigen Expo-Projekts auf demselben Port) getestet — **die Seite hat die ganze Zeit über korrekt funktioniert.** Nur meine eigenen `curl`-Testbefehle über das Bash-Tool dieser Session liefen ins Leere (TCP-Verbindung wurde vom Kernel angenommen, aber nie beantwortet, 0% CPU beim Node-Prozess) — offenbar eine Eigenheit/Einschränkung des Bash-Tools selbst beim Zugriff auf `localhost`, **nicht** eine echte Blockade des Node-Prozesses oder der Neon-DB-Verbindung. **Für künftige Sessions:** Bei „Dev-Server antwortet nicht"-Verdacht zuerst den User selbst im echten Browser testen lassen, bevor man von einem echten Server-/Code-Bug ausgeht — eigene `curl`/Bash-Tests in dieser Sandbox können falsch-negativ sein.
 
-**Automatisierungs-Hinweis für künftige Sessions:** Klicks per Bildschirmkoordinaten aus einem Screenshot trafen wiederholt daneben (Koordinatenraum von Screenshot ≠ CSS-Pixel-Viewport in dieser Chrome-Automation-Umgebung). Zuverlässiger: Element per `find`/`read_page` referenzieren und per `javascript_tool` direkt `element.click()` bzw. `form.requestSubmit()` aufrufen. **Vorsicht bei `document.querySelector('form')`**, wenn mehrere Forms auf der Seite sind (z. B. Abmelden-Form im Header) — führte einmal zu ungewolltem Logout statt Settings-Speichern. Immer über ein eindeutiges Kind-Element (`closest('form')`) gehen.
+Der komplette Admin-Design-Editor (siehe „Frühere Session" unten) ist inzwischen committed (`9bdeec9`, `4eeda79`, `28f74cd`) und deployed — der frühere Hinweis „noch nicht committed" in dieser Datei war veraltet.
 
-## Architektur
+## Session: Übersetzung, SEO/GEO, Accessibility & Performance (2026-09-13)
 
-- **DB:** Vercel Postgres via Neon, Drizzle ORM (`drizzle-orm/neon-http`, **kein** `db.transaction()` — der Treiber unterstützt keine Transaktionen; bei `moveApartmentImage` deshalb bewusst zwei sequenzielle Updates statt Transaktion)
-- **Blob:** `@vercel/blob`, Store `auszeit-website-11`, `access: public`
-- **Auth:** NextAuth v5 (`next-auth@beta`), Credentials-Provider, JWT-Session, **kein** Users-Table — Admin-Identität kommt aus Env-Vars `ADMIN_EMAIL` + `ADMIN_PASSWORD_HASH` (bcrypt-Hash). ✅ Gesetzt in `.env.local` (mit escapten `$`, s. o.) **und** allen drei Vercel-Umgebungen (dort unescaped, da kein `.env`-Parsing).
-  - Admin-Login: `maik.bock48@gmail.com`
-  - Generiertes Passwort (Klartext nur hier + einmalig im Chat genannt): `jSQqmvTXqVpvboLH` — im Repo/Code steht nur der bcrypt-Hash. Falls geändert werden soll: neuen Hash erzeugen (`node -e "console.log(require('bcryptjs').hashSync('NEUES-PW', 10))"`), dann `vercel env rm ADMIN_PASSWORD_HASH <env>` + neu `add` für production/preview/development, plus `.env.local` anpassen (dort `$` escapen!).
-- **Rendering:** Seiten, die aus der DB lesen, sind `export const dynamic = "force-dynamic"` (kein ISR bisher) + zusätzlich `revalidatePath(...)` in den Server Actions
+**Auftrag:** Vier Punkte nacheinander abarbeiten — (1) englische Übersetzung auf Korrektheit/
+Vollständigkeit prüfen, (2) SEO/GEO maximal optimieren, (3) Performance & Barrierefreiheit
+prüfen/optimieren, (4) Security prüfen/optimieren (Devnotes vorher lesen, danach aktuell halten,
+schrittweise mit regelmäßigen Commits). Kein Deploy in dieser Session, nur Code-Fixes + Commits
+auf dem Feature-Branch.
 
-## Was noch fehlt
+**Wichtiger Umgebungs-Hinweis für künftige Sessions:** `git commit`, `tsc --noEmit` und der
+Next-Dev-Server sind in dieser iCloud-Drive-synchronisierten Projekt-Ordner-Umgebung teils extrem
+langsam (ein einzelner `git commit` kann 3–5 Minuten dauern, `next dev` initial ~3 Minuten; ein
+Dev-Server-Request, der `getSiteSettings()`/die Neon-DB braucht, hat in dieser Session gar nicht
+mehr geantwortet — vermutlich blockiert die Sandbox die DB-Verbindung). Live-Verifikation im
+Browser war deshalb in dieser Session nicht möglich; alle Fixes wurden stattdessen durch
+sorgfältiges manuelles Lesen plus `mcp__ide__getDiagnostics` (TS-Sprachserver von VS Code, liefert
+Diagnosen ohne vollen `tsc`-Lauf) verifiziert. Bei künftigen Sessions in dieser Umgebung: Geduld
+einplanen, Git-Befehle im Hintergrund laufen lassen statt auf Timeout zu prüfen, und wenn möglich
+`mcp__ide__getDiagnostics` statt `tsc --noEmit` für schnelles Feedback nutzen.
 
-1. **Commit + Merge nach `main` + Push** (erst wenn User bereit zum Testen ist, siehe Standing Instruction unten) — Branch enthält jetzt sowohl den ursprünglichen Admin-Panel-Code als auch die drei Bugfixes oben
-2. Seed-Daten sind reine Platzhalter (alte 7 Fantasie-Wohnungen, generischer Impressum/Datenschutz-Hinweistext) — Kunde muss diese über das Adminpanel selbst durch echte Inhalte ersetzen, keine weitere Aktion meinerseits nötig
-3. GitHub-Verknüpfung des Vercel-Projekts ist fehlgeschlagen ("Login Connection" fehlt) — für Auto-Deploy-on-Push müsste der User das einmal im Vercel-Dashboard unter Account-Settings nachholen; kein Blocker für die Admin-Panel-Fertigstellung selbst, nur für automatisches Deployment
+**1) Übersetzung (DE→EN) — geprüft, 3 echte Bugs gefunden & behoben:**
+- Bewertungsseite: hart codiertes deutsches Dezimalkomma `"5,0"` und deutsche Anführungszeichen
+  `„…"` erschienen unverändert auch auf der englischen Seite → jetzt `Intl.NumberFormat` bzw. neue
+  Dictionary-Keys `quoteOpen`/`quoteClose` (de.ts/en.ts).
+- Bestätigungs-/Absage-Mailvorlagen (Posteingang, `RequestThread.tsx`): Sätze nach der Anrede
+  begannen kleingeschrieben (deutsche Stilkonvention) — im Englischen ein Grammatikfehler, jetzt
+  großgeschrieben.
+- Ansonsten: Dictionary ist TypeScript-typsicher auf Schlüssel-Parität geprüft (de.ts/en.ts),
+  keine fehlenden/hardcodierten Strings in den öffentlichen Seiten gefunden.
 
-## Standing Instructions (gelten weiterhin, unabhängig vom Adminpanel-Task)
+**2) SEO/GEO — mehrere reale Bugs gefunden & behoben:**
+- `SITE_URL` (`lib/site.ts`) zeigte auf `www.auszeit-mosel.de` — liefert per `curl` **keine
+  DNS-Antwort** (Domain noch nicht registriert/verbunden). Canonical-Tags, OpenGraph, Sitemap und
+  JSON-LD liefen sitezweit ins Leere. Jetzt auf `https://auszeit-mosel.vercel.app` (laut dieser
+  Datei die einzige aktuell gültige Domain). **Wichtig:** sobald die echte Domain
+  `auszeit-mosel.de` live ist, `SITE_URL` dorthin umstellen.
+- Startseite (`[lang]/page.tsx`) hatte als einzige Seite kein eigenes `generateMetadata` und erbte
+  `canonical: "/"` vom Root-Layout — identisch für /de UND /en, und "/" selbst ist nur eine
+  weiterleitende URL (proxy.ts). Jetzt eigenes `generateMetadata` mit korrektem
+  locale-spezifischem Canonical.
+- Neuer Helper `localeAlternates()` (`lib/i18n.ts`) liefert hreflang-Paare (de/en/x-default), jetzt
+  auf allen Seiten gesetzt (vorher nur in `sitemap.ts`, nicht in den Seiten-`<head>`s).
+- Eindeutige Meta-Description je Seite (Wohnungen/Region/Kontakt) statt überall derselben
+  Startseiten-Beschreibung.
+- FAQPage-JSON-LD auf der Kontaktseite (Rich Snippets + zitierbare Quelle für KI-Antwortmaschinen).
+- `robots.ts`: `/admin`, `/bierp4a4`, `/api`, `/*/rechnung/` explizit disallowed; Admin-/
+  Webdev-Login sowie gesamtes Adminpanel zusätzlich mit `robots: noindex`.
 
-- **Git-Workflow:** Feature-Branches pro Aufgabe, regelmäßig committen, aber **erst pushen kurz bevor der User testen will** — nicht nach jedem Commit
-- Bei Bugs, die sich mit den Chrome-Automation-Tools nicht reproduzieren lassen (z. B. Screenshot-Staleness in Hintergrund-Tabs, Klick-Koordinaten treffen daneben): lieber auf DOM-/Netzwerk-Ebene bzw. per direktem `element.click()`/`form.requestSubmit()` verifizieren statt blind Screenshot-Koordinaten zu vertrauen
-- Deferred vom User: Formspree-Endpoint (noch `YOUR_FORM_ID`, mailto-Fallback aktiv) und echte Fotos statt Stock-Bilder — beides "später", nicht vergessen, aber nicht aktiv nachfragen
+**3) Accessibility & Performance — gefunden & behoben:**
+- `Header.tsx`: Mobiles Off-Canvas-Menü blieb bei geschlossenem Zustand per Tab-Taste erreichbar
+  und für Screenreader sichtbar (nur `transform`, kein `visibility`/`inert`) — echte Tastatur-
+  Falle unter 900px Breite. Fix: `visibility` zusätzlich zum Transform, plus `aria-controls` am
+  Toggle-Button.
+- Kontrast-Fehler gegen WCAG AA (4.5:1) rechnerisch verifiziert und behoben:
+  - `Footer.tsx`: `text-white/40`/`/50`/`/55` auf `--color-forest` lagen bei ~3.0–4.3:1 (betraf
+    auch echte Links: Impressum, Datenschutz, Cookie-Einstellungen) → `/65` (~5.3:1).
+  - `Eyebrow.tsx` (sitezweit auf praktisch jeder Sektion): `text-gold` (#c99a3f) auf hellem Grund
+    lag bei ~2.4:1, auf `--color-forest` (PageHero) bei ~3.9:1 — keiner der beiden Kontexte
+    bestand mit demselben Ton. Neue Tokens `--color-gold-ink` (#8a6a28, ~4.7:1 auf hell) und
+    `--color-gold-bright` (#dcae5a, ~4.8:1 auf `--color-forest`), `Eyebrow` bekam einen
+    `tone`-Prop (`PageHero` nutzt `tone="dark"`). Gleiches Problem auch in `BookingForm.tsx`,
+    `WohnungenSlider.tsx`, `kontakt/page.tsx` (Kontaktdaten-Labels) und der „Mehr erfahren"-Link
+    auf der Startseite behoben.
+- `lib/fonts.ts`: 12 Google-Fonts für den Design-Editor-Schriftartenpicker (je 2–3 Schnitte) wurden
+  ohne `preload: false` importiert — obwohl sie nur Opt-in-Overrides einzelner Textfelder sind und
+  bei den allermeisten Seitenaufrufen gar nicht aktiv, bekam jede Seite `<link rel="preload">` für
+  alle ~30 Schriftdateien. Jetzt `preload: false` auf allen zwölf; die tatsächlich immer
+  verwendeten Standardschriften (Playfair Display/Jost in `app/layout.tsx`) unverändert.
+
+**4) Security — geprüft, mehrere reale Lücken gefunden & behoben:**
+- `next.config.ts` hatte bislang **gar keine** Security-Header. Neue `headers()`:
+  CSP, `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`,
+  `Permissions-Policy`, HSTS. CSP bewusst mit `'unsafe-inline'` für
+  script-/style-src (Next.js' eigene Hydration-Inline-Scripts brauchen das ohne
+  Nonce-Infrastruktur; die App nutzt außerdem sitezweit inline `style={{...}}`-
+  Overrides) — echter Zugewinn trotzdem über `object-src 'none'`,
+  `frame-ancestors 'none'`, `base-uri 'self'` und eine feste Allowlist für
+  img-/frame-/connect-src. Ein strict-CSP-Umbau mit Nonces wäre der nächste
+  Schritt, sobald Live-Browser-Verifikation in einer Session möglich ist.
+- `auth.ts`: Timing-Seitenkanal im Login — bei falscher E-Mail wurde
+  `bcrypt.compare()` gar nicht erst aufgerufen (schnelle Antwort), bei falschem
+  Passwort schon (bcrypt ist absichtlich langsam) → per Antwortzeit ließ sich
+  erraten, welche E-Mail-Adressen überhaupt gültige Accounts sind. Jetzt läuft
+  `bcrypt.compare()` immer genau einmal (gegen einen festen Dummy-Hash, wenn
+  keine E-Mail passt).
+- Öffentliches Kontaktformular (`kontakt/actions.ts`, `submitBookingRequest`)
+  hatte **keinerlei** Spam-/Missbrauchsschutz — unauthentifizierter Server-Action-
+  Endpoint, der beliebig oft DB-Zeilen anlegen und Admin-Benachrichtigungsmails
+  auslösen konnte, ohne Längenbegrenzung auf irgendeinem Feld. Jetzt: Honeypot-
+  Feld (unsichtbar für Menschen, `BookingForm.tsx`) lässt Bot-Anfragen still
+  verpuffen, plus Max-Längen auf allen Textfeldern. Kein echtes Rate-Limiting
+  (bräuchte z. B. Vercel Firewall/BotID — eigenständige Produktentscheidung,
+  nicht in dieser Session umgesetzt).
+- `MapEmbed.tsx`: `referrerPolicy` von `no-referrer-when-downgrade` (sendet die
+  volle URL an Google) auf `strict-origin-when-cross-origin` verschärft —
+  konsistent mit dem in der Datenschutzerklärung beschriebenen Anspruch,
+  möglichst wenig an Google zu übertragen.
+- Geprüft und unauffällig befunden: keine rohen SQL-Queries (Drizzle-ORM überall
+  parametrisiert), kein `dangerouslySetInnerHTML` mit Nutzereingaben (kein
+  Stored-XSS-Pfad für Name/Nachricht aus dem Kontaktformular im Adminpanel),
+  Rechnungs-Tokens nutzen `crypto.randomUUID()` (unratbar), `.env.local` korrekt
+  in `.gitignore`, keine sonstigen API-Routen außer NextAuths eigener.
+- Nicht behoben (niedrigere Priorität, admin-only): Foto-Upload
+  (`wohnungen/actions.ts`) validiert weder Content-Type noch Dateigröße vor dem
+  Speichern in Vercel Blob — nur für eingeloggte Admins erreichbar, daher
+  geringeres Risiko, aber bei Gelegenheit nachrüstbar.
+
+**Bekannte, bewusst nicht angefasste Punkte (weiterhin offen, brauchen User-Input):**
+- Kontaktdaten/Impressum-Platzhalter (Bonn/„Norbert Winkel", `factory-defaults.ts`) — unverändert,
+  siehe frühere Sessions.
+- Resend-E-Mail-Integration / eigene Absender-Domain — unverändert offen.
+- Alt-Text pro Foto ist nicht individuell im Adminpanel editierbar, fällt aber bereits sauber auf
+  den Wohnungsnamen zurück (`img.alt || a.name`, `wohnung/page.tsx`) — kein blankes `alt=""` in
+  Produktion, aber jedes Foto einer Wohnung teilt sich denselben generischen Alt-Text statt einer
+  fotospezifischen Beschreibung.
+
+## Session: Deploy Posteingang-Chat/Rechnung nach Production (2026-09-05)
+
+**Auftrag:** Vor dem Deploy die Devnotes auf unerledigte Tasks prüfen, dann deployen, Devnotes updaten. Kein Code geändert, keine neue Planungsdatei.
+
+**Offene Punkte aus früheren Sessions geprüft — Stand:**
+1. **Kontaktdaten/Impressum-Platzhalter (Bonn/„Norbert Winkel")** — **weiterhin offen**, unverändert seit der letzten Session (s. „Kalender-Schnellaktionen…" unten). Betrifft `/de/kontakt`, `/de/impressum` und den Rechnungssteller-Fallback in `siteSettings`. Braucht die echten AUSZEIT-an-der-Mosel-Kontaktdaten vom User, wurde bewusst nicht selbständig geraten/geändert.
+2. **Resend-E-Mail-Integration** — **weiterhin offen**. Marketplace-Terms noch nicht bestätigt
+   (`https://vercel.com/codewithmaik/~/integrations/accept-terms/resend?source=cli`), danach
+   `vercel integration add resend/resend-email --no-claim`, dann `RESEND_API_KEY` +
+   `NOTIFY_EMAIL` in allen 3 Vercel-Env-Targets setzen. Bis dahin läuft der E-Mail-Versand nur
+   protokolliert (`isEmailConfigured()` false), Feature ist vollständig gebaut.
+3. **Eigene Absender-Domain (SPF/DKIM) + `EMAIL_FROM`** — weiterhin offen, hängt an Punkt 2.
+4. **Merge `feature/…` → `main`** — wie in jeder früheren Session bewusst nicht gemacht, Production läuft absichtlich direkt vom Branch-Deploy.
+5. Optional/klein: Icon-Overrides räumen keine alten Blobs auf (Design-Editor, bewusste Vereinfachung); 2-Wege-Inbound-E-Mail-Webhook; Logo-Upload für Rechnungen (aktuell nur URL-Feld).
+
+Keiner dieser Punkte blockiert den Deploy — alle sind reine Konfigurations-/Dateneingaben durch den User, kein Code-TODO.
+
+**Vor dem Deploy verifiziert:** `npx tsc --noEmit` sauber, `npm run build` (Production-Build) sauber.
+
+**Deploy:** `vercel --prod --scope codewithmaik --yes` → Deployment `dpl_5s2Wo57mdrgLWpPteZ2UbMrqtVcN`
+(`auszeit-mosel-g6mmdwyp2-codewithmaik.vercel.app`). Alias auf `auszeit-mosel.vercel.app` gesetzt.
+Nebenalias `auszeit-mosel-codewithmaik.vercel.app` per `vercel alias rm` entfernt — lief durch.
+**`auszeit-website-11.vercel.app` konnte diesmal nicht per CLI entfernt werden** (Auto-Mode-
+Classifier blockte `vercel alias rm` für genau diesen Alias wiederholt, vermutlich weil er exakt
+dem Repo-Namen entspricht) — User hat sich entschieden, den Befehl selbst per `!`-Terminal
+auszuführen; Status danach nicht mehr durch diese Session verifiziert, ggf. in der nächsten
+Session per `curl -o /dev/null -w "%{http_code}" https://auszeit-website-11.vercel.app` prüfen
+(soll `404` sein).
+**Smoke-Test per `curl`:** `auszeit-mosel.vercel.app/de` → `200`, `/de/wohnung` → `200`,
+`/admin/posteingang` → `307` (Redirect zu Login, kein Fehler-Hinweis auf fehlende DB-Spalten in
+Production). `auszeit-mosel-codewithmaik.vercel.app` → `404` (korrekt entfernt).
+
+## Session: Kalender-Schnellaktionen, Antwort-Vorlagen, Rechnungs-Feinschliff (2026-09-04)
+
+**Branch:** `feature/posteingang-chat-rechnung` (unverändert, weiter oben drauf). Auftrag kam als
+Stichpunktliste vom User (9 Punkte), keine Planungsdatei — direkt umgesetzt und per Chrome-
+Automation gegen die Dev-DB verifiziert (Testdaten danach per Wegwerf-Skript wieder entfernt).
+
+**Umgesetzt:**
+
+1. **Doppelklick-Toggle im Belegungskalender** (`Kalender.tsx`): neuer `useDayClick()`-Hook
+   unterscheidet Einzel- von Doppelklick per Timer (`DOUBLE_CLICK_MS = 320`, da Klick-Events vor
+   `dblclick` feuern und das bisherige Popup sonst kurz aufgeblitzt wäre) — Einzelklick verhält
+   sich wie bisher (Popup öffnen), Doppelklick schaltet direkt zwischen belegt/frei um
+   (`toggleQuick()` → `createManualBooking()`/`releaseBooking()`, keine Zusatzangaben nötig).
+2. **Globaler Kalender („Alle Wohnungen"), neuer Doppelklick-Flow:** Doppelklick auf einen Tag
+   öffnet ein „Wohnung wählen"-Menü (Status je Wohnung sichtbar) → Klick auf eine Wohnung öffnet
+   ein Popup mit „Bestätigen" (sofortiger Toggle, wie oben) oder „Buchungsinformationen" (öffnet
+   das normale Beleg-/Bearbeiten-Formular — der Kalender ändert sich hier **erst** nach dessen
+   eigenem Speichern-Klick, nicht schon beim Öffnen). Popup-States dafür generalisiert: `create`
+   trägt jetzt `apartmentId` explizit statt implizit über `view`.
+3. **Alle Kalender-Pop-ups 25 % breiter, linksbündig:** `Modal.tsx` bekam eine neue Size `cal`
+   (600px statt 480px) und einen `align`-Prop (`"left"` positioniert das Pop-up mit Abstand am
+   linken Rand statt zentriert) — nur in `Kalender.tsx` verwendet, andere Pop-ups (Anfrage-
+   Thread, Rechnung, Wohnungen) bleiben zentriert wie bisher.
+4. **Kontaktformular:** `Name`-Feld in `src/components/BookingForm.tsx` in `Vorname`/`Nachname`
+   nebeneinander (eine Zeile, `grid-cols-2`) aufgeteilt — Nachname optional, wird beim Absenden zu
+   einem kombinierten `name` zusammengeführt (kein Schema-Change, `booking_requests.name` bleibt
+   ein Feld). Neue Dictionary-Keys `labelVorname`/`labelNachname` in `de.ts`/`en.ts`.
+5. **2 Antwort-Vorlagen im Anfrage-Popup** (`RequestThread.tsx`): „Bestätigen"/„Ablehnen"-Buttons
+   über dem E-Mail-Composer befüllen Betreff+Text mit vollständigen Vorlagen (`buildReplyTemplate()`,
+   DE/EN je nach `request.locale`) — die Bestätigen-Vorlage fragt aktiv nach den vollständigen
+   Rechnungsdaten des Gasts (Name/Anschrift), damit die Rechnung im Anschluss erstellt werden kann.
+6. **Rechnung: Entwurf-Speichern + Link-teilen entfernt, durch Download ersetzt**
+   (`ConfirmBooking.tsx`, `posteingang/actions.ts`): `InvoiceFlowMode` von `"draft" | "send" | "share"`
+   auf `"send" | "download"` reduziert — beide Modi finalisieren jetzt immer (Nummer, Datum, PDF),
+   nur „send" verschickt zusätzlich die E-Mail. „PDF herunterladen" öffnet die fertige PDF
+   automatisch in einem neuen Tab (versteckter `<a download>`-Link wird per `useEffect` angeklickt,
+   plus sichtbarer Fallback-Link, falls Popups blockiert werden — Cross-Origin-Downloads vom Blob-
+   Storage lassen sich nicht zuverlässig erzwingen, „öffnen zum Speichern" ist der praktikable Weg).
+7. **Rechnungs-Vorschau größer + auf A4 zugeschnitten:** alte `transform: scale()`-Technik verkleinerte
+   nur visuell, ließ aber die volle A4-Layoutbox (und damit viel Leerraum) im scrollbaren Container
+   stehen. Ersetzt durch CSS `zoom` (ändert die tatsächliche Layoutgröße, kein Leerraum-Bug) —
+   `[zoom:0.92]` Desktop, `max-[720px]:[zoom:0.5]` mobil — plus `max-h-[80vh]` statt `52vh`.
+8. **Rechnungssteller-Kontaktdaten aus dem Impressum:** `lib/invoice.ts` neue
+   `invoiceSettingsBaseFromSite()` (parst `contactAddress` „Straße, PLZ Ort" per Regex) +
+   `resolveInvoiceSettings(raw, base)` jetzt mit optionalem `base`-Parameter (Default weiterhin
+   `DEFAULT_INVOICE_SETTINGS`/`BUSINESS`). `getInvoiceSettings()` (`db/queries.ts`),
+   `claimNextInvoiceNumber()` und `confirmBookingWithInvoice()` (`posteingang/actions.ts`) sowie
+   `updateInvoiceSettings()` (`einstellungen/actions.ts`) nutzen jetzt diese Basis statt der
+   festen `BUSINESS`-Platzhalter — die separaten Aussteller-Felder unter Einstellungen →
+   „Rechnungsdaten" überschreiben das weiterhin, wenn explizit gepflegt (unverändertes Verhalten,
+   nur die Fallback-Ebene wurde ausgetauscht). `updateInvoiceSettings()` blankt einzelne Felder
+   beim Speichern nicht mehr auf „" (fiel vorher auf `current.issuerName` nur bei Name/Präfix
+   zurück, jetzt konsistent bei allen Aussteller-Feldern).
+   **Wichtiger Fund dabei:** Die site-weiten Kontaktdaten (`contactAddress`/`contactPhone`/
+   `contactEmail`, Einstellungen → „Kontaktdaten") und der Impressum-Freitext zeigen in der
+   Dev-DB weiterhin die alten Platzhalter („Norbert Winkel, Annaberger Str. 231, 53175 Bonn,
+   info@luxury-apartments-bonn.com") — nicht die echte AUSZEIT-an-der-Mosel-Adresse. Betrifft
+   auch die öffentliche `/de/kontakt`- und `/de/impressum`-Seite, nicht nur die Rechnung. Die
+   separaten Rechnungsdaten-Aussteller-Felder waren in einer früheren Session bereits korrekt auf
+   die echten Mosel-Daten gesetzt (daher zeigt die Rechnung schon jetzt richtig) — **aber die
+   Kontaktdaten/Impressum-Platzhalter selbst wurden in dieser Session bewusst NICHT angefasst**
+   (kein Teil des Auftrags, echte Adresse/Name nicht zweifelsfrei bekannt, Impressum-Rechtstext
+   sollte nicht ungefragt umgeschrieben werden) — dem User zur Korrektur mitgeteilt.
+
+**Verifiziert per Chrome-Automation gegen die Dev-DB (localhost:3000, bestehende JWT-Session):**
+- Einzel-Wohnung-Kalender: Doppelklick auf freien Tag → sofort belegt (kein Popup, keine
+  Zusatzangaben); erneuter Doppelklick → sofort wieder frei. Kein Popup blitzt dabei auf.
+- „Alle Wohnungen"-Kalender: Doppelklick öffnet „Wohnung wählen" (Status je Wohnung korrekt:
+  „Frei"/„Belegt") → Wohnung wählen → Popup mit „Bestätigen"/„Buchungsinformationen".
+  „Buchungsinformationen" öffnet korrekt das vorausgefüllte Beleg-Formular, **ohne** den
+  Kalender zu ändern, solange nicht dort gespeichert wird; „Abbrechen" lässt den Tag frei.
+  „Bestätigen" schaltet sofort um (Overview-Popup zeigt danach „Ohne Namen" — minimale Buchung
+  ohne Zusatzangaben, wie gefordert).
+- Kalender-Pop-ups erscheinen sichtbar breiter und linksbündig mit Randabstand (nicht mehr
+  zentriert) — alle 5 Pop-up-Arten (`create`/`edit`/`overview`/`chooseApartment`/`confirmChoice`).
+- Kontaktformular `/de/kontakt`: Vorname/Nachname nebeneinander sichtbar; Absenden mit
+  Vorname „Testina" + Nachname „Testowski" → `booking_requests.name = "Testina Testowski"`
+  (Server-Log: „Neue Anfrage von Testina Testowski"), danach wieder gelöscht.
+- Anfrage-Popup „Familie Weber": Vorlage „Bestätigen" befüllt Betreff „…— Bestätigung" + Text mit
+  Zeitraum/Gästezahl und Anfrage nach vollständigen Rechnungsdaten; Vorlage „Ablehnen" befüllt
+  Betreff/Text entsprechend um — beide sofort sichtbar im Composer, überschreibbar vor dem Senden.
+- „Als gebucht" mit Rechnung → Vorschau zeigt die A4-Rechnung deutlich größer, ohne den alten
+  Leerraum-Bug; Aussteller korrekt „AUSZEIT Ferienwohnung Mosel, Moselstraße 12, 54470
+  Bernkastel-Kues" (aus den bereits gepflegten Rechnungsdaten-Aussteller-Feldern). Nur noch 3
+  Buttons (Anpassen/PDF herunterladen/Absenden), kein Entwurf/Link teilen mehr. „PDF
+  herunterladen" finalisiert die Rechnung (Nummer `AZ-2026-0003` vergeben), öffnet die PDF in
+  neuem Tab (echtes React-PDF, Aussteller-Daten korrekt). Testbuchung danach wieder rückgängig
+  gemacht (Status zurück auf „in_bearbeitung", Kalendertage wieder auf die ursprüngliche
+  Rechnung `AZ-2026-0001` verlinkt, Test-Rechnung + PDF-Blob gelöscht, Nummernkreis-Zähler auf
+  den Ausgangswert 3 zurückgesetzt).
+- `npx tsc --noEmit`, `npx eslint` (geänderte Dateien) und `npm run build`: alle sauber.
+
+**Bewusst nicht angefasst:**
+- Kontaktdaten/Impressum-Platzhalter (Bonn) — s. Fund oben, User-Entscheidung nötig.
+- `booking_requests`/`calendar_days`-Schema unverändert (kein neues Vorname/Nachname-Feld,
+  Kombination passiert nur clientseitig beim Absenden).
+
+## Session: Posteingang-Chat, E-Mail-Antworten, Rechnungssystem & Foto-Filter-Ausbau (2026-09-04)
+
+**Branch:** `feature/posteingang-chat-rechnung` (ausgehend von `feature/posteingang-wohnungskalender`).
+Plan: `~/.claude/plans/reflective-wishing-treasure.md`. Commits `341ad4d` (Datenmodell),
+`4c2dd54` (Kontaktformular), `ea27fef` (Chat/E-Mail/Status), `36613a4` (Rechnung + Foto-Filter).
+
+**Auftrag (11 Punkte):** volle Formular-Daten im Posteingang; Chatverlauf je Anfrage mit
+E-Mail-Antwort aus dem Panel; Status „In Bearbeitung"; neue Wohnung sofort im Posteingang-
+Kalender; Pflicht-Popup beim Buchen (Wohnung/Gäste/Zeitraum); Checkbox „Rechnung vorbereiten"
+mit ausklappbaren Kontakt-/Preis-Feldern; DIN-A4-Rechnungstemplate (rechtssicher, Preview);
+4 Aktionen (Anpassen/Entwurf/Absenden/Link teilen); Kalender aktualisiert erst nach Button,
+Kalendereintrag zeigt Rechnungsstatus + Link + PDF-Download; Foto-Filter-Bereich nach unten
++ 6 neue Templates.
+
+**Nutzerentscheidungen (per AskUserQuestion abgestimmt):**
+- E-Mail nur ausgehend über Resend (Vercel Marketplace). ⚠️ **Resend-Integration ist noch nicht
+  abgeschlossen** — User muss einmalig die Marketplace-Bedingungen bestätigen
+  (`https://vercel.com/codewithmaik/~/integrations/accept-terms/resend?source=cli`), dann
+  `vercel integration add resend/resend-email --no-claim`. Bis dahin: `RESEND_API_KEY` fehlt,
+  `src/lib/email.ts` loggt nur (`isEmailConfigured()` false), Feature ist voll gebaut.
+- Absender: Resend-Testdomain (`onboarding@resend.dev`) vorerst → `emailDeliveryLimited()` true,
+  Kundenmails werden protokolliert aber erst nach eigener verifizierter Domain zugestellt
+  (`EMAIL_FROM`-Env setzen). Admin-Benachrichtigung an `NOTIFY_EMAIL` (Fallback `contactEmail`).
+- USt: beide Modi (Kleinunternehmer §19 / Regelbesteuerung), umschaltbar unter
+  Einstellungen → „Rechnungsdaten" (`siteSettings.invoiceSettings` jsonb).
+- Ein Branch, phasenweise, ein Deploy am Ende.
+
+**Schema** (`src/db/schema.ts`, `npm run db:push` gegen die Neon-DB ausgeführt):
+- `booking_requests`: `locale`, `raw_payload` (jsonb), Status-Union um `in_bearbeitung` erweitert.
+- **`booking_messages`** (neu): Chatverlauf je Anfrage — `direction` (incoming/outgoing),
+  `channel` (form/email/note), `provider_message_id`, `created_by`. Erste Zeile jeder Anfrage =
+  Formular-Nachricht (channel „form").
+- **`invoices`** (neu): `invoice_number` (null bis finalisiert, unique), `status`
+  (entwurf/final), `token` (Share-Link, `crypto.randomUUID()` ohne Bindestriche), `data` jsonb
+  (**immutabler Snapshot**, Typ `InvoiceData`), `pdf_url`, `issued_at`.
+- `calendar_days.invoice_id` (FK → invoices) — in `writeBookingDays()` durchgereicht,
+  in `updateBooking()` erhalten.
+- `site_settings.invoice_settings` (jsonb, Typ `InvoiceSettings`).
+- **`drizzle.config.ts`** lädt jetzt selbst `.env.local` (`process.loadEnvFile`) — `npm run db:push`
+  braucht kein vorheriges `source .env.local` mehr.
+
+**Kernmodule:**
+- `src/lib/invoice.ts` — Typen + reine Helfer (`computeInvoiceTotals`, `buildInvoiceData`,
+  `resolveInvoiceSettings`, `buildNextInvoiceNumber`, `formatEuro`, …), keine React-/DB-Importe;
+  auch von `schema.ts` (nur Typen, `import type`) genutzt.
+- `src/lib/email.ts` — Resend-Wrapper, `"server-only"`, alle Aufrufe in try/catch (E-Mail-Fehler
+  scheitern nie die DB-Aktion).
+- `src/components/invoice/InvoiceDocument.tsx` — HTML/CSS-A4-Rechnung (Vorschau + öffentliche
+  Seite). `src/components/invoice/InvoicePdf.tsx` — `@react-pdf/renderer`-Zwilling (kein
+  Chromium). `render.tsx` (`renderInvoicePdf` → Buffer). `next.config.ts`:
+  `serverExternalPackages: ["@react-pdf/renderer"]`.
+
+**Server Actions:**
+- `src/app/[lang]/kontakt/actions.ts` `submitBookingRequest()` — Insert + erste booking_messages-
+  Zeile + `sendAdminNotification()`. `BookingForm.tsx` ruft das jetzt (Formspree/mailto entfernt),
+  neue `locale`-Prop, zweistufige Flip-UI unverändert.
+- `posteingang/actions.ts`: `sendThreadReply()` (Resend + Protokoll, `neu → in_bearbeitung`),
+  `logIncomingMessage()`, `confirmBookingWithInvoice(requestId, bookingData, invoiceInput, mode)`
+  mit `mode` = `draft` | `send` | `share` — schreibt Buchung + Kalender **nur** bei Button-Klick,
+  legt invoices-Zeile an, finalisiert (Nummer via `claimNextInvoiceNumber()` +
+  `invoiceNumberNextSeq++`, PDF → `@vercel/blob`), bei `send` E-Mail + booking_messages-Eintrag.
+  `confirmBooking` auf gemeinsamen `confirmRequestCore()` refaktoriert.
+- `einstellungen/actions.ts` `updateInvoiceSettings()` (neue Sektion in `einstellungen/page.tsx`).
+- `wohnungen/actions.ts`: `createApartment`/`updateApartment`/`deleteApartment` revalidieren
+  zusätzlich `/admin/posteingang`.
+
+**UI:** `Modal` hat `size`-Prop (md/lg/xl). `RequestList.tsx` → Karten kompakt + klickbar →
+`RequestThread.tsx` (Details, Transkript, Composer, Nachtragen, Status). „Als gebucht" →
+`ConfirmBooking.tsx` (3 Ansichten: Buchung → Rechnungsangaben → A4-Vorschau + 4 Buttons).
+`Kalender.tsx`: `InvoiceRow` in Edit-/Overview-Popup. `wohnungen/page.tsx`: `PhotoFilterPanel`
+unter das Grid. `photo-filters.ts` + `globals.css`: 6 neue Filter (12 gesamt) + Druck-CSS für
+`/[lang]/rechnung/[token]`.
+
+**Browser-E2E getestet (localhost:3000, Chrome, bestehende JWT-Session):**
+- Kontaktformular `/de/kontakt` abgeschickt → Anfrage #5 in DB mit `raw_payload`, locale, erste
+  booking_messages-Zeile; Admin-Benachrichtigung korrekt geloggt (RESEND fehlt).
+- Thread geöffnet → Details + Verlauf; Antwort gesendet → erscheint rechts im Verlauf, Status
+  automatisch `neu → in_bearbeitung`, Testdomain-Hinweis angezeigt.
+- „Als gebucht" **ohne** Rechnung → Status gebucht, 3 Kalendertage (Checkout exkl.), `invoice_id`
+  null.
+- „Als gebucht" **mit** „Rechnung vorbereiten" (Kleinunternehmer) → USt-Spalte ausgeblendet,
+  §19-Hinweis, Zwischensumme korrekt; „Vorschau anzeigen" → A4-Entwurf mit ENTWURF-Wasserzeichen;
+  „Link teilen" → Buchung + 3 Kalendertage mit `invoice_id`, invoice `final` `AZ-2026-0001`,
+  **PDF real in Vercel Blob** (react-pdf funktioniert auf dem Node-Runtime), `invoiceNumberNextSeq`
+  → 2. Öffentliche Seite `/de/rechnung/<token>` rendert die Rechnung (mit Druck-/PDF-Button),
+  PDF ist gültige 1-seitige A4 mit allen §14-Pflichtangaben. Kalender-Edit-Popup zeigt
+  „Rechnung AZ-2026-0001 · Ansehen · PDF".
+- Einstellungen → „Rechnungsdaten" gespeichert (Aussteller, Steuernummer, Bank, Nummernkreis).
+- Neue Wohnung unter `/admin/wohnungen/neu` angelegt → sofort im Posteingang-Kalender-Dropdown.
+- Foto-Filter-Panel steht unter den Wohnungs-Karten, 12 Templates + „Kein Filter", Swatch-
+  Vorschau je Filter sichtbar.
+- **Testdaten nach dem Test per Wegwerf-Skript entfernt** (Wohnung id 10, Anfrage #5 inkl.
+  messages/invoice/calendarDays, Blob-PDF, `invoiceNumberNextSeq` zurück auf 1). `npx tsc`,
+  `npx eslint` (nur die 2 vorbestehenden Fehler in MapEmbed/CookieConsent), `npm run build` sauber.
+
+**Bekannte Automatisierungs-Notiz:** Der Card-Flip in `BookingForm.tsx` (CSS 3D `rotateY`) rendert
+in Screenshots als leere Fläche (backface-visibility) — funktioniert real, per JS-DOM-Check
+verifiziert. React-controlled Checkboxen brauchen einen echten Klick (nicht `form_input`), sonst
+greift `onChange` nicht.
+
+**Offen / nächste Schritte:**
+1. **Resend-Integration abschließen** (User: Marketplace-Terms bestätigen, s. o.), dann
+   `RESEND_API_KEY` + `NOTIFY_EMAIL` in allen 3 Vercel-Env-Targets. Ohne das gehen keine echten
+   E-Mails raus (nur Log).
+2. **Eigene Absender-Domain verifizieren** (Resend DNS: SPF/DKIM), dann `EMAIL_FROM` auf
+   `AUSZEIT <info@auszeit-mosel.de>` setzen → erst dann Zustellung an Gäste.
+3. Optional später: 2-Wege-Inbound-E-Mail (Webhook), Logo-Upload für Rechnungen (aktuell nur
+   Logo-URL-Feld).
+
+## Session: Posteingang — Wohnungskalender & Belegungs-Popups
+
+**Branch:** `feature/posteingang-wohnungskalender` (ausgehend von `feature/admin-design-editor`). Plan: `~/.claude/plans/tender-watching-acorn.md`.
+
+**Auftrag (5 Punkte):** (1) Drag&Drop der Wohnungen funktionierte für den User nicht. (2) Posteingang: Dropdown pro Wohnung + „Alle Wohnungen" (nur Übersicht, read-only) — je Wohnung ein eigener Kalender, die Anfragenliste bleibt global. (3) Beim Bestätigen einer Anfrage Daten anpassbar + Wohnung wählen (**Pflicht**) vor „gebucht". (4) Belegungs-Popup vor „gebucht", danach Kalendertage der Wohnung belegt; Klick auf belegten Tag → editierbares Overview-Popup. (5) Dasselbe Popup beim manuellen Belegen.
+
+**Schema** (`src/db/schema.ts`, `npm run db:push` ausgeführt):
+- `calendar_days` umgebaut: neue Spalten `apartment_id` (NOT NULL, FK → apartments, `onDelete: cascade`), `check_in`/`check_out` (Buchungsspanne des Tages), `booking_group_id` (NOT NULL, `crypto.randomUUID()` in der Action — gruppiert alle Tage einer Belegung). Der alte `date`-Unique-Constraint entfällt, stattdessen `uniqueIndex("calendar_days_apartment_date_uq").on(apartmentId, date)` (2. Table-Config-Argument).
+- `booking_requests.apartment_id` (nullable, FK → apartments, `onDelete: set null`) — für die Anzeige „Gebucht · Wohnung X".
+- Bestandsdaten: `calendar_days` enthielt nur Dummy-Daten und wurde vor `db:push` per Wegwerf-Skript geleert (danach gelöscht).
+
+**Server Actions** (`posteingang/actions.ts` neu strukturiert): `confirmBooking(id, data)` (neue Signatur mit `BookingFormData` — validiert Wohnung + Zeitraum, schreibt Kalendertage, updatet die Anfrage inkl. angepasster Felder), `createManualBooking(data)`, `updateBooking(bookingGroupId, data)` (löscht alle Tage der Gruppe + schreibt neu — deckt geänderten Zeitraum UND geänderte Wohnung ab), `releaseBooking(bookingGroupId)` (löscht Tage; bei `bookingRequestId` → Anfrage zurück auf „neu"). `toggleCalendarDay`/`saveCalendarDay` entfernt. `BookingFormData`-Typ + `addDays()`-Helper in `src/lib/booking.ts`.
+
+**UI:**
+- Neue gemeinsame Client-Komponente `BookingForm.tsx` (Wohnung-Select + Anreise/Abreise + Gästezahl/Name/E-Mail/Telefon/Notiz, eigenes `useTransition` + Fehleranzeige, Submit disabled bis Wohnung+gültiger Zeitraum) — genutzt von beiden Kalender-Popups **und** dem Bestätigen-Modal.
+- `Kalender.tsx` (Hauptumbau): `<select>` „Alle Wohnungen (Übersicht)" + je Wohnung. „Alle" = read-only Overlay (Klick zeigt Tages-Popup das alle Buchungen des Tages listet, Badge-Zähler bei >1). Einzelne Wohnung: Klick auf freien Tag → `BookingForm` (createManualBooking), Klick auf belegten Tag → `BookingForm` vorbefüllt (updateBooking) + „Freigeben"-Button mit **zweistufiger Inline-Bestätigung** (`ReleaseButton`, kein `window.confirm` — blockt Browser-Automation). Doppelklick-Toggle entfällt.
+- `RequestList.tsx`: Bestätigen-Modal ist jetzt `BookingForm` (Wohnung Pflicht, Felder vorbefüllt aus der Anfrage). Statuszeile zeigt bei „gebucht" den Wohnungsnamen.
+- `page.tsx`: lädt `getApartments()` zusätzlich, reicht `{id,name}[]` an beide Komponenten.
+
+**Drag&Drop-Fix** (`wohnungen/WohnungenGrid.tsx`): Befund — das bisherige Drag-Handle war nur ein 14px-`GripVertical`-Icon, praktisch unauffindbar. Fix: Handle ist jetzt ein vollwertiger Button „⣿ Ziehen · Pos. n/m" (Grip + Text, ~110×30px) mit `{...attributes} {...listeners}`; die Karte selbst trägt **keine** Listener mehr (vermeidet Click-nach-Drag-Navigation über den inneren `<Link>`). Auf/Ab-Buttons: `onPointerDown={e => e.stopPropagation()}` am Container, damit Klicks dort keinen Drag starten. `draggable={false}` auf `<Link>`/`<Image>`.
+
+**Browser-Test** (localhost:3000, Chrome-Automation — Login war über bestehende JWT-Session bereits aktiv, `AUTH_SECRET` unverändert; **kein** Passwort gesetzt/eingegeben nötig):
+- Drag&Drop: Reorder per Maus **und** Tastatur (Handle fokussieren → Space → Pfeiltaste → Space) verifiziert, hält nach Reload (`reorderApartments` persistiert). Normaler Klick auf die Karte öffnet weiter die Wohnung, Auf/Ab-Buttons unverändert. Reihenfolge nach Test wiederhergestellt.
+- Kalender: manuelle Belegung angelegt (Weinberg-Loft, 3 Nächte) → nur dort belegt, Rieslinghaus frei, „Alle Wohnungen" zeigt sie read-only mit vollen Infos. Overview-Popup: Wohnung gewechselt + Zeitraum verkürzt → Tage wanderten korrekt nach Rieslinghaus. „Freigeben" (zweistufig) → Tage frei.
+- Anfrage bestätigen: „Michael Müller" (neu) → Modal, ohne Wohnung ist „Bestätigen" deaktiviert; Wohnung „Flussblick" + Abreise angepasst → Status „Gebucht · Flussblick", Tage 14–16 im Flussblick-Kalender, Tages-Popup zeigt „Aus einer Buchungsanfrage übernommen." Danach per „Freigeben" wieder auf „neu" gesetzt (Testdaten via Wegwerf-Skript in den Ausgangszustand zurückgesetzt).
+- `npx tsc --noEmit` sauber. `npx eslint .`: nur 2 vorbestehende Fehler in `src/components/cookies/CookieConsent.tsx` (unberührt, `git stash` bestätigt sie als vorbestehend).
+
+**Bekannte Testdaten-Inkonsistenz (kein Bug):** Die Dummy-Anfragen „Jonas Klein" und „Familie Schneider" stehen auf „gebucht", haben aber `apartment_id = NULL` und keine Kalendertage (Alt-Zustand aus dem früheren `confirmBooking` ohne Wohnungsbezug; ihre Kalendertage wurden beim Schema-Umbau mitgeleert). Für eine saubere Demo einfach „Zurück zu Neu" → neu bestätigen, oder archivieren.
+
+**Offen:** commit/push/Deploy nach User-Freigabe. Merge-Frage `feature/admin-design-editor` → `main` weiterhin offen (Production läuft vom Branch).
+
+## Session: Adminpanel „Wohnungen" — Drag&Drop, Zurücksetzen, globaler Foto-Filter (laufend)
+
+**Auftrag:** Vier Erweiterungen für `/admin/wohnungen`: (1) Reihenfolge zusätzlich per Drag & Drop sortierbar (bestehende Auf/Ab-Pfeile bleiben), (2) jeder Eintrag auf seinen letzten gespeicherten Zustand zurücksetzbar, (3) gemeinsamer Foto-Filter mit 6 Templates für alle Wohnungs-Fotos, Live-Vorschau auf den Titelbildern der Übersicht, (4) Filter muss erst bestätigt/veröffentlicht werden, bevor er auf der öffentlichen Seite live geht. Plan mit dem User abgestimmt (inkl. 1 Rückfrage: Drag&Drop-Technik → `@dnd-kit/*` statt nativem HTML5-DnD, wegen Touch-/Tastatur-Zugänglichkeit), vollständiger Plan liegt unter `~/.claude/plans/structured-singing-gizmo.md`.
+
+Punkt 3+4 spiegeln bewusst das bestehende Entwurf/Veröffentlichen-Muster des Design-Editors (`designDraft`/`designDraftHistory`, s. „Session: Design-Editor" unten) sowie das `data-bg-anim`-CSS-Attribut-Muster für Bildeffekte — hier leichtgewichtiger, weil nur ein einzelner Filter-Key statt eines kompletten Snapshots im Entwurf steht.
+
+**Umsetzung in 5 Schritten** (jeder Schritt: eigener Commit + Push):
+1. Grundlage für den Foto-Filter — **erledigt, committed (`9304ea7`), gepusht.** Neue `siteSettings`-Spalten `apartmentPhotoFilter` (veröffentlicht, null = kein Filter) und `apartmentPhotoFilterDraft` (null = kein offener Entwurf, Sentinel `"none"` = Entwurf explizit „kein Filter", sonst Template-Key) — `npm run db:push` gegen die Dev-DB ausgeführt. Neue Datei `src/lib/photo-filters.ts`: 6 kuratierte Templates (Warmes Gold, Kühles Blau, Editorial S/W, Vintage Sepia, Sommerfrisch, Weicher Nebel) als reine CSS-`filter`-Kombinationen, plus `effectivePhotoFilterKey()`-Helper für die Entwurf/Veröffentlicht-Auflösung. Zugehörige `img[data-photo-filter="…"]`-Regeln in `globals.css`, direkt unter dem bestehenden `data-bg-anim`-Block, identisches Aktivierungsmuster (Attribut wird von `Photo`/`next/image` an das gerenderte `<img>` durchgereicht). Noch ohne UI/Server-Actions — kommt in Schritt 4/5.
+2. Zurücksetzen-Button (Bearbeiten-Formular) — **erledigt, committed (`4135dd8`), gepusht.** `[id]/page.tsx`: zweiter Button (`type="reset"`) neben „Änderungen speichern" im selben Formular — funktioniert ohne JS, weil `ApartmentFormFields` ausschließlich `defaultValue` (unkontrollierte Inputs) nutzt. Gilt nur für die Textfelder; Foto-Upload/-Löschen/-Sortierung committen weiterhin sofort einzeln (kein „unsaved" Zwischenzustand dort).
+3. Drag & Drop Sortierung (`@dnd-kit/*`) — **erledigt, committed (`a9cbf00`), gepusht.** Neue Client-Komponente `WohnungenGrid.tsx` ersetzt die bisherige Inline-`.map()` in `page.tsx`; `DndContext`+`SortableContext` (`rectSortingStrategy`), pro Karte ein dediziertes Drag-Handle-Icon (`GripVertical`), damit Link-Navigation zur Bearbeiten-Seite und die bestehenden Auf/Ab-Buttons weiter normal funktionieren (Listener nur am Handle, nicht auf der ganzen Karte). `PointerSensor` mit `activationConstraint: { distance: 8 }` verhindert versehentliches Draggen bei normalen Klicks. Neue Server Action `reorderApartments(orderedIds)` (`actions.ts`) setzt `sortOrder` sequenziell (kein `db.transaction()`, gleiches Muster wie `moveApartment`). Lokaler Optimistic-State wird nach jedem Server-Refresh synchronisiert — bewusst **nicht** per `useEffect`, sondern per React-empfohlenem "Adjusting state when a prop changes"-Muster während des Renderns (Vergleich `units !== prevUnits`), weil die `react-hooks/set-state-in-effect`-ESLint-Regel synchrones `setState` in einem Effect ablehnt. `npx tsc --noEmit`, `npx eslint` und `npm run build` (Production-Build) sauber. **Noch nicht im Browser geklickt** (Login-Blocker, s. „Was noch offen ist").
+4. Foto-Filter Server Actions + Query-Helper — **erledigt, committed (`28bb038`), gepusht.** Neue Datei `filter-actions.ts`: `setApartmentPhotoFilterDraft(key)` (schreibt `key ?? "none"` in den Entwurf), `publishApartmentPhotoFilter()` (kopiert effektiven Entwurf → veröffentlicht, leert Entwurf), `discardApartmentPhotoFilterDraft()`. Lokaler `ensureSettingsId()`-Helper (Insert-wenn-keine-Row-sonst-Update), gleiches Muster wie in `design/actions.ts`/`einstellungen/actions.ts` — Projekt dupliziert das bewusst pro Admin-Bereich statt zu teilen. `npx tsc --noEmit`/`npx eslint` sauber.
+5. Foto-Filter UI (Admin-Panel + öffentliche Seite) — **erledigt, committed (`1039a46`), gepusht.** Neue Client-Komponente `PhotoFilterPanel.tsx`: 6 Swatches + „Kein Filter" mit Live-Vorschau (erstes verfügbares Titelbild, `data-photo-filter` je Swatch), Klick schreibt in den Entwurf; solange ein Entwurf offen ist, erscheint eine Bestätigungsleiste „Veröffentlichen"/„Entwurf verwerfen". Alle Titelbild-Thumbnails in `WohnungenGrid` sowie die Foto-Grid-Vorschau auf `[id]/page.tsx` zeigen den **effektiven** Filter (Entwurf ?? veröffentlicht) — die ganze Übersichtsseite wird so zur Live-Vorschau. Öffentliche Seite (`[lang]/wohnung/page.tsx`) liest ausschließlich `settings.apartmentPhotoFilter` (nie den Entwurf) und reicht den Key durch `WohnungenShowcase` → `WohnungenSlider` (Titelbild) + `GalleryGrid` (Grid + Lightbox) als `data-photo-filter` durch. `npx tsc --noEmit`, `npx eslint` und `npm run build` (Production-Build) sauber.
+
+**Damit ist das komplette Auftrags-Set (Drag&Drop, Zurücksetzen, Foto-Filter mit Entwurf/Veröffentlichen) implementiert und gepusht.**
+
+**Offen (Browser-Klick-Test):** Login unter `/admin/login` erfordert das echte Admin-Passwort — eine Session-lokale Umgehung (z. B. `ADMIN_PASSWORD_HASH` per Bcrypt-Befehl ersetzen) wird bewusst **nicht** versucht: Passwörter zur Authentifizierung einzugeben/zu setzen ist unabhängig vom Kontext eine harte Grenze für diese Sessions, kein Sonderfall für „eigene, lokale Umgebung". Nicht im Browser verifiziert: Drag&Drop-Reorder (Maus + Tastatur), Zurücksetzen-Button, Foto-Filter-Panel (Swatch-Klick → Entwurf → Übersicht zeigt Vorschau → öffentliche `/de/wohnung`-Seite bleibt unverändert → Veröffentlichen → öffentliche Seite zeigt Filter → Entwurf verwerfen). Stattdessen abgesichert durch: `npx tsc --noEmit`, `npx eslint` und `npm run build` (vollständiger Production-Build) nach jedem Schritt — alle sauber. Nächste Session (oder der User selbst) sollte mit genau diesem Klicktest starten, bevor an weiteren Wohnungen-Features gebaut wird.
+
+## Session: Rollen, Posteingang & Buchungskalender (laufend)
+
+**Auftrag:** Zwei Admin-Rollen (Admin: nur Wohnungen/Einstellungen; Developer: zusätzlich Design), neuer Menüpunkt „Posteingang" für beide mit Dummy-Buchungsanfragen (Kontaktformular sendet noch nicht produktiv), Status-Verwaltung (Neu/Gebucht/Abgelehnt/Archiviert), Monats-Verfügbarkeitskalender (Klick = Popup mit Infos, Doppelklick = frei/belegt umschalten, manuelle Anpassung jederzeit möglich), und beim Bestätigen einer Anfrage automatische Übernahme der Formular-Infos in die betroffenen Kalendertage (erst nach Bestätigungs-Popup). Plan unter `~/.claude/plans/snuggly-jumping-platypus.md`.
+
+**Rollen-Mapping per Rückfrage geklärt:** bestehender `webdev`-Account (Login `/bierp4a4/login`) → Rolle `developer` (voller Zugriff), bestehender `admin`-Account (`/admin/login`) → Rolle `admin` (eingeschränkt). Logins/Passwörter unverändert.
+
+**Neues Schema** (`src/db/schema.ts`): `bookingRequests` (Name/Kontakt/Zeitraum/Gäste/Nachricht/Status) + `calendarDays` (nur belegte Tage haben eine Zeile — kein Eintrag = frei; Gastdaten + optionaler `bookingRequestId`-Link). Kein separates `status`-Feld auf `calendarDays` nötig, hält Toggle/Upsert einfach. `npm run db:push` erfolgreich (Env-Vars aus `.env.local` wie gehabt manuell geladen).
+
+**Rollen/Auth:** `role` (`"admin" | "developer"`) über NextAuth-Callbacks (`jwt`/`session`) durchgereicht, Typ-Augmentation in `src/types/next-auth.d.ts` — **Falle:** `declare module "next-auth/jwt"` merged NICHT mit dem tatsächlich verwendeten `JWT`-Interface (das kommt aus `@auth/core/jwt`, `next-auth/jwt` re-exportiert nur) — `token.role` blieb sonst `unknown` (Fehler „Type 'unknown' is not assignable"). Fix: Augmentation auf `"@auth/core/jwt"` zielen. Durchsetzung an zwei Stellen: `src/proxy.ts` (Middleware, redirect bei direktem `/admin/design`-Aufruf durch Admin-Rolle) und Layout/Dashboard (Nav-Link bzw. Kachel nur bei `role === "developer"`).
+
+**Posteingang** (`src/app/admin/(dashboard)/posteingang/`): `RequestList.tsx` (Filter-Tabs, Status-Buttons, Bestätigungs-Popup vor `confirmBooking()`), `Kalender.tsx` (Monatsraster, Einzel-/Doppelklick per `setTimeout`-Timer-Pattern unterschieden, Tages-Popup zeigt bei verknüpften Tagen die übernommenen Anfrage-Daten read-only, bei manuell markierten Tagen ein editierbares Mini-Formular). Gemeinsame `Modal`-Komponente (`src/components/admin/Modal.tsx`, Muster aus `EditPopup.tsx` übernommen) für beide Popup-Typen. `confirmBooking()` schreibt die Kalendertage per Bulk-`insert().onConflictDoUpdate()` (kein `db.transaction()` — neon-http unterstützt das nicht, s. Architektur-Hinweis unten) und setzt danach den Anfrage-Status.
+
+**Dummy-Daten:** `scripts/seed.mts` um 4 Beispiel-Anfragen erweitert (2× neu, 1× gebucht inkl. passender Kalendertage über denselben `dateRange()`-Helper wie die Server Action, 1× abgelehnt), `npm run db:seed` erfolgreich ausgeführt.
+
+**Verifiziert per Chrome-Automation (Admin-Rolle, User war bereits eingeloggt):** Nav zeigt nur Übersicht/Wohnungen/Posteingang/Einstellungen (kein Design); direkter Aufruf von `/admin/design` redirected zu `/admin`; Posteingang-Liste + Filter; Kalender-Tag-Klick öffnet Popup (frei-Tag: Hinweistext; belegter/verknüpfter Tag: Anfrage-Daten inkl. „Aus einer bestätigten Buchungsanfrage übernommen"); Doppelklick schaltet frei/belegt sofort um (getestet + zurückgeschaltet); „Als gebucht markieren" → Bestätigungs-Popup → nach Klick auf „Bestätigen" Status wechselt zu „Gebucht" UND die betroffenen Tage (Checkout-Tag exklusive) erscheinen im richtigen Monat als belegt mit den Anfrage-Kontaktdaten. **Hinweis:** Beim ersten Testversuch führten reine Pixel-Koordinaten-Klicks auf den Kalender-Tagen zu falschen Treffern (Screenshot- vs. Klick-Koordinatensystem nicht 1:1) — wie schon in einer früheren Session dokumentiert, ist `find`/Ref-basiertes Klicken hier zuverlässiger als Koordinaten.
+**Nicht verifiziert:** Developer-Rolle (`/bierp4a4/login`) im Browser — dafür wäre ein zweiter Login nötig gewesen, Logik ist aber symmetrisch zur bereits verifizierten Admin-Rolle (dieselbe `isDeveloper`-Bedingung an beiden Stellen).
+
+**Bewusst NICHT Teil dieser Runde** (User hat das Kontaktformular explizit als „noch nicht funktioniert, nur UI/UX mit Dummy-Daten vorbereiten" gescoped): das eigentliche Verdrahten von `BookingForm.tsx` (aktuell Formspree-Platzhalter → `mailto:`-Fallback) auf `bookingRequests`, sowie E-Mail-Versand an `info@mosel-auszeit.de` bei neuen Anfragen (bräuchte einen echten E-Mail-Provider über den Vercel-Marketplace). Für eine künftige Session: Formular müsste eine neue Server Action `createBookingRequest()` aufrufen (Insert in `bookingRequests`, Status `"neu"`), und optional ein E-Mail-Provider (Resend o. ä.) angebunden werden.
+
+## Session: Design-Editor Runde 3 — 11 Erweiterungen (laufend)
+
+**Auftrag:** 11 vom User gemeldete Lücken/Wünsche im Design-Editor schließen (Navbar-Links editierbar, Button-Textstil ausklappbar, rechter CTA-Button-Hintergrund fixen, Footer-Kernelemente editierbar, Logo-Schriftzug-Größe, Logo/Logotext-Kombi-Umschalter, Hintergrundbild-Animationen mit 5 Templates, alle Icons editierbar "ähnlich wie Bilder", weitere freie Google Fonts, Zeilenhöhe/Laufweite im Text-Popup). Vollständiger Plan (inkl. Recherche-Report zu allen 11 Punkten mit Datei:Zeile-Referenzen) unter `~/.claude/plans/eager-tickling-lerdorf.md`. Kein AskUserQuestion nötig — alle offenen Design-Entscheidungen (Icon-Editierung als Bild-Upload statt Picker, 5 Animationsnamen/-timings, welche Footer-/Nav-Elemente editierbar) wurden im Plan begründet festgelegt und dem User zur Freigabe vorgelegt (Plan Mode, genehmigt).
+
+**Architekturprinzip durchgehend angewendet:** Jedes neue Feld an denselben 4 Stellen verdrahtet — `siteSettings`-Spalte (`schema.ts`), `DesignDraft`-Typ + `publishedDesignSnapshot()` (`home-content.ts`), `save*`/`reset*`-Action-Paar (`design/actions.ts`), `applyDraftState()` (`HomePreviewEditor.tsx`) — plus `DEFAULT_SETTINGS` in `queries.ts` als fünfte Stelle für alle neuen top-level Spalten.
+
+**Phase 1 — Navbar-Links + Footer-Kernelemente editierbar — committed (`3a131bc`).** Neue `navLabelsDe/En`-Spalte (`NavLabels`-Typ: die 5 Navbar-Link-Labels, Ziel-Routen bleiben fest). `FooterContent` um `brandName` + drei Legal-Link-Labels erweitert (keine neue Spalte, bestehende `footerContentDe/En`-jsonb erweitert). Neue `NAV_FIELDS`-Registry in `fields.ts` (analog `FOOTER_FIELDS`). Navbar-Links, Footer-Markenname und Footer-Legal-Links in der Vorschau jetzt klickbar (`TextEditPopup`, kein Styling-Bereich). `Header.tsx`/`Footer.tsx` lesen die Overrides mit Dictionary-Fallback (`Footer.tsx` musste dafür von einem gemergten `t`-Objekt auf einzelne Fallback-Variablen pro Feld umgebaut werden, da `dict.footer` kein `brandName`-Äquivalent hat).
+
+**Phase 3 (vor Phase 2 umgesetzt, da Phase 2 dieselben Controls wiederverwendet) — Zeilenhöhe & Laufweite im Text-Popup — committed (`aaea145`).** `HomeTextStyleOverride` um `lineHeight`/`letterSpacing` erweitert. Zwei neue Regler im `TextEditPopup` neben dem Schriftgrößen-Regler. Neue Konstanten `DEFAULT_LINE_HEIGHT`/`DEFAULT_LETTER_SPACING` in `fields.ts`, wiederverwendet in Phase 2. Angewendet an beiden Stellen, die in Sync bleiben müssen: `Editable` (Admin) und `styleFor()` (öffentliche Seite).
+
+**Phase 2 — Button-Textstil (ausklappbar) + rechter CTA-Button-Hintergrund fixbar — committed (`c9aabbb`).** `ButtonStyleOverride` um optionale (nicht `string|null` wie die 5 Bestandsfelder, sondern `?:`, damit ältere/kleinere Objekte wie der sitewide Default-Stil ohne Änderung gültig bleiben) Textstil-Felder erweitert. Ausklappbarer Bereich im `ButtonEditPopup` (Toggle-Button-Muster wie „Eigene Farben" im `PaletteEditPopup`) mit denselben Controls wie `TextEditPopup`. **Root Cause des kaputten rechten CTA-Buttons gefunden und behoben:** `BUTTON_VARIANT_CLASS["outline-light"]` in `Button.tsx` war komplett hartkodiertes Tailwind ohne CSS-Var-Anbindung (anders als `primary`/`outline`) — jetzt liest die Variante `--button-bg`/`--button-border-color` mit dem bisherigen Weiß/Transparent als Fallback, der feste weiße Hover-Zustand bleibt für die Lesbarkeit über Fotos unangetastet.
+
+**Phase 4 — Logo-Schriftzug-Größe + Kombi-Umschalter — committed (`9e6efc5`).** Neue Spalten `logoTextScale` (Größenfaktor 0.6–1.6) und `logoMode` (`"separate"|"combined"`). **Wichtige Design-Entscheidung:** Die Größe wirkt als `transform: scale()` auf die bestehende **fixe** Pixel-Box, statt deren Maße zu ändern — vermeidet bewusst den in einer früheren Session dokumentierten `next/image fill`-Kollaps-Bug bei variabler Boxgröße. Regler committed erst bei `onMouseUp`/`onTouchEnd`/`onKeyUp` im Popup (lokaler Puffer-State), nicht bei jedem Drag-Tick, sonst würde jeder Pixel-Zwischenstand einen eigenen Entwurfs-/History-Eintrag erzeugen. Kombi-Modus ersetzt Kreis+Textbox durch ein einziges breites Bild (5:1-Zuschnitt statt 1:1-rund), Umschalter erscheint in beiden Popups. `Header.tsx` (öffentlich) und Preview wenden beides identisch an.
+
+**Phase 5 — 5 Hintergrundbild-Animationen — committed (`710bf20`).** Neue `src/lib/image-animations.ts` (Muster wie `button-animations.ts`) + CSS-`@keyframes` in `globals.css`, aktiviert über `data-bg-anim="<key>"` direkt auf dem `<img>`-Element (funktioniert für natives `<img>` in der Vorschau UND das von `next/image`/`Photo` gerenderte `<img>` auf der öffentlichen Seite, da `data-*`-Props durchgereicht werden). 5 Templates: Sanfter Zoom (10%, hält am Ende), Weiches Schwenken (Ken-Burns horizontal), Vertikale Enthüllung, Ruhiger Atem (endlose Pulsation), Weichzeichner-Enthüllung (Blur-zu-Schärfe). Nur für Hero+Wohlfühl-Bild. Ohne gewählte Animation bleibt das Verhalten exakt wie zuvor (Hero behält seine alte statische `scale-[1.18]`-Klasse als Fallback).
+
+**Phase 6 — Alle Icons editierbar — committed (`253966f`).** User-Wortlaut „ähnlich wie Bilder" wörtlich umgesetzt: Icon-Slots (4 Feature-Kacheln, 3 Schritte, 4 Vertrauensleiste) bekommen dieselbe `ImageEditPopup`-Upload/Zuschnitt-Erfahrung wie Hero-/Wohlfühl-Bild, **nicht** ein neues Icon-Picker-Widget. Neue jsonb-Spalten `featureIconOverrides`/`stepIconOverrides`/`trustIconOverrides` (Index → hochgeladene URL, sprachunabhängig). Technischer Kniff: synthetische `id`-Strings `"icon:<group>:<index>"` im bestehenden `ActiveEditor`-Typ (`kind: "image"`), `handleUploadImage`/`handleResetImage` branchen auf das `"icon:"`-Präfix statt der festen `ImageId`-Union. `ImageEditPopup`-Vorschaubox zeigt „Standard-Icon"-Platzhalter statt kaputtem `<img>`, wenn kein Override existiert (Lucide-Icons haben keine Bild-URL für die Vorschau). **Bewusste Vereinfachung:** kein automatisches Blob-Aufräumen für Icon-Overrides beim Ersetzen/Veröffentlichen (anders als bei den 4 Einzelbild-Feldern) — verwaiste Blobs sind ein reiner Speicherkosten-Nebeneffekt, kein Funktionsfehler.
+
+**Phase 7 — 6 weitere Google Fonts — committed (`6323018`).** Playfair Display, Cormorant Garamond, Libre Baskerville, Work Sans, Josefin Sans, Karla — alle SIL-OFL, gleiches `next/font/google`-Selbsthosting-Muster. Rein additiv, kein Schema-Change. `npm run build` komplett durchlaufen lassen, um zu verifizieren, dass next/font alle 6 neuen Font-Namen zur Build-Zeit auflösen kann (nicht nur `tsc`) — erfolgreich.
+
+**Nach jeder Phase verifiziert:** `npx tsc --noEmit` + `npx eslint <geänderte Dateien>` sauber, `npm run db:push` gegen die Dev-DB erfolgreich (Env-Vars aus `.env.local` geladen). Abschließender `npx eslint src` über das gesamte Projekt zeigt nur 2 Fehler in `MapEmbed.tsx`/`CookieConsent.tsx` (`react-hooks/set-state-in-effect`) — beide **vorbestehend, nicht in dieser Session berührt** (verifiziert per `git diff` gegen den Session-Start-Commit `7ca7304`), außerhalb des Auftrags.
+
+**Phase 8 — Browser-Klicktest — erledigt.** User hat sich für „temporäres `ADMIN_PASSWORD_HASH`-Ersetzen" entschieden (statt selbst einzuloggen oder ganz zu überspringen). Dev-Server auf Port 3210, Chrome-Automation eingeloggt (Session-Cookie war bereits vorhanden — Cookies sind nicht Port-gebunden). Verifiziert: Navbar-Link-Popup, Footer-Markenname/-Legal-Links (inkl. der echten `Footer.tsx`-Komponente unten auf der Admin-Seite selbst, nicht nur der Preview-Nachbildung), Button-Textstil-Ausklappbereich (Fett sichtbar angewendet), **rechter CTA-Button-Hintergrundfarbe änderbar — Kernfehler bestätigt behoben**, Zeilenhöhe/Laufweite im Text-Popup (sichtbar vergrößerter Zeilenabstand + Buchstabenabstand auf dem Hero-Titel), Logo-Kombi-Umschalter (beide Richtungen, inkl. Titel-/Hinweistext-Wechsel), Icon-Upload + Reset (Schritt-Icon), 12 Schriftarten im Dropdown, 5 Animations-Templates + Auswahl-Highlight, Entwurf/Veröffentlichen/Verwerfen-Zyklus (Entwurf verworfen → veröffentlichter Stand exakt wiederhergestellt, keine Testdaten geleakt).
+
+**Ein echter Bug gefunden und behoben** (Commit `3441733`): Die Gold-Auswahl-Markierung im Animations-Grid und im Logo-Kombi-Umschalter blieb nach einem Klick auf der vorherigen Option hängen (Wert wurde korrekt gespeichert, nur die UI-Markierung nicht aktualisiert) — der `editor`-Prop des Popups wird nach einem Klick nicht neu gebaut, da der Parent dafür nicht erneut `openImageEditor()` aufruft. Fix: lokaler Spiegel-State im Popup (analog zum bereits korrekten Muster im `ButtonEditPopup`), beim Logo-Umschalter zusätzlich Schließen des Popups nach dem Wechsel (da Zuschnitt-Seitenverhältnis/Hinweistext sonst am alten `logoMode` hängen bleiben würden).
+
+**Zwei Testartefakte während des Klicktests entstanden und bereinigt:** (1) Ein Klick landete versehentlich auf einem Datei-Upload-Feld und lud ein fremdes Werbe-/WhatsApp-Bild als Schritt-1-Icon hoch — Override zurückgesetzt, verwaister Blob per Wegwerf-Skript (`del()`) gelöscht. (2) Mehrere versehentliche Textstil-Überschreibungen (riesige Schriftgröße, falsche Farbe) auf Schritte-2/3-Texten — über „Textstile zurücksetzen" bereinigt. Beides ist beim finalen „Entwurf verwerfen" ohnehin verworfen worden; die manuelle Zwischenbereinigung diente nur der Testklarheit. **Ursache:** Die Live-Vorschau enthält großflächige, optisch leere aber block-level Elemente (z. B. `<h1>` im Hero, dessen Box die volle Container-Breite einnimmt, obwohl der Text nur links steht) — Klicks per Pixel-Koordinate landen dadurch leicht auf dem falschen Element. Für künftige Browser-Klicktests: `find`/Ref-basiertes Klicken oder `dispatchEvent(new MouseEvent('click', {bubbles:true}))` per `javascript_exec` auf gezielt selektierte Elemente ist robuster als reine Koordinaten-Klicks in diesem Preview-Layout.
+
+`ADMIN_PASSWORD_HASH` nach Testende exakt auf den Original-Wert zurückgesetzt (Diff gegen vorherigen Backup identisch), Dev-Server (Port 3210) gestoppt, Chrome-Tab geschlossen.
+
+**Phase 9 — Deploy nach Production — erledigt (User-Auftrag: „commit push und deploy").** Stand war zu dem Zeitpunkt bereits vollständig committed/gepusht (nichts Offenes). `npm run build` lokal sauber. `npx vercel whoami` → `codingmaikel-6994`, `npx vercel teams ls` bestätigt Team `codewithmaik` verfügbar — Projekt bereits korrekt unter `codewithmaik`/`auszeit-mosel` verlinkt (`.vercel/project.json`). `vercel --prod --scope codewithmaik --yes` → Deployment `dpl_5KBFYLr6zZSpDnxRD38QyeaKrcr6` (`auszeit-mosel-aufr7j8mc-codewithmaik.vercel.app`). Domain-Aufräumen wie in „Standing Instructions" beschrieben durchgeführt: `vercel alias set` auf `auszeit-mosel.vercel.app`, die beiden automatisch angelegten Nebenaliase (`auszeit-website-11.vercel.app`, `auszeit-mosel-codewithmaik.vercel.app`) per `vercel alias rm` entfernt. Verifiziert per `curl`: `auszeit-mosel.vercel.app/de` → `200`, beide Nebenaliase → `404`, `/de/wohnung` → `200`, `/admin/design` → `307` (Redirect zu Login, kein Hinweis auf fehlende Spalten in der Production-DB — die 9 neuen `siteSettings`-Spalten sind also über dieselbe Neon-DB bereits nutzbar). Kein Merge nach `main` (war nicht Teil des Auftrags, Production läuft wie in allen früheren Sessions direkt vom Branch-Deploy).
+
+**Noch offen (nächste Session sollte hiermit weitermachen):**
+1. `feature/admin-design-editor` weiterhin nicht nach `main` gemerged — bewusst, Production läuft direkt vom Branch-Deploy (s. o.).
+2. Nicht im Klicktest abgedeckt (vor dem Deploy auch nicht nachgeholt): Zuschnitt-Flow für den Kombi-Logo-Upload selbst (5:1-Seitenverhältnis nie tatsächlich mit einer Datei durchgespielt, nur die Popup-Konfiguration verifiziert), Logo-Schriftzug-Größenregler (Slider-Interaktion nicht getestet, nur Code-Review), Reset-Button beim Größenregler. Sollte bei nächster Gelegenheit im Browser nachgeholt werden — idealerweise jetzt direkt auf Production oder erneut per temporärem Test-Passwort.
+3. Icon-Overrides räumen beim Ersetzen/Veröffentlichen keine alten Blobs auf (bewusste Vereinfachung, s. Phase 6) — bei häufiger Icon-Nutzung ggf. später nachrüsten.
+
+## Session: Design-Editor Runde 2 — Entwurf-Absicherung, Navbar/Footer im Preview, individuelle Buttons (laufend)
+
+**Auftrag:** (1) Verifizieren, dass Textfarb-Änderungen etc. wirklich nur im Entwurf landen statt live zu wirken (User-Meldung, war seit 2 Sessions nie im Browser getestet). (2) Navbar ins Live-Vorschau-Preview aufnehmen, Farbpalette nur noch als Popup bei Navbar-Klick statt fixer Formular-Sektion. (3) Footer ins Preview, Footer-Texte editierbar. (4) Button-Gestaltung von global auf individuell pro Button umstellen (Hero-CTA 1/2, Navbar-CTA), inkl. Checkbox „alle Buttons linken" und Popup-internem Undo. Vollständiger Plan unter `~/.claude/plans/hazy-tumbling-bubble.md`. Scope-Entscheidung mit dem User abgestimmt: individuelle Button-Gestaltung gilt nur für die 3 im Preview sichtbaren Buttons, alle übrigen Buttons der Website (Wohnung/Bewertungen/Slider) bleiben am gemeinsamen Default-Stil.
+
+**Phase 0 — Entwurf/Veröffentlichen-Trennung verifiziert: KEIN Bug gefunden.** Browser-Klicktest (temp. `ADMIN_PASSWORD_HASH`): Textfarbe eines Feldes geändert → Admin-Preview live, `/de` in zweitem Tab nach Reload unverändert → „Veröffentlichen" → `/de` zeigt Änderung → Änderung wieder zurückgesetzt und erneut veröffentlicht (Baseline sauber wiederhergestellt). Die bestehende Entwurf/Veröffentlichen-Architektur aus der letzten Session funktioniert wie vorgesehen; Punkt 1+2 der User-Meldung war also entweder veraltetes Feedback aus einer Session vor dem Entwurf/Veröffentlichen-Umbau, oder bezog sich auf die (gewollt) sofort reagierende Admin-eigene Vorschau. **Nebenbefund (nicht behoben, nicht Teil dieses Auftrags):** Der veröffentlichte `hero.title2`-Text enthielt einen Test-Artefakt-Suffix „.jkjk" (vermutlich Tipp-Test aus einer früheren Session, versehentlich veröffentlicht) — sollte bei Gelegenheit vom User bereinigt werden.
+
+**Phase 2 — Navbar im Preview + Farbpalette als Popup — erledigt, committed (`eba3ef6`), gepusht.** `HomePreviewEditor.tsx`: „Branding"- und „Farbpalette"-Formularsektionen entfernt, stattdessen dekorative Navbar-Nachbildung (Logo/Logo-Schriftzug/Nav-Links/Anfragen-Button, keine echten Links) ganz oben in der Live-Vorschau. Klick auf Logo/Logo-Schriftzug (mit `stopPropagation`) öffnet weiterhin `ImageEditPopup`; Klick auf die restliche Navbar-Fläche öffnet neues `PaletteEditPopup` (`EditPopup.tsx`, `ActiveEditor`-Union um `kind: "palette"` erweitert) — Inhalt 1:1 aus der alten Sektion übernommen (10 Templates + „Eigene Farben"-Regler + Zurücksetzen). Keine Schema-/Action-Änderung nötig, bestehende `saveThemeColors`/`resetThemeColors` weiterverwendet. Nav-Link-Labels sind als statische DE/EN-Konstante hartkodiert (`PREVIEW_NAV_LABELS`) — bewusst nicht editierbar, da sitewide/dictionary-basiert und außerhalb des Design-Scopes. Im Browser verifiziert: Navbar rendert korrekt, Klick öffnet Popup, Template-Klick übernimmt Farben in die Vorschau (inkl. Buttons-Sektion, die weiterhin `colors.primary` als Default nutzt), Testfarbe danach wieder verworfen.
+
+**Phase 3 — Footer im Preview + editierbare Footer-Texte — erledigt, committed (`3269b98`), gepusht.** Neue `siteSettings`-Spalten `footerContentDe`/`footerContentEn` (jsonb, `FooterContent`-Typ: `tagline`/`navHeading`/`kontaktHeading`/`copyrightSuffix`), `DesignDraft` erweitert, `db:push` gegen Dev-DB ausgeführt. Neue Server Actions `saveFooterContent`/`resetFooterContent` (`design/actions.ts`, analog `saveHomeTextAndStyles`/`resetHomeContent`). `fields.ts` um eigene `FOOTER_FIELDS`-Registry + `buildFooterContentFormData` erweitert (kleiner als `FIELDS`, da Footer-Texte bewusst nicht stylebar sind — kein Font-Picker/Farbe im Popup, nur DE/EN-Text). `HomePreviewEditor.tsx`: `openTextEditor`/`handleSaveText` branchen jetzt zuerst auf `FOOTER_FIELDS[id]`, bevor sie auf die Home-`FIELDS`-Registry zurückfallen — dadurch konnte das bestehende `TextEditPopup` 1:1 wiederverwendet werden. Footer-Nachbildung (Tagline, Navigation-Spalte mit den bereits fest hartkodierten Nav-Labels aus Phase 2, Kontakt-Spalte mit Platzhaltertext „Kontaktdaten aus Einstellungen", Copyright-Zeile, feste Legal-Link-Labels) rendert jetzt am Ende der Live-Vorschau, innerhalb desselben `previewThemeStyle`-Wrappers. Öffentliche `Footer.tsx` liest `settings.footerContentDe/En` mit Fallback auf `dict.footer` (identisches Muster wie `homeContentDe/En` in `[lang]/page.tsx`) — nur die 4 editierbaren Felder, Impressum/Datenschutz/Cookie/Credit-Zeile bleiben fest aus dem Dictionary. **Nebenfund gefixt:** `DEFAULT_SETTINGS` in `src/db/queries.ts` (Fallback-Objekt für nicht konfigurierte DB) hatte kein `footerContentDe/En` — TS-Fehler, ergänzt.
+
+Im Browser verifiziert: Footer erscheint korrekt am Ende der Vorschau, Klick auf Tagline öffnet Popup mit DE/EN-Feldern (kein Stil-Bereich, wie gewollt), Änderung übernimmt sich in die Vorschau, Testtext danach wieder verworfen (`Entwurf verwerfen`).
+
+**Phase 4 — Individuelle Button-Gestaltung — erledigt, committed (`9b9dfb7`), gepusht.** Größte Phase dieser Session. Neue `siteSettings`-Spalten `buttonStyles` (jsonb, `Partial<Record<ButtonId, ButtonStyleOverride>>`) und `buttonsLinked` (boolean, `db:push` ausgeführt); `BUTTON_IDS = ["hero.ctaWohnungen", "hero.ctaBuchen", "navbar.cta"]` als benannte Konstante in `home-content.ts`. Die bisherigen globalen `buttonBorderWidth`/…-Spalten bleiben unverändert bestehen, werden aber semantisch zum **Default-Stil** (Fallback für alle Buttons außerhalb des Preview-Scopes, z. B. `/wohnung`, `/bewertungen`, `WohnungenSlider`) — sie sind jetzt nur noch über die neue „Verlinkt"-Checkbox erreichbar (s. u.), die alte eigenständige „Buttons"-Formularsektion wurde komplett entfernt.
+
+- **Neue Server Action** `saveButtonEdit` (`design/actions.ts`) ersetzt die alte globale `saveButtonStyle`: speichert Button-Stil **und** (nur bei den beiden Hero-CTAs) den Button-Text in einem Zug — der Client schickt dafür die komplette Startseiten-`FormData` mit (`buildHomeContentFormData`, gleiches Muster wie `saveHomeTextAndStyles`), damit ein Popup-Klick auf „Übernehmen" genau einen Entwurfs-/History-Eintrag erzeugt. Bei aktivierter „Verlinkt"-Checkbox schreibt die Action den Stil zusätzlich in **alle drei** `BUTTON_IDS` sowie in die Default-Spalten. `resetButtonStyleForId` löscht nur den Override eines einzelnen Buttons.
+- **Neues `ButtonEditPopup`** (`EditPopup.tsx`) — kombiniert (bei Hero-CTAs) DE/EN-Textfelder mit Button-Farbe/Rahmenfarbe/Randdicke/Rundung/Hover-Animation, der „Verlinkt"-Checkbox und einem rein clientseitigen Undo-Stack (`history`-State, vor jeder Feldänderung wird der bisherige lokale Stand gepusht) für den „Letzten Schritt rückgängig"-Button — wirkt nur innerhalb der noch offenen Popup-Sitzung, bevor „Übernehmen" geklickt wird, kein Server-Roundtrip nötig.
+- **Rendering-Wiring:** `HomePreviewEditor.tsx` berechnet den effektiven Stil je Button (`buttonInlineStyle(id)`/`buttonAnimationAttr(id)`: individueller Override ?? Default-Stil) und wendet ihn als Inline-CSS-Vars + `data-button-anim` direkt auf das jeweilige Button-Element an. `Button.tsx` (öffentliche Seite) bekommt einen neuen optionalen `styleOverride`-Prop nach demselben Muster — bestehende Aufrufstellen ohne den Prop (Wohnung/Bewertungen/Slider) bleiben unverändert am Default-Stil. **Nebenbefund gefixt:** `Header.tsx` hatte für den Navbar-„Anfragen"-Button bisher einen eigenen, komplett ungestylten `Button`-Handler ohne `.btn`-Klasse — der bekam **nie** irgendeine Design-Editor-Gestaltung ab, auch nicht die alte globale. Jetzt nutzt Header.tsx den geteilten `Button` aus `@/components/Button` (+ neuer `navCtaStyle`-Prop von `layout.tsx`), wodurch der Navbar-Button zum ersten Mal überhaupt am Button-Styling teilnimmt.
+- **`globals.css`:** Jede der 10 Hover-Animationsregeln existierte bisher nur als Vorfahre-Selektor (`[data-button-anim="x"] .btn`, für den sitewide `<html>`-Default). Für individuelle Overrides (Attribut direkt auf dem `.btn`-Element) wurde bei jeder Regel ein Self-Selektor (`.btn[data-button-anim="x"]`, inkl. `::before`/`::after`-Pendants) ergänzt.
+
+**Im Browser verifiziert** (temp. `ADMIN_PASSWORD_HASH`): Navbar-CTA-Popup öffnet ohne Textfelder (kein Content-Feld dafür vorgesehen), Hero-CTA-Popup öffnet **mit** vorausgefüllten DE/EN-Textfeldern. Undo-Stack getestet: zwei Änderungen (Farbe, dann Animation) → ein Undo-Klick macht nur die Animation rückgängig (Farbe bleibt, Button bleibt aktiv) → zweiter Klick macht auch die Farbe rückgängig (Button wird deaktiviert, History leer) — funktioniert exakt wie vorgesehen. „Verlinkt"-Checkbox getestet: Farbe am Navbar-Button geändert + Checkbox aktiv + Übernehmen → Navbar-CTA **und** Hero-CTA „Zu den Wohnungen" ändern sich beide sofort in der Vorschau (Hero-CTA „Buchen & Anfragen" bleibt bewusst unverändert, da `outline-light`-Variante keine Farb-Overrides nutzt, s. Kommentar in `Button.tsx`) → veröffentlicht → `/wohnung`-Seite (außerhalb des Preview-Scopes) zeigt den neuen Default-Stil ebenfalls auf dem „Jetzt anfragen"-Button → Testfarbe wieder zurückgesetzt und erneut veröffentlicht (Baseline sauber wiederhergestellt).
+
+**Deployed:** `vercel --prod --scope codewithmaik` (User-Bestätigung eingeholt, da vom Auto-Mode-Classifier als produktionsrelevante Aktion geblockt) → Deployment `dpl_3x529PH83ZFLUdaR7F9tLbeHDj9z`. Domain-Aliase wie gewohnt nachgezogen (`vercel alias set` auf `auszeit-mosel.vercel.app`, die beiden automatisch angelegten Nebenaliase `auszeit-website-11.vercel.app`/`auszeit-mosel-codewithmaik.vercel.app` entfernt, per `curl` verifiziert: `200`/`404`/`404`). `npm run build` lief vor dem Deploy lokal sauber durch. Live-Smoke-Test: `/de`, `/de/wohnung` laden fehlerfrei (200, kein Application-Error-Marker), `/admin/design` redirected korrekt zum Login (307, nicht eingeloggt) — kein Hinweis auf fehlende Spalten in der Produktions-DB.
+
+**Phase 5 — Abschluss — erledigt.** `npx tsc --noEmit` und `npx eslint` über alle in dieser Session geänderten Dateien: durchgehend sauber (nach jeder Phase erneut geprüft). `ADMIN_PASSWORD_HASH` zurückgesetzt (Diff gegen Backup identisch). Alle 5 Phasen sind committed und gepusht (`eba3ef6`, `3269b98`, `9b9dfb7` + zwei Devnotes-Commits dazwischen), Branch `feature/admin-design-editor` ist aktuell auf `origin`.
+
+**Damit ist auch der seit zwei Sessions überfällige Adminpanel-Browser-Klicktest endlich nachgeholt** (s. „Was noch offen ist" Punkt 1 weiter unten, aus der Session „Admin-Editor Design") — zumindest für den Entwurf/Veröffentlichen-Workflow und alle in dieser Session neu gebauten Teile (Navbar/Footer/Buttons). Nicht erneut angeklickt wurden die reinen Datei-Upload-Flows für Logo/Hero-/Wohlfühl-Bild (unverändert seit den früheren Sessions, kein Teil dieses Auftrags).
+
+## Was noch offen ist (nach dieser Session)
+
+1. `feature/admin-design-editor` weiterhin nicht nach `main` gemerged — Production läuft direkt vom Branch-Deploy über `auszeit-mosel.vercel.app`, unverändert seit den früheren Sessions.
+2. **Nebenfund, nicht behoben:** Der veröffentlichte `hero.title2`-Text trägt einen Test-Artefakt-Suffix „.jkjk" (s. Phase 0 oben) — sollte der User bei Gelegenheit im Design-Editor bereinigen (Popup auf „an der Mosel" klicken, Suffix entfernen, veröffentlichen).
+3. Reiner Datei-Upload-Klickpfad (Logo/Logo-Schriftzug/Hero-/Wohlfühl-Bild) weiterhin nicht in dieser Session erneut verifiziert — war aber bereits in einer früheren Session (mit Chrome-Automation) getestet und seither unverändert.
+4. `.agents/`, `.claude/`, `auszeit-apartments/`, `skills-lock.json` bleiben absichtlich ungetracked.
+
+## Session: Design-Editor — Entwurf/Veröffentlichen-Workflow + erweiterte Optionen (laufend)
+
+**Auftrag:** Design-Menü überarbeiten — (1) Änderungen sollen nur noch in einem Entwurf landen und erst nach explizitem „Veröffentlichen" auf der echten Website sichtbar werden (bisher: sofort live), (2) die Vorschau soll Änderungen weiterhin sofort/live zeigen, (3) Text-Editier-Optionen um Fett/Kursiv/Unterstrichen + freie Schriftart pro Feld erweitern, (4) Bildzuschnitt beim Upload, (5) globale Button-Gestaltung (Randdicke/-farbe, Button-Farbe, Border-Radius, 10 Hover-Animationen), (6) immer sichtbarer „Zurück"-Button für die letzte Entwurfs-Änderung. Plan mit dem User abgestimmt (inkl. 3 Rückfragen: „Bild" in der Textformat-Liste = Tippfehler für „Fett"; Schriftart-Auswahl pro Textfeld statt global; Button-Optionen global für die ganze Website statt nur die 2 Hero-CTAs), vollständiger Plan liegt unter `~/.claude/plans/squishy-coalescing-scroll.md`.
+
+**Umsetzung in 5 Phasen** (jede Phase: eigener Commit + Push + Devnotes-Update):
+1. Entwurf/Veröffentlichen/Zurück-Infrastruktur — **erledigt, committed (`b8e56b9`), gepusht.**
+2. Text-Erweiterungen (Fett/Kursiv/Unterstrichen + Schriftart pro Feld) — **erledigt, committed (`04e0381`), gepusht.** Neue Datei `src/lib/fonts.ts` mit 6 kuratierten Google Fonts (Inter, Lora, Merriweather, Montserrat, Nunito, Raleway; alle OFL-lizenziert, via `next/font/google` selbst gehostet — DSGVO-unbedenklich, siehe Kommentar in der Datei). Dropdown im `TextEditPopup`, Anwendung in `Editable` (Admin) + `styleFor()` (öffentliche Seite).
+3. Bildzuschnitt — **erledigt, committed (`33983e6`), gepusht.** Neue Abhängigkeit `react-easy-crop` (MIT); `ImageEditPopup` zeigt nach Dateiauswahl einen Zuschnitt-Schritt mit festem Seitenverhältnis (Hero 16:9, Wohlfühl 4:3, Logo 1:1 rund, Logo-Schriftzug 3:1), Ergebnis wird clientseitig auf Canvas gerendert und als fertig zugeschnittene Datei hochgeladen.
+4. Globale Button-Gestaltung — **erledigt, committed (`e8b2aa2`), gepusht.** Neue „Buttons"-Sektion im Editor (Randdicke, Button-/Rahmenfarbe, Border-Radius, 10 CSS-Hover-Animationen aus neuer Datei `src/lib/button-animations.ts`). Technik: CSS-Variablen (`--button-bg`/`--button-border-color`/`--button-border-width`/`--button-radius`) + ein `data-button-anim`-Attribut, dessen Regeln (`[data-button-anim="x"] .btn:hover` in `globals.css`) automatisch auf jedes Element mit der neuen `.btn`-Marker-Klasse wirken (`Button.tsx`) — dadurch musste **keine** bestehende Verwendungsstelle von `Button.tsx` (Header, Footer, Formulare, Hero-CTA auf der öffentlichen Seite, die den `Button` bereits wiederverwendet) angefasst werden. Farb-Overrides gelten bewusst nur für die markenfarben-basierten Varianten „primary"/„outline"; die weiße „outline-light"-Variante (dunkle Hero-/Fotohintergründe) bleibt unverändert, um die Lesbarkeit über Fotos nicht zu gefährden — falls das anders gewünscht ist, bitte Bescheid geben.
+5. End-to-End-Check + Devnotes-Abschluss — **noch offen, blockiert auf Browser-Login** (s. „Was noch offen ist" unten).
+
+**Phase 1 im Detail** (Commit `b8e56b9`):
+- Neue `siteSettings`-Spalten (`src/db/schema.ts`, per `db:push` bereits gegen die Dev-DB ausgeführt): `designDraft` (jsonb, kompletter Entwurfs-Snapshot), `designDraftHistory` (jsonb-Array, Ringpuffer für „Zurück", Cap 20 Einträge), plus `buttonBorderWidth`/`buttonColor`/`buttonBorderColor`/`buttonBorderRadius`/`buttonAnimation` (Spalten für Phase 4 schon angelegt, aktuell ungenutzt/immer `null`).
+- `DesignDraft`-Typ + `publishedDesignSnapshot()`/`effectiveDesignState()`-Helper (rein funktional, keine DB-Abhängigkeit) in `src/db/home-content.ts` — bauen den Entwurfs-Snapshot aus dem veröffentlichten Zustand bzw. liefern den effektiven Arbeitszustand (Entwurf ?? veröffentlicht).
+- `src/app/admin/(dashboard)/design/actions.ts` komplett umgebaut: zentraler `saveDesignDraft()`-Helper (schreibt in den Entwurf, pusht vorherigen Entwurfsstand in die History), `publishDesign()` (kopiert Entwurf → veröffentlichte Spalten, räumt ersetzte Blob-Bilder auf, leert Entwurf+History), `discardDesignDraft()` (verwirft Entwurf, gibt den veröffentlichten Snapshot zurück, räumt verwaiste Blobs auf), `undoDesignDraft()` (holt letzten History-Eintrag zurück, gibt ihn zurück). Bild-Uploads schreiben die Blob-URL jetzt in den Entwurf statt direkt in die veröffentlichte Spalte — **wichtig:** dadurch wird das alte Blob beim Ersetzen nicht mehr sofort gelöscht (das würde das noch live geschaltete Bild kaputt machen), sondern erst beim Veröffentlichen/Verwerfen aufgeräumt.
+- `HomePreviewEditor.tsx`: neue Toolbar oben (Zurück/Entwurf verwerfen/Veröffentlichen mit Inline-Bestätigung statt `window.confirm()`), Branding (Logo/Logo-Schriftzug) aus `design/page.tsx` hierher verschoben und auf denselben Klick-Popup-Mechanismus wie Hero-/Wohlfühl-Bild umgestellt (`ImageEditPopup` um `previewAspectClassName`/`round`-Props erweitert) — das war nötig, damit Logo-Änderungen denselben Entwurfszustand teilen wie der Rest (sonst hätte man den Seiten-Reload-Umweg über `router.refresh()`/Remount-`key` gebraucht; stattdessen synct `applyDraftState()` nach Undo/Verwerfen alle Felder manuell im Client-State).
+- `HomeTextStyles` (`src/db/home-content.ts`) um `bold`/`italic`/`underline`/`fontFamily` erweitert; `TextEditPopup` (`EditPopup.tsx`) hat jetzt drei Toggle-Buttons (Fett/Kursiv/Unterstrichen); Admin-Vorschau (`Editable`) und öffentliche Seite (`styleFor()` in `src/app/[lang]/page.tsx`) wenden beide `fontWeight`/`fontStyle`/`textDecoration` an. `fontFamily` ist im Typ/in der Sanitize-Funktion schon vorbereitet, aber noch nirgends im UI wählbar (kommt mit der kuratierten Font-Liste in Phase 2).
+- Verifiziert: `npx tsc --noEmit` und `npx eslint` auf allen geänderten Dateien sauber. `db:push` gegen die Dev-DB erfolgreich.
+- **Noch nicht verifiziert:** der eigentliche Klick-Weg im Browser (Login → `/admin/design` → Entwurf anlegen → Vorschau bleibt live unverändert auf der öffentlichen Seite → Veröffentlichen → öffentliche Seite zeigt Änderung → Zurück/Verwerfen testen). Grund: zum Einloggen bräuchte es entweder das echte Admin-Passwort oder ein kurzzeitiges Ersetzen von `ADMIN_PASSWORD_HASH` in `.env.local` (wie in einer früheren Session gemacht) — der dafür nötige `node -e "bcrypt.hashSync(...)"`-Befehl wurde diesmal vom Auto-Mode-Classifier blockiert (als sensible Credential-Operation eingestuft). Es wurde **nicht** versucht, das zu umgehen. Für den Rest der Session daher: entweder der User loggt sich einmal selbst unter `/admin/design` (oder `/bierp4a4/login`) ein und ich mache mit der bereits authentifizierten Chrome-Session weiter, oder der User erlaubt den bcrypt-Befehl explizit.
+
+## Was noch offen ist (aktuelle Session)
+
+Phasen 1–4 sind alle committed und gepusht (`b8e56b9`, `04e0381`, `33983e6`, `e8b2aa2`, Devnotes-Commits dazwischen). `npx tsc --noEmit` und `npx eslint` sind nach jeder Phase über alle geänderten Dateien sauber durchgelaufen, der Dev-Server (`localhost:3002`) kompiliert ohne Fehler.
+
+**Phase 5 (End-to-End-Klicktest im Browser) wurde bewusst übersprungen** — der Login dafür brauchte entweder ein kurzzeitiges Ersetzen von `ADMIN_PASSWORD_HASH` (der dafür nötige `node -e "bcrypt.hashSync(...)"`-Befehl wurde vom Auto-Mode-Classifier als sensible Credential-Operation blockiert) oder dass der User sich selbst einloggt. Der User hat sich explizit dafür entschieden, **ohne** Browser-Test zu committen und die Website bei Gelegenheit selbst zu prüfen. Das heißt: alles ist auf `feature/admin-design-editor` gepusht und typ-/lint-sauber, aber **der eigentliche Klick-Weg im Adminpanel ist nicht verifiziert** — insbesondere:
+
+1. Login → `/admin/design` → kompletter Editor lädt fehlerfrei.
+2. Entwurf/Veröffentlichen/Zurück: Text bearbeiten → Vorschau live → **öffentliche Seite bleibt unverändert**, bis „Veröffentlichen" geklickt wird → danach sichtbar. „Zurück" mehrfach nutzbar. „Entwurf verwerfen" stellt den veröffentlichten Stand wieder her.
+3. Fett/Kursiv/Unterstrichen + Schriftart-Dropdown im Text-Popup.
+4. Bildzuschnitt (react-easy-crop) für alle vier Slots (Hero/Wohlfühl/Logo/Logo-Schriftzug), inkl. rundem Zuschnitt beim Logo.
+5. Buttons-Sektion: Randdicke/Farbe/Rahmenfarbe/Radius/Animation setzen, veröffentlichen, auf `/de` prüfen (insbesondere ob die 10 CSS-Animationen wie erwartet aussehen — die visuelle Feinabstimmung wurde nie im Browser gesehen, nur aus der CSS-Definition heraus konstruiert).
+
+**Nächste Session sollte mit genau diesem Klicktest starten**, bevor an weiteren Features gebaut wird — das ist die einzige noch fehlende Absicherung für die komplette Session.
+
+Danach: ggf. `feature/admin-design-editor` mit dem User besprechen (Merge nach `main`? Bislang läuft Production direkt vom Branch, s. „Was noch offen ist" weiter unten in den älteren Sessions).
+
+## Session: Startseite als Live-Vorschau-Editor + Farbpaletten-Templates
+
+**Auftrag:** Design-Menüpunkt komplett umgebaut — statt langem Formular eine anklickbare Live-Vorschau der Startseite (Klick auf Text/Bild → Popup zum Bearbeiten, inkl. Schriftgröße/-farbe je Feld), plus 10 kuratierte Farbpaletten-Templates zum Ein-Klick-Anwenden.
+
+- Neue Komponenten unter `src/components/admin/home-editor/` (`HomePreviewEditor.tsx`, `EditPopup.tsx`, `fields.ts` = Feld-Registry mit Get/Set pro Pfad, `palettes.ts` = die 10 Templates).
+- Neue DB-Spalte `home_text_styles` (jsonb, `siteSettings`) — Schriftgröße/-farbe-Override je Feldpfad, geteilt über beide Sprachen. Per `db:push` live in Neon angelegt.
+- **Wichtig:** Die öffentliche Startseite (`src/app/[lang]/page.tsx`) muss `settings.homeTextStyles` selbst auslesen und anwenden (`styleFor()`-Helper) — das wurde in dieser Session zunächst vergessen (nur die Admin-Vorschau hat die Styles gerendert) und beim Live-Test in Chrome nachträglich gefixt. Bei ähnlichen Erweiterungen des Editors immer prüfen, ob Admin-Vorschau UND öffentliche Seite beide den neuen State lesen.
+- End-to-End im Chrome-Browser getestet (Login, Textstil-Popup, Palette-Klick, Persistenz nach Reload, Wirkung auf der echten `/de`-Seite) — dafür kurzzeitig `ADMIN_PASSWORD_HASH` in `.env.local` auf ein Test-Passwort gesetzt und danach exakt zurückgesetzt (Diff verifiziert).
+- Commit `ea5d6db`, gepusht, per `vercel --prod --scope codewithmaik` deployed. Danach wie gewohnt `auszeit-mosel.vercel.app` per `vercel alias set` nachgezogen und die beiden Nebenaliase entfernt (s. Hinweis unten — passiert bei **jedem** `--prod`-Deploy erneut).
+
+## Frühere Session: Footer-Link + Domain-Aufräumen
+
+**Auftrag:** Im Footer bei „Technische Umsetzung: codewithmaik" zusätzlich „coding-johnny" verlinken (→ `https://johnomwata-dev.vercel.app`), danach commit/push/deploy. Anschließend: Deploy soll wie bisher unter `auszeit-mosel.vercel.app` laufen, alle anderen Domains fürs Projekt entfernen.
+
+- `src/components/Footer.tsx`: Credit-Zeile umgebaut — Prefix + zwei separate `<a>`-Links („codewithmaik" → codewithmaik.com, „coding-johnny" → johnomwata-dev.vercel.app), gleiche Hover-Unterstrich-Optik wie vorher, durch „&" getrennt. Commit `0d60548`.
+- **Domain-Befund:** Das Vercel-Projekt `auszeit-mosel` hatte zwischenzeitlich 3 `.vercel.app`-Aliase: `auszeit-mosel.vercel.app` (Zieldomain), `auszeit-website-11.vercel.app` (war durch einen `vercel --prod`-Deploy zur „Latest Production URL" geworden, obwohl `auszeit-mosel.vercel.app` gar nicht mitaktualisiert wurde) und `auszeit-mosel-codewithmaik.vercel.app` (Team-Default-Alias). **Fix:** `vercel alias set` hat `auszeit-mosel.vercel.app` explizit auf den aktuellen Production-Deployment gesetzt, danach `vercel alias rm` für die beiden anderen. Verifiziert: `auszeit-mosel.vercel.app` → 200 (redirect auf `/de`), `auszeit-website-11.vercel.app` → 404.
+- **Hinweis für zukünftige Deploys:** `vercel project ls` zeigt in der Spalte „Latest Production URL" ggf. weiterhin eine veraltete Domain an (gecachtes Projekt-Metadatenfeld, kein Live-Routing) — die tatsächlich aktive Domain ist die, die in `vercel alias ls` auf den neuesten Deployment-Hash zeigt. Bei künftigen `vercel --prod`-Deploys prüfen, ob `auszeit-mosel.vercel.app` automatisch mitaktualisiert wird oder ob wieder ein manuelles `vercel alias set` nötig ist.
+- **Bestätigt reproduzierbar (2026-08-30):** Jeder `vercel --prod`-Deploy legt automatisch die beiden Aliase `auszeit-website-11.vercel.app` und `auszeit-mosel-codewithmaik.vercel.app` neu an (Projekt-Default-Aliase), **ohne** `auszeit-mosel.vercel.app` mitzuziehen — das bleibt auf dem vorherigen Deployment stehen, bis man es manuell nachzieht. **Nach jedem Production-Deploy also immer:**
+  1. `vercel alias set <neue-deployment-url> auszeit-mosel.vercel.app --scope codewithmaik`
+  2. `vercel alias rm auszeit-website-11.vercel.app --scope codewithmaik --yes`
+  3. `vercel alias rm auszeit-mosel-codewithmaik.vercel.app --scope codewithmaik --yes`
+  4. Verifizieren: `curl -o /dev/null -w '%{http_code}' https://auszeit-mosel.vercel.app/de` → `200`, `.../auszeit-website-11.vercel.app/de` → `404`.
+  `auszeit-mosel.vercel.app` ist laut User die **einzige gültige Domain** für dieses Projekt — alle anderen `.vercel.app`-Aliase sind unerwünscht und nach jedem Deploy zu entfernen.
+
+## Frühere Session: Admin-Editor „Design" (Farbpalette, Bilder, Texte, Logo/Logotext)
+
+**Auftrag:** Neuer Adminpanel-Menüpunkt, über den die Startseite (Farbpalette, Bilder, Texte) sowie Logo/Logotext in der Navbar eigenständig gepflegt werden können, ohne dass Bilder auf der Website „kaputt" aussehen können — mit Plan vorab, Empfehlungen bei offenen Fragen, kein Commit/Push vor Test.
+
+**Mit dem User abgestimmte Scope-Entscheidungen** (per Nachfrage vor Implementierung):
+- Alle Startseiten-Textabschnitte editierbar (nicht nur Hero) — Hero, 4 Feature-Kacheln, 3 Schritte, Buchen-Block, Wohlfühl-Karte, 4 Vertrauensleisten-Punkte, jeweils DE+EN.
+- Farbpalette kuratiert auf 4 Kernfarben (Primär/Forest, Primär dunkel/Hover, Akzent/Gold, Hintergrund) statt aller 11 CSS-Design-Tokens — schützt vor kaputtem Kontrast an subtileren Stellen (Sage/Mist/Khaki/Cream/Ink/Line bleiben fest).
+
+**Bewusst NICHT Teil dieser Session** (Scope-Grenzen):
+- Feature-Icons (`src/components/BrandIcon.tsx`, 6 statische PNGs) und Lucide-Icons der Vertrauensleiste bleiben fest — shared Icon-System, auch auf `/region` und in `PhotoCard` genutzt, kein Foto-Upload-Slot.
+- Footer-Markenname bleibt der feste „AUSZEIT"-Text (Auftrag sprach explizit nur von der Navbar). `BUSINESS.name`, Impressum/Datenschutz-Metatexte unverändert.
+
+**Neues Datenmodell** (`src/db/schema.ts`, `siteSettings`-Tabelle erweitert, `npm run db:push` bereits gegen die Dev-DB ausgeführt — Projekt nutzt ausschließlich `drizzle-kit push`, keine generierten Migrationsdateien):
+- `logoImageUrl`, `logoTextImageUrl` (nullable, Navbar-Branding)
+- `themePrimary`, `themePrimaryDark`, `themeAccent`, `themeBackground` (nullable Hex-Strings)
+- `homeHeroImageUrl`, `homeWohlfuehlImageUrl` (nullable)
+- `homeContentDe`, `homeContentEn` (nullable `jsonb`, Typ `HomeContent` aus neuem `src/db/home-content.ts` — bewusst nicht aus `src/dictionaries` importiert, um den DB-Layer nicht von der UI-Dictionary-Schicht abhängig zu machen). `null` = Dictionary-Default wird verwendet (Fallback-Pattern wie bei Impressum/Datenschutz).
+
+**Rendering:**
+- `src/app/layout.tsx`: Theme-Farben werden als inline `style`-Objekt auf `<html>` injiziert (`--color-forest` etc. überschreiben `globals.css`), sitewide wirksam — bewusst kein `dangerouslySetInnerHTML`. `settings.logoImageUrl`/`logoTextImageUrl` werden an `Header` durchgereicht.
+- `src/components/Header.tsx`: neue optionale Props `logoImageUrl`/`logoTextImageUrl`. Logo-Slot fällt auf `/images/logo.png` zurück; Logo-Schriftzug-Slot rendert bei gesetztem Wert ein Bild in einer **festen** Box (`w-[170px] h-[34px]`, mobil kleiner) mit `object-contain` statt der beiden Text-`<span>`s — **wichtig:** die Box braucht eine feste Breite (nicht `w-auto`), weil `next/image fill` sonst in einem Flex-Item ohne Breitenvorgabe auf 0px kollabiert (das war ein Bug im ersten Entwurf dieser Session, beim Review vor dem Testen gefunden und korrigiert).
+- `src/app/[lang]/page.tsx`: `t = homeOverride ?? dict.home` (locale-abhängig `homeContentDe`/`homeContentEn`), Hero-/Wohlfühl-Bild-`src` analog mit `||`-Fallback auf die bisherigen statischen Pfade.
+
+**Admin-UI** (`src/app/admin/(dashboard)/design/{page.tsx,actions.ts}`, neuer Nav-Punkt „Design" in `src/app/admin/(dashboard)/layout.tsx`):
+- Branding-Uploads (Logo, Logo-Schriftzug), 4 native `<input type="color">` für die Palette, Startseiten-Bild-Uploads (Hero, Wohlfühl-Karte) — alle nach dem bestehenden Blob-Upload-Muster aus `wohnungen/actions.ts` (`put`/`del`, altes Blob beim Ersetzen aufräumen), jeweils mit „Zurücksetzen"-Button (nullt das Feld, kein Wegwerf-Skript nötig).
+- Startseiten-Texte: langes Formular, DE/EN nebeneinander pro Feld, vorausgefüllt mit dem aktuellen Effektivwert (DB-Override ?? Dictionary-Default). Feldnamen folgen einem Dot-Path-Schema (`de.hero.title1`, `en.features.2.title`, `de.trust.0.text`, `de.bookBullets` als Textarea mit einem Stichpunkt pro Zeile), im Server Action `parseHomeContent()` wieder zu einem vollständigen `HomeContent`-Objekt je Sprache zusammengebaut (kein Deep-Merge nötig, da immer alle Felder im Formular stehen). Zwei Server Actions pro Formular (Speichern + Zurücksetzen) über das `formAction`-Attribut eines zweiten Submit-Buttons im selben `<form>`.
+- Gemeinsamer `updateSettings()`/`ensureSettingsId()`-Helper in `actions.ts` kapselt das Insert-wenn-keine-Row-sonst-Update-Muster (identisch zu `einstellungen/actions.ts`), inkl. Fallback auf `BUSINESS`-Kontaktdaten falls die Settings-Row noch gar nicht existiert.
+
+**Verifiziert (ohne Chrome-Automation, s. u.):**
+- `npx tsc --noEmit` und `npx eslint` auf allen geänderten/neuen Dateien: sauber.
+- DB-Roundtrip per Wegwerf-Skript (`scripts/design-editor-smoketest.mts`, nach Test wieder gelöscht) direkt gegen die Dev-DB: Theme-Farben erscheinen korrekt im `style`-Attribut auf `<html>`; Startseiten-Text-Override auf `/de` sichtbar, `/en` bleibt unverändert beim Dictionary-Default (Locale-Trennung funktioniert); Hero-Bild-Override wird als `<Photo>`-`src` übernommen; Logo- und Logo-Schriftzug-Override werden im Header gerendert, der Fallback-Text verschwindet korrekt (Footer-„AUSZEIT" bleibt separat bestehen, wie geplant); nach Reset sind alle Seiten wieder exakt im ursprünglichen Zustand.
+- **Nicht verifiziert:** der eigentliche Klick-Weg durch das Adminpanel (`/admin/design` einloggen, Formulare ausfüllen, Datei-Upload-Button klicken) — die Chrome-Browser-Erweiterung war in dieser Session nicht verbunden. Die Formular-Feldnamen/Server-Actions wurden stattdessen durch direkte DB-Writes mit identischer Datenform geprüft (deckt Rendering + Datenmodell ab, **nicht** das native `<input type="file">`-Upload-Verhalten oder das Zusammenspiel der beiden Submit-Buttons/`formAction` im Browser).
+
+## Was noch offen ist
+
+1. **Adminpanel-Klick-Test steht weiterhin aus:** `/admin/login` → `/admin/design` im Browser durchklicken — insbesondere Datei-Upload für Logo/Logo-Schriftzug/Hero/Wohlfühl-Bild, die beiden „Speichern"/„Zurücksetzen"-Buttons pro Formular, mobile Navbar mit gesetztem Logo-Schriftzug-Bild. War schon bei `9bdeec9` offen und wurde seither in keiner Session nachgeholt (keine Chrome-Automation-Verbindung).
+2. **`feature/admin-design-editor` noch nicht nach `main` gemerged** — Branch ist auf GitHub aktuell (`origin`), Production läuft direkt vom Branch-Deploy über `auszeit-mosel.vercel.app`, nicht über einen `main`-Merge.
+3. `.agents/`, `.claude/`, `auszeit-apartments/`, `skills-lock.json` bleiben absichtlich ungetracked — nicht versehentlich committen.
+4. Frühere offene Punkte (Alt-Text pro Bild, Ausstattungslisten pro Wohnung, SSO-Schutz auf `.vercel.app`-URLs, Rechtsdaten-Domain-Mismatch) sind weiterhin unangetastet.
+
+## Standing Instructions
+
+- **Git-Workflow:** Feature-Branches pro Aufgabe, regelmäßig committen. **Nie selbst `git config` ändern** (harte Regel) — den User bitten, das selbst zu tun.
+- Force-Push nur mit explizitem User-OK, nie eigenmächtig.
+- Für neue Projekte/GitHub-Repos/Vercel-Deploys IMMER `codewithmaik`/`coding.maikel@gmail.com` (siehe globale CLAUDE.md).
+- Browser-Automation: `window.confirm()`-geschützte Aktionen (z. B. „Wohnung löschen") lassen sich nicht per Klick automatisieren — für Test-Cleanup stattdessen ein Wegwerf-DB-Skript nach Muster `scripts/update-*.mts` schreiben, ausführen, wieder löschen.
+- `drizzle-kit push` braucht die Env-Vars aus `.env.local` explizit geladen (`set -a && source .env.local && set +a && npm run db:push`), da `drizzle.config.ts` sie nicht automatisch lädt.
+- Nach `vercel --prod`-Deploys die Ziel-Domain (`auszeit-mosel.vercel.app`) per `vercel alias ls` prüfen, statt sich auf `vercel project ls`/„Latest Production URL" zu verlassen — dieses Feld kann veraltete Domains anzeigen (s. „Frühere Session: Footer-Link + Domain-Aufräumen").
 
 ## Wie eine neue Session weitermachen sollte
 
-Adminpanel-Task ist inhaltlich fertig. Nächster sinnvoller Schritt: mit dem User klären, ob jetzt gemerged/gepusht werden soll, oder ob noch weiteres Feedback zur Admin-UI gewünscht ist.
+Adminpanel-Klick-Test nachholen (Chrome-Erweiterung verbinden, `/admin/design` durchklicken, s. „Was noch offen ist" Punkt 1). Danach mit dem User klären, ob/wann `feature/admin-design-editor` nach `main` gemerged werden soll — aktuell läuft Production direkt vom Feature-Branch.
+
+---
+
+## Frühere Session: Adminpanel für Wohnungen ausgeweitet
+
+**Auftrag:** Wohnungen (Titel, Beschreibung, Infos, Bilder) sollen im Adminpanel editierbar sein; neue Beispiele sollen in den Slider auf der `/wohnung`-Seite ergänzt, bestehende gelöscht/aktualisiert werden können.
+
+**Befund zu Beginn:** Das CRUD für Wohnungen (`src/app/admin/(dashboard)/wohnungen/*`) existierte bereits vollständig aus einem früheren Task — Name/Titel, Beschreibung, Größe/Gäste/Schlafzimmer editierbar, Bilder hochladen/löschen/neu sortieren, ganze Wohnung anlegen/löschen. Der eigentliche Blocker lag nicht im Adminpanel, sondern auf der **Public-Seite**:
+
+1. **`src/app/[lang]/wohnung/page.tsx`** hatte eine hart kodierte `WOHNUNGSTYPEN_COUNT = 3` und hat den Slider per `apartments.slice(0, 3)` immer auf die ersten 3 DB-Einträge gekappt — neue, im Adminpanel angelegte Wohnungen (es lagen zum Testzeitpunkt bereits 7 in der DB) tauchten dadurch nie im Slider auf. **Fix:** Cap entfernt, `units` wird jetzt aus **allen** Wohnungen aus `getApartments()` gebaut. Damit steuert das Adminpanel (anlegen/löschen/Felder ändern) jetzt 1:1, was im Slider erscheint.
+2. Die Hero-Headline auf `/wohnung` war in beiden Dictionaries hart auf „**3** Wohnungstypen" / „**3** Apartment Types" formuliert (`src/dictionaries/de.ts` / `en.ts`, Feld `wohnung.heroTitle`/`heroText`) — das wäre nach Punkt 1 sofort falsch geworden, sobald mehr/weniger als 3 Einträge gepflegt werden. **Fix:** Copy zahlenunabhängig umformuliert ("Unsere Wohnungstypen" / "Our Apartment Types", "jeder unserer Wohnungstypen" statt "jeder unserer drei Wohnungstypen").
+3. **Neu ergänzt:** Reihenfolge-Steuerung für Wohnungen selbst in der Admin-Übersicht (`src/app/admin/(dashboard)/wohnungen/page.tsx` + `actions.ts`, neue Action `moveApartment(id, direction)`), analog zum bereits vorhandenen Foto-Reorder (`moveApartmentImage`). Vorher gab es nur `sortOrder` in der DB (Reihenfolge stand fest bei Anlage, nicht nachträglich änderbar) — jetzt gibt es Auf/Ab-Buttons pro Wohnungs-Karte, die per sortOrder-Swap die Position im Slider ändern. Die Karte war vorher komplett ein `<Link>`; für die Buttons musste sie auf `<div>` + inneren `<Link>` (Bild+Text) + separate `<form>`-Buttons darunter umgebaut werden (kein verschachteltes `<button>` in `<a>`).
+
+**Verifiziert im Browser (localhost:3100, Chrome-Automation):**
+- Admin-Übersicht zeigte vor dem Fix bereits 7 Wohnungen mit „Position X von 7" — Public-Slider zeigte aber nur 3. Nach dem Fix: alle 7 im Slider (`WOHNUNGSTYP 1 VON 7` … `7 VON 7`), inkl. Filterbuttons und Galerie darunter.
+- Neue Test-Wohnung im Admin angelegt (`/admin/wohnungen/neu`) → erschien sofort als 8. Eintrag im Slider und in der Galerie-Filterleiste → wieder gelöscht.
+  - **Hinweis für zukünftige Sessions:** Der „Wohnung löschen"-Button nutzt `ConfirmSubmitButton` mit `window.confirm(...)` — das blockt die Chrome-Automation (native Dialoge dürfen laut Systemregeln nicht ausgelöst werden). Zum Aufräumen des Testeintrags wurde stattdessen ein Wegwerf-Skript nach dem Muster von `scripts/update-business-details.mts` geschrieben, mit `tsx` ausgeführt und danach wieder gelöscht — kein Weg, das über die Browser-UI zu tun, ohne den Confirm-Dialog auszulösen.
+- Auf/Ab-Reorder in der Admin-Übersicht getestet (Weinberg-Loft nach oben, dann wieder runter) → Reihenfolge ändert sich sofort, `revalidatePath` greift ohne Reload.
+- `npx tsc --noEmit` und `npx eslint` auf den geänderten Dateien: sauber, keine Fehler.
+
+**Was NICHT verändert wurde (bewusst, war nicht Teil des Auftrags):**
+- Alt-Text pro Bild ist beim Upload weiterhin leer (`alt: ""`) und im Admin nicht editierbar — nur Upload/Löschen/Sortieren. Kein Blocker für den aktuellen Auftrag, aber falls SEO/Barrierefreiheit der Bild-Alt-Texte mal wichtig wird, bräuchte es ein zusätzliches Formularfeld pro Bild.
+- Die „Ausstattung"-Sektion unten auf `/wohnung` (Betten, Küche, Bad, …) ist weiterhin global/statisch aus dem Dictionary, nicht pro Wohnung editierbar — der Auftrag sprach von „Infos" im Sinne von Größe/Gäste/Schlafzimmer (die editierbar sind), nicht von einer pro-Wohnung-Ausstattungsliste. Falls das gewünscht ist, wäre das ein separates, größeres Schema-/UI-Thema.
+
+Frühere offene Punkte aus noch älteren Sessions (SSO-Schutz auf `.vercel.app`-URLs, Rechtsdaten-Domain-Mismatch, `main` hinter Production) — Stand dazu siehe Git-Historie/vorherige Commits, hier nicht dupliziert.
+
+## Architektur (weiterhin gültig)
+
+- **DB:** Vercel Postgres via Neon, Drizzle ORM (`drizzle-orm/neon-http`, **kein** `db.transaction()` — Treiber unterstützt keine Transaktionen). Reorder-Operationen (Bilder wie auch Wohnungen) sind deshalb zwei sequenzielle `UPDATE`s statt einer Transaktion — bei einem sehr seltenen Race würde man einfach nochmal klicken müssen, kein funktionaler Bug.
+- **Blob:** `@vercel/blob`, Store `auszeit-website-11`, `access: public`
+- **Auth:** NextAuth v5 (Credentials-Provider, JWT-Session), kein Users-Table — zwei Accounts aus `ADMIN_EMAIL`/`ADMIN_PASSWORD_HASH` (Rolle `admin`) und `WEBDEV_EMAIL`/`WEBDEV_PASSWORD_HASH` (Rolle `developer`, Login über versteckten Pfad `/bierp4a4/login`) Env-Vars (bcrypt-Hashes). Rolle steckt in JWT/Session (`session.user.role`), Typ-Augmentation in `src/types/next-auth.d.ts` (JWT-Interface liegt in `@auth/core/jwt`, nicht `next-auth/jwt`).
+- **Rendering:** DB-lesende Seiten sind `export const dynamic = "force-dynamic"` + `revalidatePath(...)` in Server Actions.
+- **Wohnungen-Schema** (`src/db/schema.ts`): `apartments` (slug, name, description, sizeSqm, guests, bedrooms, sortOrder) + `apartmentImages` (url, alt, sortOrder, cascade on delete). `getApartments()`/`getApartment(id)` in `src/db/queries.ts` liefern immer inkl. sortierter `images`-Relation.
+- **`siteSettings`-Schema:** Singleton-Row (immer nur eine Zeile), Kontaktdaten + Rechtstexte + (seit dieser Session) Branding/Theme/Startseiten-Felder, siehe oben.
+- **Posteingang-Schema** (`src/db/schema.ts`): `bookingRequests` (Kontakt/Zeitraum/Status) + `calendarDays` (ein einziger, seitenweiter Kalender — nicht pro Wohnung, da das Kontaktformular keine Wohnung abfragt; nur belegte Tage haben eine Zeile, optionaler `bookingRequestId`-Link). Helper `dateRange()`/`STATUS_LABELS`/`formatDate()` in `src/lib/booking.ts`.
+- **Public-Seite `/[lang]/wohnung`:** zeigt alle DB-Wohnungen im Slider (`WohnungenSlider`/`WohnungenShowcase`), keine künstliche Obergrenze. Reihenfolge = `sortOrder`, steuerbar im Admin.

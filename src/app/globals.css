@@ -6,6 +6,16 @@
   --color-sage: #8a9a7e;
   --color-mist: #d6d8d1;
   --color-gold: #c99a3f;
+  /* Nur für Fließtext/Labels auf hellem Grund: #c99a3f liegt dort bei ~2.4:1
+     Kontrast (WCAG AA verlangt 4.5:1 für normal große Schrift) — betraf u. a.
+     die Eyebrow-Labels auf praktisch jeder Sektion der Website. --color-gold
+     selbst bleibt unverändert für Icons/Buttons/Akzente auf dunklem Grund. */
+  --color-gold-ink: #8a6a28;
+  /* Gegenstück für Text auf dunklem Grund (z. B. PageHero auf --color-forest):
+     dort liegt sogar das normale --color-gold nur bei ~3.9:1 — dieser hellere
+     Ton kommt auf ~4.8:1. */
+  --color-gold-bright: #dcae5a;
+  --color-khaki: #c3b091;
   --color-cream: #f3e4c4;
   --color-bg: #faf8f3;
   --color-bg-soft: #f3f1ea;
@@ -15,6 +25,11 @@
 
   --font-serif: var(--font-playfair), Georgia, serif;
   --font-sans: var(--font-jost), "Helvetica Neue", Arial, sans-serif;
+
+  /* Globale Button-Gestaltung (Design-Editor) — Defaults entsprechen dem
+     bisherigen festen Look, damit ein leerer Override nichts verändert. */
+  --button-border-width: 1px;
+  --button-radius: 2px;
 }
 
 @theme inline {
@@ -23,6 +38,9 @@
   --color-sage: var(--color-sage);
   --color-mist: var(--color-mist);
   --color-gold: var(--color-gold);
+  --color-gold-ink: var(--color-gold-ink);
+  --color-gold-bright: var(--color-gold-bright);
+  --color-khaki: var(--color-khaki);
   --color-cream: var(--color-cream);
   --color-bg: var(--color-bg);
   --color-bg-soft: var(--color-bg-soft);
@@ -35,6 +53,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 @layer base {
@@ -44,6 +63,7 @@ html {
     font-family: var(--font-sans);
     line-height: 1.65;
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
 
   h1, h2, h3, h4 {
@@ -55,5 +75,312 @@ html {
 
   p {
     color: var(--color-ink-soft);
+  }
+}
+
+/* Button-Hover-Animationen (Design-Editor, globale + individuelle Button-
+   Gestaltung). Aktiviert über data-button-anim="<key>" entweder auf einem
+   Vorfahren (<html> = veröffentlichter Default-Stil, oder ein umgebendes
+   Element in der Admin-Vorschau) — wirkt dann automatisch auf jeden Button
+   mit der Marker-Klasse ".btn" darunter — ODER direkt auf dem .btn-Element
+   selbst (individueller Override eines einzelnen Buttons, s. Button.tsx/
+   HomePreviewEditor.tsx). Beide Formen sind unten dupliziert, das
+   Self-Selektor hat dieselbe Spezifität wie der Vorfahre-Selektor und
+   gewinnt daher als das "näher am Element" gesetzte data-Attribut effektiv,
+   sobald ein individueller Override das data-button-anim direkt am Button
+   setzt. Kein data-button-anim gesetzt = altes, einfaches Farb-Hover bleibt
+   wie bisher. */
+.btn {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    letter-spacing 0.2s ease;
+}
+
+[data-button-anim="lift"] .btn:hover,
+.btn[data-button-anim="lift"]:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px -8px rgba(0, 0, 0, 0.35);
+}
+[data-button-anim="scale"] .btn:hover,
+.btn[data-button-anim="scale"]:hover {
+  transform: scale(1.06);
+}
+[data-button-anim="glow"] .btn:hover,
+.btn[data-button-anim="glow"]:hover {
+  box-shadow: 0 0 0 4px rgba(201, 154, 63, 0.35);
+}
+[data-button-anim="underline-sweep"] .btn,
+.btn[data-button-anim="underline-sweep"] {
+  position: relative;
+  overflow: hidden;
+}
+[data-button-anim="underline-sweep"] .btn::after,
+.btn[data-button-anim="underline-sweep"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 100%;
+  bottom: 0;
+  height: 2px;
+  background: currentColor;
+  transition: right 0.25s ease;
+}
+[data-button-anim="underline-sweep"] .btn:hover::after,
+.btn[data-button-anim="underline-sweep"]:hover::after {
+  right: 0;
+}
+[data-button-anim="shine"] .btn,
+.btn[data-button-anim="shine"] {
+  position: relative;
+  overflow: hidden;
+}
+[data-button-anim="shine"] .btn::before,
+.btn[data-button-anim="shine"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.5s ease;
+}
+[data-button-anim="shine"] .btn:hover::before,
+.btn[data-button-anim="shine"]:hover::before {
+  left: 120%;
+}
+[data-button-anim="pulse"] .btn:hover,
+.btn[data-button-anim="pulse"]:hover {
+  animation: btn-anim-pulse 0.6s ease-in-out;
+}
+@keyframes btn-anim-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+[data-button-anim="bounce"] .btn:hover,
+.btn[data-button-anim="bounce"]:hover {
+  animation: btn-anim-bounce 0.5s ease;
+}
+@keyframes btn-anim-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-6px);
+  }
+  60% {
+    transform: translateY(0);
+  }
+  80% {
+    transform: translateY(-2px);
+  }
+}
+[data-button-anim="slide-fill"] .btn,
+.btn[data-button-anim="slide-fill"] {
+  position: relative;
+  overflow: hidden;
+  z-index: 0;
+}
+[data-button-anim="slide-fill"] .btn::before,
+.btn[data-button-anim="slide-fill"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0.14;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  z-index: -1;
+}
+[data-button-anim="slide-fill"] .btn:hover::before,
+.btn[data-button-anim="slide-fill"]:hover::before {
+  transform: translateX(0);
+}
+[data-button-anim="ripple"] .btn,
+.btn[data-button-anim="ripple"] {
+  position: relative;
+  overflow: hidden;
+}
+[data-button-anim="ripple"] .btn::after,
+.btn[data-button-anim="ripple"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.5) 10%, transparent 10.5%);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 1000% 1000%;
+  opacity: 0;
+  transition:
+    opacity 0.5s ease,
+    background-size 0.01s;
+}
+[data-button-anim="ripple"] .btn:hover::after,
+.btn[data-button-anim="ripple"]:hover::after {
+  opacity: 1;
+  background-size: 260% 260%;
+  transition: opacity 0.5s ease, background-size 0.6s ease;
+}
+[data-button-anim="spacing"] .btn:hover,
+.btn[data-button-anim="spacing"]:hover {
+  letter-spacing: 0.24em;
+}
+
+/* Hintergrundbild-Animationen (Design-Editor, Hero-/Wohlfühl-Bild). Aktiviert
+   über data-bg-anim="<key>" direkt auf dem <img>-Element (auch das von
+   next/image gerenderte <img>, da Image/Photo beliebige data-*-Attribute an
+   das zugrundeliegende <img> durchreicht) — reines CSS, transform-origin
+   center. Ohne data-bg-anim bleibt ein Bild komplett unanimiert (Default). */
+img[data-bg-anim="zoom-hold"] {
+  animation: bg-anim-zoom-hold 18s ease-out forwards;
+}
+@keyframes bg-anim-zoom-hold {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.1);
+  }
+}
+
+img[data-bg-anim="pan-horizontal"] {
+  animation: bg-anim-pan-horizontal 24s ease-in-out forwards;
+}
+@keyframes bg-anim-pan-horizontal {
+  0% {
+    transform: scale(1.08) translateX(-1.5%);
+  }
+  100% {
+    transform: scale(1.14) translateX(1.5%);
+  }
+}
+
+img[data-bg-anim="pan-vertical"] {
+  animation: bg-anim-pan-vertical 22s ease-in-out forwards;
+}
+@keyframes bg-anim-pan-vertical {
+  0% {
+    transform: scale(1.06) translateY(2%);
+  }
+  100% {
+    transform: scale(1.12) translateY(-2%);
+  }
+}
+
+img[data-bg-anim="breathe"] {
+  animation: bg-anim-breathe 12s ease-in-out infinite;
+}
+@keyframes bg-anim-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+img[data-bg-anim="soft-reveal"] {
+  animation: bg-anim-soft-reveal 2.5s ease-out forwards;
+}
+@keyframes bg-anim-soft-reveal {
+  0% {
+    transform: scale(1.06);
+    filter: blur(14px);
+  }
+  100% {
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Globaler Foto-Filter für alle Wohnungs-Fotos (Adminpanel „Wohnungen",
+   Titelbilder + Galerie). Aktiviert über data-photo-filter="<key>" direkt auf
+   dem <img>-Element (auch das von next/image gerenderte <img>, da Image/Photo
+   beliebige data-*-Attribute durchreicht — gleiches Muster wie data-bg-anim
+   oben). Ohne data-photo-filter bleibt ein Foto unverändert (Default). */
+img[data-photo-filter="warmes-gold"] {
+  filter: sepia(0.18) saturate(1.25) brightness(1.03) contrast(1.03);
+}
+
+img[data-photo-filter="kuehles-blau"] {
+  filter: saturate(0.9) hue-rotate(-6deg) brightness(1.02) contrast(1.05);
+}
+
+img[data-photo-filter="editorial-sw"] {
+  filter: grayscale(1) contrast(1.12) brightness(1.02);
+}
+
+img[data-photo-filter="vintage-sepia"] {
+  filter: sepia(0.45) saturate(0.85) contrast(0.95) brightness(1.02);
+}
+
+img[data-photo-filter="sommerfrisch"] {
+  filter: saturate(1.35) contrast(1.08) brightness(1.04);
+}
+
+img[data-photo-filter="weicher-nebel"] {
+  filter: saturate(0.75) brightness(1.06) contrast(0.92);
+}
+
+/* --- Rechnung: 6 weitere Foto-Filter-Templates (kontrastreich/farbstark) --- */
+img[data-photo-filter="kraeftiges-azur"] {
+  filter: saturate(1.5) contrast(1.16) hue-rotate(-10deg) brightness(1.02);
+}
+img[data-photo-filter="goldene-stunde"] {
+  filter: sepia(0.32) saturate(1.55) contrast(1.12) brightness(1.05) hue-rotate(-8deg);
+}
+img[data-photo-filter="smaragd-gold"] {
+  filter: saturate(1.45) contrast(1.14) hue-rotate(8deg) brightness(1.02);
+}
+img[data-photo-filter="terrakotta-glut"] {
+  filter: sepia(0.4) saturate(1.7) contrast(1.15) hue-rotate(-14deg) brightness(1.02);
+}
+img[data-photo-filter="nordlicht-kuehl"] {
+  filter: saturate(1.35) contrast(1.2) hue-rotate(6deg) brightness(1.03);
+}
+img[data-photo-filter="kino-teal-orange"] {
+  filter: saturate(1.6) contrast(1.22) brightness(1.01) sepia(0.12);
+}
+
+/* --- Öffentliche Rechnungsseite: Druck-Layout (DIN A4, eine Seite) --- */
+@media print {
+  body > header,
+  body > footer,
+  header[class*="sticky"],
+  footer,
+  .no-print,
+  .print\:hidden {
+    display: none !important;
+  }
+  .rechnung-viewport {
+    background: #fff !important;
+    min-height: 0 !important;
+  }
+  .invoice-frame {
+    box-shadow: none !important;
+    margin: 0 !important;
+    width: auto !important;
+    overflow: visible !important;
+  }
+  .invoice-sheet {
+    width: 210mm !important;
+    box-shadow: none !important;
+  }
+  @page {
+    size: A4;
+    margin: 0;
   }
 }

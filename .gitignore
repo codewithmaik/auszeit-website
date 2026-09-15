@@ -36,6 +36,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# agent tooling / lokale Arbeitsdateien — bewusst nicht im Repo (s. DEVNOTES.md)
+/.agents
+/.claude
+/skills-lock.json
+/auszeit-apartments
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

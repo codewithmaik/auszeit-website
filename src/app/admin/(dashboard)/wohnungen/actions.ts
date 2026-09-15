@@ -65,6 +65,8 @@ export async function createApartment(formData: FormData) {
 
   revalidatePath("/wohnung");
   revalidatePath("/admin/wohnungen");
+  // Neue Wohnung sofort im Posteingang-Kalender (Dropdown + eigener Kalender).
+  revalidatePath("/admin/posteingang");
   redirect(`/admin/wohnungen/${created.id}`);
 }
 
@@ -80,6 +82,7 @@ export async function updateApartment(id: number, formData: FormData) {
   revalidatePath("/wohnung");
   revalidatePath("/admin/wohnungen");
   revalidatePath(`/admin/wohnungen/${id}`);
+  revalidatePath("/admin/posteingang");
 }
 
 export async function deleteApartment(id: number) {
@@ -97,7 +100,38 @@ export async function deleteApartment(id: number) {
 
   revalidatePath("/wohnung");
   revalidatePath("/admin/wohnungen");
+  revalidatePath("/admin/posteingang");
   redirect("/admin/wohnungen");
+}
+
+export async function moveApartment(id: number, direction: "up" | "down") {
+  const rows = await db.query.apartments.findMany({
+    orderBy: (a, { asc }) => [asc(a.sortOrder)],
+  });
+  const index = rows.findIndex((a) => a.id === id);
+  const swapIndex = direction === "up" ? index - 1 : index + 1;
+  if (index === -1 || swapIndex < 0 || swapIndex >= rows.length) return;
+
+  const current = rows[index];
+  const swapWith = rows[swapIndex];
+
+  await db.update(apartments).set({ sortOrder: swapWith.sortOrder }).where(eq(apartments.id, current.id));
+  await db.update(apartments).set({ sortOrder: current.sortOrder }).where(eq(apartments.id, swapWith.id));
+
+  revalidatePath("/wohnung");
+  revalidatePath("/admin/wohnungen");
+}
+
+export async function reorderApartments(orderedIds: number[]) {
+  // Sequenziell statt in einer Transaktion (neon-http Treiber unterstützt
+  // keine Transaktionen, s. moveApartment/moveApartmentImage) — jede Zeile
+  // bekommt ihren Index in der neuen Reihenfolge als sortOrder.
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db.update(apartments).set({ sortOrder: i }).where(eq(apartments.id, orderedIds[i]));
+  }
+
+  revalidatePath("/wohnung");
+  revalidatePath("/admin/wohnungen");
 }
 
 export async function uploadApartmentImage(apartmentId: number, formData: FormData) {
