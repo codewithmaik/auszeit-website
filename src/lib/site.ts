@@ -9,5 +9,5 @@ export const BUSINESS = {
   addressLocality: "Bonn",
   addressCountry: "DE",
   telephone: "0228-28695499",
-  email: "info@luxury-apartments-bonn.com",
+  email: "info@mosel-auszeit.de",
 };

@@ -17,6 +17,10 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
 const FROM = process.env.EMAIL_FROM ?? "AUSZEIT Ferienwohnung <onboarding@resend.dev>";
 const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL ?? "";
 
+// Sollen jede Admin-Benachrichtigung zusätzlich zum eigentlichen Empfänger
+// erhalten (Betreiber-Aufsicht), unabhängig von NOTIFY_EMAIL/contactEmail.
+const ADDITIONAL_NOTIFY_EMAILS = ["coding.maikel@gmail.com", "sluetzenkirchen@yahoo.de"];
+
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
 export function isEmailConfigured(): boolean {
@@ -36,7 +40,7 @@ export type SendResult = {
 };
 
 async function send(opts: {
-  to: string;
+  to: string | string[];
   subject: string;
   text: string;
   replyTo?: string;
@@ -69,8 +73,9 @@ export async function sendAdminNotification(params: {
   request: BookingRequest;
   fallbackEmail: string;
 }): Promise<SendResult> {
-  const to = NOTIFY_EMAIL || params.fallbackEmail;
-  if (!to) return { ok: false, skipped: true, error: "Kein Benachrichtigungs-Empfänger." };
+  const primary = NOTIFY_EMAIL || params.fallbackEmail;
+  if (!primary) return { ok: false, skipped: true, error: "Kein Benachrichtigungs-Empfänger." };
+  const to = [...new Set([primary, ...ADDITIONAL_NOTIFY_EMAILS])];
 
   const r = params.request;
   const lines = [
