@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import { getAdminAccount } from "@/lib/auth-accounts";
 
 // Öffentlich bekannter Beispiel-Hash aus der bcrypt-Dokumentation (Hash von
 // "password") — dient nur als Vergleichsziel, wenn keine E-Mail passt, damit
@@ -22,23 +23,34 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const password = credentials?.password;
         if (typeof email !== "string" || typeof password !== "string") return null;
 
-        // "admin" = eingeschränkte Admin-Rolle (nur Wohnungen/Einstellungen/
-        // Posteingang), "webdev" = Developer-Rolle mit vollem Zugriff
-        // (zusätzlich Design), Login über den versteckten Pfad /bierp4a4/login.
+        // "admin" = der eine, vom Kunden selbst unter /admin/register
+        // angelegte Account (DB-Singleton, s. auth-accounts.ts) — eingeschränkte
+        // Rolle ohne Design. "webdev" = genau 2 fest verdrahtete Bierpapa-
+        // Accounts (Env-Var-Hash, nicht registrierbar) mit voller Developer-
+        // Rolle (zusätzlich Design), Login über den versteckten Pfad
+        // /bierp4a4/login.
+        const admin = await getAdminAccount();
         const accounts = [
           {
             id: "admin",
             name: "Admin",
             role: "admin" as const,
-            email: process.env.ADMIN_EMAIL,
-            hash: process.env.ADMIN_PASSWORD_HASH,
+            email: admin?.email,
+            hash: admin?.passwordHash,
           },
           {
-            id: "webdev",
+            id: "webdev-1",
             name: "Webdev",
             role: "developer" as const,
-            email: process.env.WEBDEV_EMAIL,
-            hash: process.env.WEBDEV_PASSWORD_HASH,
+            email: process.env.WEBDEV1_EMAIL,
+            hash: process.env.WEBDEV1_PASSWORD_HASH,
+          },
+          {
+            id: "webdev-2",
+            name: "Webdev",
+            role: "developer" as const,
+            email: process.env.WEBDEV2_EMAIL,
+            hash: process.env.WEBDEV2_PASSWORD_HASH,
           },
         ];
 

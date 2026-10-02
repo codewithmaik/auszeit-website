@@ -18,10 +18,23 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
 
   const isLoginPage = pathname === "/admin/login";
+  const isRegisterPage = pathname === "/admin/register";
   const isAdminRoute = pathname.startsWith("/admin");
   const isWebdevLoginPage = pathname === "/bierp4a4/login";
+  const role = req.auth?.user?.role;
 
+  // Zwei getrennte Login-Einstiege (Kunden-Admin + Bierpapa/Webdev) teilen sich
+  // eine Session. Nur wegleiten, wenn die bestehende Session schon zur
+  // jeweiligen Rolle passt — sonst soll man z.B. als Admin eingeloggt trotzdem
+  // zu /bierp4a4/login können, um als Webdev zu wechseln (und umgekehrt).
   if (isWebdevLoginPage) {
+    if (role === "developer") {
+      return NextResponse.redirect(new URL("/admin", req.nextUrl.origin));
+    }
+    return NextResponse.next();
+  }
+
+  if (isRegisterPage) {
     if (req.auth) {
       return NextResponse.redirect(new URL("/admin", req.nextUrl.origin));
     }
@@ -34,7 +47,7 @@ export default auth((req) => {
       loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }
-    if (isLoginPage && req.auth) {
+    if (isLoginPage && role === "admin") {
       return NextResponse.redirect(new URL("/admin", req.nextUrl.origin));
     }
     if (req.auth && pathname.startsWith("/admin/design") && req.auth.user?.role !== "developer") {

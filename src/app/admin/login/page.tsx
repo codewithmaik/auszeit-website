@@ -1,8 +1,11 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { AuthError } from "next-auth";
 import { signIn } from "@/auth";
+import { adminAccountExists } from "@/lib/auth-accounts";
 
 export const metadata = { title: "Admin-Login", robots: { index: false, follow: false } };
+export const dynamic = "force-dynamic";
 
 async function loginAction(formData: FormData) {
   "use server";
@@ -29,6 +32,7 @@ export default async function AdminLoginPage({
   const params = await searchParams;
   const hasError = params.error === "1";
   const callbackUrl = params.callbackUrl || "/admin";
+  const hasAdmin = await adminAccountExists();
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-soft px-6">
@@ -80,6 +84,15 @@ export default async function AdminLoginPage({
         >
           Anmelden
         </button>
+
+        {!hasAdmin && (
+          <p className="text-[0.8rem] text-ink-soft mt-5 text-center">
+            Noch kein Konto?{" "}
+            <Link href="/admin/register" className="text-forest underline underline-offset-2">
+              Hier einrichten
+            </Link>
+          </p>
+        )}
       </form>
     </div>
   );

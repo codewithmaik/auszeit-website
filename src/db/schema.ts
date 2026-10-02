@@ -128,6 +128,18 @@ export const siteSettings = pgTable("site_settings", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Singleton: genau ein Kunden-Admin-Account, vom Kunden selbst unter
+// /admin/register angelegt (einmalig, danach gesperrt — s. createAdminAccount()
+// in auth-accounts.ts). Die beiden Bierpapa/Webdev-Accounts sind bewusst NICHT
+// hier drin, sondern fest per Env-Var-Hash verdrahtet (src/auth.ts) — die
+// sollen nicht frei registrierbar sein.
+export const adminAccount = pgTable("admin_account", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const apartments = pgTable("apartments", {
   id: serial("id").primaryKey(),
   slug: text("slug").notNull().unique(),
